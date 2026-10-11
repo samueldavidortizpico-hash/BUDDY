@@ -47,7 +47,41 @@ const ROUTES: [string, string | RegExp][] = [
   ['/settings/emergency', 'Configuración de emergencia'],
   ['/safety', 'Revisión farmacológica'],
   ['/modals/emergency', /no se realizan llamadas/],
+  ['/summary', 'Panel del cuidador'],
+  ['/tracking', 'Permisos'],
+  ['/tracking?tab=wellbeing', 'Registros de hoy'],
+  ['/alerts', 'Actividad reciente'],
+  ['/account', 'Familiar o cuidador'],
+  ['/dev/gallery', 'Galería (desarrollo)'],
 ];
+
+describe('cuidador', () => {
+  it('una toma sin respuesta aparece como "Medicamento sin confirmar" (no emergencia) y se puede marcar atendida', async () => {
+    const user = userEvent.setup();
+    // Fuerza una toma de hoy sin respuesta hace más de una hora.
+    const doses = useAppStore.getState().doses;
+    const today = toISODate(new Date());
+    const target = doses.find((d) => d.date === today)!;
+    useAppStore.setState({
+      doses: doses.map((d) => (d.id === target.id ? { ...d, status: 'pending' as const, time: '00:00', snoozedTo: null } : d)),
+    });
+    renderRouter('./src/app', { initialUrl: '/alerts' });
+    expect((await screen.findAllByText('Medicamento sin confirmar')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Emergencia')).toBeNull();
+    expect(screen.queryByText(/omitid/i)).toBeNull();
+    await user.press(screen.getAllByRole('button', { name: 'Marcar como atendida' })[0]);
+    expect(Object.values(useAppStore.getState().alertOverrides)).toContain('attended');
+  });
+
+  it('revocar el acceso a la ubicación pide confirmación y lo desactiva', async () => {
+    const user = userEvent.setup();
+    renderRouter('./src/app', { initialUrl: '/tracking' });
+    await user.press(await screen.findByRole('button', { name: 'Revocar acceso a la ubicación' }));
+    await user.press(await screen.findByRole('button', { name: 'Sí, revocar acceso' }));
+    expect(useAppStore.getState().settings.locationSharing.enabled).toBe(false);
+    expect(await screen.findByText('Ubicación no compartida')).toBeOnTheScreen();
+  });
+});
 
 describe('cada pantalla se renderiza', () => {
   it.each(ROUTES)('%s', async (url, text) => {

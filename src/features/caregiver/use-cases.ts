@@ -3,10 +3,20 @@
  * Una toma sin respuesta se muestra como "Medicamento sin confirmar", nunca como omitida.
  */
 import type { CaregiverRepository, ProfileRepository } from '@/repositories/contracts';
-import type { AlertStatus, FollowUpAlert } from '@/types/domain';
-import { atClock, formatClock } from '@/utils/dates';
+import type {
+  AlertStatus,
+  FollowUpAlert,
+  ISODate,
+  MoodEntry,
+  SymptomEntry,
+  Timestamp,
+  VitalEntry,
+} from '@/types/domain';
+import { atClock, formatClock, toISODate } from '@/utils/dates';
 
 import type { DayPlan } from '../medications/schedule';
+import { formatVitalValue, VITALS } from '../vitals/use-cases';
+import { INTENSITY_LABELS, moodLabel } from '../wellbeing/use-cases';
 
 export const ALERT_STATUS_LABEL: Record<AlertStatus, string> = {
   pending: 'Pendiente',
@@ -42,6 +52,34 @@ export function alertCounts(alerts: FollowUpAlert[]) {
     important: alerts.filter((a) => a.status === 'important').length,
     closed: alerts.filter((a) => a.status === 'attended' || a.status === 'resolved').length,
   };
+}
+
+export interface ActivityItem {
+  id: string;
+  kind: 'dose' | 'mood' | 'symptom' | 'vital';
+  title: string;
+  detail: string;
+  at: Timestamp;
+}
+
+/** Actividad registrada hoy por la persona acompañada (solo lo que ella registró). */
+export function todayActivity(
+  input: { plan: DayPlan; moods: MoodEntry[]; symptoms: SymptomEntry[]; vitals: VitalEntry[] },
+  today: ISODate,
+): ActivityItem[] {
+  const doses: ActivityItem[] = input.plan.items
+    .filter((i) => i.status === 'taken' && i.dose.respondedAt)
+    .map((i) => ({ id: i.dose.id, kind: 'dose', title: 'Toma confirmada', detail: `${i.medication.name} · ${formatClock(i.dose.time)}`, at: i.dose.respondedAt! }));
+  const moods: ActivityItem[] = input.moods
+    .filter((m) => m.date === today)
+    .map((m) => ({ id: m.id, kind: 'mood', title: 'Ánimo registrado', detail: moodLabel(m.mood), at: atClock(m.date, m.time).toISOString() }));
+  const symptoms: ActivityItem[] = input.symptoms
+    .filter((s) => s.date === today)
+    .map((s) => ({ id: s.id, kind: 'symptom', title: 'Síntoma registrado', detail: `${s.symptom} · ${INTENSITY_LABELS[s.intensity]}`, at: atClock(s.date, s.time).toISOString() }));
+  const vitals: ActivityItem[] = input.vitals
+    .filter((v) => toISODate(new Date(v.recordedAt)) === today)
+    .map((v) => ({ id: v.id, kind: 'vital', title: 'Registro de salud', detail: `${VITALS[v.type].label}: ${formatVitalValue(v)} ${VITALS[v.type].unit}`, at: v.recordedAt }));
+  return [...doses, ...moods, ...symptoms, ...vitals].sort((a, b) => (new Date(a.at) < new Date(b.at) ? 1 : -1));
 }
 
 export function markAttended(repo: CaregiverRepository, id: string): void {
