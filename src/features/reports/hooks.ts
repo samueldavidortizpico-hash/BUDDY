@@ -6,6 +6,8 @@ import { toISODate } from '@/utils/dates';
 
 import { buildReport, type Period } from './use-cases';
 
+export { PERIODS, type Period } from './use-cases';
+
 export function useReport(period: Period, now: Date) {
   const doses = useRepositoryValue(medicationRepository, medicationRepository.listDoses);
   const moods = useRepositoryValue(wellbeingRepository, wellbeingRepository.listMoods);

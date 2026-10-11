@@ -6,6 +6,8 @@ import { toISODate } from '@/utils/dates';
 
 import { addVital, countOn, describeTrend, entriesOf, latest, sparkValues, VITAL_TYPES, type VitalDraft } from './use-cases';
 
+export { formatVitalValue, validateVital, VITAL_TYPES, VITALS, type VitalDraft } from './use-cases';
+
 export function useVitals() {
   return useRepositoryValue(repo, repo.list);
 }

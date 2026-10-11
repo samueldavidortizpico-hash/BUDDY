@@ -6,6 +6,8 @@ import { toISODate } from '@/utils/dates';
 
 import { saveSleep, sleepSummary, type SleepDraft } from './use-cases';
 
+export { QUALITIES, qualityLabel, sleepMinutes, type SleepDraft } from './use-cases';
+
 export function useSleepEntries() {
   return useRepositoryValue(repo, repo.list);
 }
