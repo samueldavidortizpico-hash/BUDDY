@@ -1,7 +1,7 @@
 import { Text, type TextProps, type TextStyle } from 'react-native';
 
-import { useTextScale } from '@/features/profile/hooks';
-import { ink, maxFontScale, type, type TypeVariant } from '@/theme';
+import { maxFontScale, type, type TypeVariant } from '@/theme';
+import { useTextScaleFactor, useTheme } from '@/theme/provider';
 
 export interface AppTextProps extends TextProps {
   variant?: TypeVariant;
@@ -11,23 +11,24 @@ export interface AppTextProps extends TextProps {
 
 const HEADERS: TypeVariant[] = ['display', 'h1', 'h2'];
 
-// Texto al 200 %: los números héroe tienen tope propio (maxFontScale) para no romper su tarjeta.
-
 /**
- * Texto de BUDDY: aplica la escala tipográfica, respeta el tamaño de texto del sistema
- * (allowFontScaling) y multiplica por el tamaño elegido en Perfil > Accesibilidad.
+ * Texto de BUDDY: escala tipográfica + tamaño elegido en Ajustes > Apariencia + escala del sistema.
+ * La suma nunca pasa de ×2 (texto al 200 %); los números héroe tienen tope propio para no romper su tarjeta.
  */
-export function AppText({ variant = 'body', color = ink.text, align, style, accessibilityRole, ...rest }: AppTextProps) {
-  const scale = useTextScale();
+export function AppText({ variant = 'body', color, align, style, accessibilityRole, ...rest }: AppTextProps) {
+  const t = useTheme();
+  const scale = useTextScaleFactor();
   const base = type[variant];
+  const cap = maxFontScale[variant] ?? 2;
+  const appScale = Math.min(scale, cap);
   return (
     <Text
       allowFontScaling
-      maxFontSizeMultiplier={maxFontScale[variant] ?? 2}
+      maxFontSizeMultiplier={Math.max(1, cap / appScale)}
       accessibilityRole={accessibilityRole ?? (HEADERS.includes(variant) ? 'header' : undefined)}
       style={[
         base,
-        { color, textAlign: align, fontSize: base.fontSize * scale, lineHeight: base.lineHeight * scale },
+        { color: color ?? t.c.text, textAlign: align, fontSize: base.fontSize * appScale, lineHeight: base.lineHeight * appScale },
         style,
       ]}
       {...rest}

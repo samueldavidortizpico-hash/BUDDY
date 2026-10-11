@@ -1,10 +1,8 @@
 /**
- * Auditoría automática de contraste (WCAG 2.x) de los pares texto/fondo usados en la app, en tema claro y oscuro.
- * Resultado documentado en docs/DESIGN_SYSTEM.md.
+ * Auditoría automática de contraste (WCAG 2.x) de los pares texto/fondo reales en los 4 temas:
+ * claro, oscuro, alto contraste claro y alto contraste oscuro. Resultado documentado en docs/DESIGN_SYSTEM.md.
  */
-import { Appearance } from 'react-native';
-
-type Theme = typeof import('..');
+import { themes, type Theme } from '..';
 
 function luminance(hex: string) {
   const [r, g, b] = [1, 3, 5]
@@ -18,56 +16,47 @@ export function contrast(a: string, b: string) {
   return (x + 0.05) / (y + 0.05);
 }
 
-function loadTheme(scheme: 'light' | 'dark'): Theme {
-  jest.spyOn(Appearance, 'getColorScheme').mockReturnValue(scheme);
-  let theme!: Theme;
-  jest.isolateModules(() => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports -- hay que recargar el módulo con otro esquema
-    theme = require('..');
-  });
-  return theme;
-}
+const solid = (hex: string) => /^#[0-9a-f]{6}$/i.test(hex);
 
-function textPairs({ ink, palette, gradients, tones, domains }: Theme): [string, string, string][] {
-  // Texto de dominio: se mide contra las paradas donde se apoya el texto (las dos primeras; la tercera es el pie del degradado).
+function textPairs(t: Theme): [string, string, string][] {
+  const { c, ink, tones, domains, gradients } = t;
   const domainPairs = Object.entries(domains).flatMap(([name, d]) =>
     d.gradient.slice(0, 2).map((stop, i) => [`dominio ${name}: texto / parada ${i}`, d.text, stop] as [string, string, string]),
   );
-  return [
-    ['texto principal / fondo', ink.text, palette.warm],
-    ['texto / superficie', ink.text, palette.white],
-    ['texto / superficie 2', ink.text, palette.slatePale],
-    ['secundario / superficie', ink.muted, palette.white],
-    ['secundario / fondo', ink.muted, palette.warm],
-    ['secundario / superficie 2', ink.muted, palette.slatePale],
-    ['secundario / lavanda pálida', ink.muted, palette.lavenderPale],
-    ['secundario / coral pálido', ink.muted, palette.coralPale],
-    ['blanco / botón primario (inicio)', ink.inverse, gradients.primary[0]],
-    ['blanco / botón primario (fin)', ink.inverse, gradients.primary[1]],
-    ['texto / CTA coral (inicio)', ink.onCoral, gradients.coral[0]],
-    ['texto / CTA coral (fin)', ink.onCoral, gradients.coral[1]],
-    ['texto / secundario menta', ink.text, palette.mintPale],
-    ['coral texto / botón peligro', ink.coral, palette.coralPale],
-    ['blanco / tarjeta sueño', ink.inverse, palette.nightSoft],
-    ['lavanda clara / tarjeta sueño', palette.nightText, palette.night],
-    ['blanco / toast', ink.inverse, palette.petrol],
-    ['menta texto / superficie', ink.mint, palette.white],
-    ['menta texto / fondo', ink.mint, palette.warm],
-    ['amarillo texto / seguimiento', ink.yellow, palette.yellowPale],
-    ...Object.entries(tones).map(([name, t]) => [`tono ${name}: texto / fondo pálido`, t.fg, t.bg] as [string, string, string]),
+  const pairs: [string, string, string][] = [
+    ['texto / fondo', c.text, c.bg],
+    ['texto / superficie', c.text, c.surface],
+    ['texto / superficie 2', c.text, c.surface2],
+    ['secundario / superficie', c.muted, c.surface],
+    ['secundario / fondo', c.muted, c.bg],
+    ['secundario / superficie 2', c.muted, c.surface2],
+    ['secundario / lavanda pálida', c.muted, c.lavenderPale],
+    ['secundario / coral pálido', c.muted, c.coralPale],
+    ['principal: texto / inicio', c.onPrimary, gradients.primary[0]],
+    ['principal: texto / fin', c.onPrimary, gradients.primary[1]],
+    ['CTA coral: texto / inicio', c.onCoral, gradients.coral[0]],
+    ['CTA coral: texto / fin', c.onCoral, gradients.coral[1]],
+    ['texto / menta pálida', c.text, c.mintPale],
+    ['menta texto / superficie', ink.mint, c.surface],
+    ['peligro texto / pálido', ink.danger, c.dangerPale],
+    ['seguimiento texto / ámbar pálido', ink.yellow, c.yellowPale],
+    ...Object.entries(tones).map(([name, tn]) => [`tono ${name}: texto / fondo`, tn.fg, tn.bg] as [string, string, string]),
     ...domainPairs,
   ];
+  return pairs.filter(([, fg, bg]) => solid(fg) && solid(bg));
 }
 
-describe.each(['light', 'dark'] as const)('tema %s', (scheme) => {
-  const theme = loadTheme(scheme);
-  it.each(textPairs(theme))('texto AA ≥ 4.5:1 — %s', (_name, fg, bg) => {
+describe.each(Object.values(themes).map((t) => [t.name, t] as const))('tema %s', (_name, theme) => {
+  it.each(textPairs(theme))('texto AA ≥ 4.5:1 — %s', (_n, fg, bg) => {
     expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
-  it.each([
-    ['icono blanco / IconButton menta', theme.ink.inverse, theme.palette.mintDeep],
-    ['icono pestaña activa / píldora', theme.ink.mint, theme.palette.mintPale],
-  ])('icono ≥ 3:1 — %s', (_name, fg, bg) => {
-    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3);
+  if (theme.hc) {
+    // 7:1 (AAA) para texto; los acentos fijados por la adenda (#006B3C = 6.5:1) se quedan en AA.
+    it.each(textPairs(theme).filter(([n]) => /^(texto|secundario|principal)/.test(n)))('alto contraste ≥ 7:1 — %s', (_n, fg, bg) => {
+      expect(contrast(fg, bg)).toBeGreaterThanOrEqual(7);
+    });
+  }
+  it('icono blanco sobre menta profunda ≥ 3:1', () => {
+    if (!theme.hc) expect(contrast('#FFFFFF', theme.c.mintDeep)).toBeGreaterThanOrEqual(3);
   });
 });

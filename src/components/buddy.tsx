@@ -9,7 +9,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ink, palette, shadow, spacing, type as typeScale } from '@/theme';
 
 import { AppText } from './app-text';
-import { BuddyRobot, ROBOT_SOURCE } from './robot';
+import { BuddyRobot, RobotArt } from './robot';
 
 const DEMO_PHOTO = require('../../assets/images/carmen-demo.jpg');
 
@@ -41,7 +41,9 @@ export function BuddyAvatar({
           border ? { borderWidth: border, borderColor: palette.white } : null,
         ]}
       >
-        <Image source={ROBOT_SOURCE} contentFit="contain" style={{ width: px * 0.74, height: px * 0.84, marginTop: px * 0.08 }} />
+        <View style={{ marginTop: px * 0.1 }}>
+          <RobotArt size={px * 0.82} mood="idle" look={0} animated={false} />
+        </View>
       </View>
     </View>
   );

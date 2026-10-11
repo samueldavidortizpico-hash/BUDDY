@@ -19,7 +19,8 @@ import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
 import { Button } from '@/components/button';
 import { useToast } from '@/components/feedback';
-import { BuddyRobot, SoftEllipse } from '@/components/robot';
+import { SoftEllipse } from '@/components/robot';
+import { RobotPerch } from '@/components/robot/stage';
 import { ScreenContainer } from '@/components/screen-container';
 import { useSettings } from '@/features/profile/hooks';
 import { ink, motion, palette, spacing, touch, type } from '@/theme';
@@ -39,6 +40,7 @@ export default function Welcome() {
   const reduce = useReducedMotion();
   const [first] = useState(() => !playedThisSession && !reduce);
   const [skipped, setSkipped] = useState(false);
+  const robot = Math.round(Math.min(320, Math.max(220, height * 0.34)));
 
   useEffect(() => {
     playedThisSession = true;
@@ -49,13 +51,12 @@ export default function Welcome() {
 
   const choreo = first && !skipped;
   const base = choreo ? LANDED_AT : 0;
-  const robot = Math.round(Math.min(320, Math.max(220, height * 0.34)));
 
   return (
     <ScreenContainer gradient="welcome" contentStyle={styles.content} background={<Orbs entrance={first} />}>
       <View style={styles.root} onTouchStart={choreo ? () => setSkipped(true) : undefined}>
         <View style={[styles.stage, { minHeight: robot * 1.25 }]}>
-          <BuddyRobot size={robot} glow sparkles entrance={first} skipEntrance={skipped} tapFlip />
+          <RobotPerch name="welcome" size={robot} entrance={first ? 'fly' : 'fade'} sparkles tapFlip />
         </View>
 
         <View style={styles.copy}>

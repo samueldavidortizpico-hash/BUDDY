@@ -6,16 +6,31 @@ import {
   Manrope_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/manrope';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { ErrorState } from '@/components/states';
 import { ToastProvider } from '@/components/feedback';
+import { RobotStageProvider } from '@/components/robot/stage';
 import { useStorageReady } from '@/features/profile/hooks';
-import { colors } from '@/theme';
+import { ThemeProvider, useAppearanceStore, useTheme } from '@/theme/provider';
 
 SplashScreen.preventAutoHideAsync();
+
+const subscribeAppearance = (cb: () => void) => useAppearanceStore.persist.onFinishHydration(cb);
+const appearanceHydrated = () => useAppearanceStore.persist.hasHydrated();
+
+/** Error inesperado en cualquier pantalla: mensaje claro y reintento (convención de Expo Router). */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return (
+    <ThemeProvider>
+      <ErrorState onRetry={retry} />
+    </ThemeProvider>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -26,8 +41,9 @@ export default function RootLayout() {
     Manrope_800ExtraBold,
   });
   const storageReady = useStorageReady();
+  const appearanceReady = useSyncExternalStore(subscribeAppearance, appearanceHydrated, appearanceHydrated);
   // Si la fuente falla, seguimos con la del sistema en lugar de bloquear la app.
-  const ready = (fontsLoaded || !!fontError) && storageReady;
+  const ready = (fontsLoaded || !!fontError) && storageReady && appearanceReady;
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -36,9 +52,24 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <ToastProvider>
-      <StatusBar style="auto" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <ToastProvider>
+          <RobotStageProvider>
+            <ThemedStack />
+          </RobotStageProvider>
+        </ToastProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+function ThemedStack() {
+  const t = useTheme();
+  return (
+    <>
+      <StatusBar style={t.dark ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: t.c.bg } }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(patient)" />
         <Stack.Screen name="(caregiver)" />
@@ -51,6 +82,6 @@ export default function RootLayout() {
         />
         <Stack.Screen name="dev/gallery" />
       </Stack>
-    </ToastProvider>
+    </>
   );
 }

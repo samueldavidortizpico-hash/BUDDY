@@ -1,22 +1,25 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, gradients, spacing, type GradientName } from '@/theme';
+import { gradients as legacyGradients, spacing, type GradientName } from '@/theme';
+import { useTheme } from '@/theme/provider';
 
 export const SCREEN_PADDING = spacing.screen;
 
 export interface ScreenContainerProps {
   children: ReactNode;
-  gradient?: GradientName;
+  /** Degradado de fondo: 'screen' (por defecto), 'welcome', colores propios o un nombre heredado. */
+  gradient?: 'screen' | 'welcome' | GradientName;
+  gradientColors?: readonly [string, string, ...string[]];
   /** false para pantallas con su propia lista (FlatList) o diseño fijo. */
   scroll?: boolean;
   /** Contenido fijo arriba, fuera del scroll (encabezado). */
   header?: ReactNode;
   /** Contenido fijo abajo (barra de entrada del chat, acciones). */
   footer?: ReactNode;
-  /** Para formularios: evita que el teclado tape los campos. */
+  /** Formularios: evita que el teclado tape los campos. */
   keyboard?: boolean;
   /** Pantallas dentro de pestañas: la barra ya reserva el área inferior segura. */
   insideTabs?: boolean;
@@ -25,10 +28,11 @@ export interface ScreenContainerProps {
   background?: ReactNode;
 }
 
-/** Contenedor de pantalla: fondo (con degradado opcional), safe areas, scroll y teclado. */
+/** Contenedor de pantalla: fondo del tema (con degradado opcional), safe areas, scroll y teclado. */
 export function ScreenContainer({
   children,
   gradient = 'screen',
+  gradientColors,
   scroll = true,
   header,
   footer,
@@ -37,8 +41,11 @@ export function ScreenContainer({
   contentStyle,
   background,
 }: ScreenContainerProps) {
+  const t = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPad = (insideTabs ? 0 : insets.bottom) + spacing.xl;
+  const colors =
+    gradientColors ?? (gradient === 'screen' || gradient === 'welcome' ? t.gradients[gradient] : legacyGradients[gradient]);
 
   const body = scroll ? (
     <ScrollView
@@ -62,13 +69,13 @@ export function ScreenContainer({
   );
 
   return (
-    <View style={styles.root}>
-      <LinearGradient colors={gradients[gradient]} style={StyleSheet.absoluteFill} />
+    <View style={[styles.root, { backgroundColor: t.c.bg }]}>
+      {t.hc ? null : <LinearGradient colors={colors} style={StyleSheet.absoluteFill} />}
       {background}
       <View style={[styles.flex, { paddingTop: insets.top }]}>
         {header ? <View style={styles.header}>{header}</View> : null}
         {keyboard ? (
-          <KeyboardAvoidingView behavior="padding" style={styles.flex}>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
             {inner}
           </KeyboardAvoidingView>
         ) : (
@@ -80,7 +87,7 @@ export function ScreenContainer({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
+  root: { flex: 1 },
   flex: { flex: 1 },
   content: { paddingHorizontal: SCREEN_PADDING },
   header: { paddingHorizontal: SCREEN_PADDING },
