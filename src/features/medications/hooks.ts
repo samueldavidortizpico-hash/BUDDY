@@ -14,6 +14,19 @@ import {
   type MedicationDraft,
 } from './use-cases';
 
+export { effectiveTime, isOpen, periodProgress, type DayPlan, type DoseItem } from './schedule';
+export {
+  doseLabel,
+  emptyDraft,
+  FORMS,
+  FREQUENCIES,
+  STRENGTH_UNITS,
+  strengthLabel,
+  validateDraft,
+  type DraftErrors,
+  type MedicationDraft,
+} from './use-cases';
+
 export function useMedications() {
   return useRepositoryValue(repo, repo.listMedications);
 }

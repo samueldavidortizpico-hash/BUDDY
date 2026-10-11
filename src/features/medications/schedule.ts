@@ -103,6 +103,27 @@ export function buildDayPlan(meds: Medication[], doses: DoseEvent[], date: ISODa
   };
 }
 
+export type DayPeriod = 'morning' | 'midday' | 'night';
+
+const PERIODS: [DayPeriod, string][] = [
+  ['morning', 'Mañana'],
+  ['midday', 'Mediodía'],
+  ['night', 'Noche'],
+];
+
+export function periodOf(time: ClockTime): DayPeriod {
+  const m = clockToMinutes(time);
+  return m < 12 * 60 ? 'morning' : m < 18 * 60 ? 'midday' : 'night';
+}
+
+/** Tomas por franja del día (solo franjas con tomas). */
+export function periodProgress(items: DoseItem[]) {
+  return PERIODS.map(([period, label]) => {
+    const list = items.filter((i) => periodOf(i.dose.time) === period);
+    return { period, label, total: list.length, taken: list.filter((i) => i.status === 'taken').length };
+  }).filter((p) => p.total > 0);
+}
+
 /** Proporción de tomas confirmadas por día (null si ese día no había tomas). */
 export function adherenceByDay(doses: DoseEvent[], days: ISODate[]): (number | null)[] {
   return days.map((day) => {

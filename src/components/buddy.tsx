@@ -23,10 +23,10 @@ import { ink, palette, shadow, spacing, type as typeScale } from '@/theme';
 
 import { AppText } from './app-text';
 
-const ROBOT = require('@/assets/branding/buddy-logo.png');
+const ROBOT = require('../../assets/branding/buddy-logo.png');
 /** Recorte del Figma: imagen al 244 % del ancho del contenedor, desplazada −2 %. */
 const CROP = { widthRatio: 2.44, left: -0.02 };
-const DEMO_PHOTO = require('@/assets/images/carmen-demo.jpg');
+const DEMO_PHOTO = require('../../assets/images/carmen-demo.jpg');
 
 export const AVATAR_SIZES = { small: 40, medium: 58, large: 92, hero: 238 } as const;
 

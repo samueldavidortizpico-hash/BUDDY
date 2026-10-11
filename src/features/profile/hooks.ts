@@ -5,6 +5,9 @@ import type { Role } from '@/types/domain';
 
 import { chooseRole, resetDemoData, setTextScale, signOut, toggleNotification, type NotificationKey } from './use-cases';
 
+export { DEMO_PROFILE } from './demo-data';
+export { TEXT_SCALE_OPTIONS, type NotificationKey } from './use-cases';
+
 const readTextScale = () => textScales[repo.settings().textScale];
 
 export function useSettings() {
