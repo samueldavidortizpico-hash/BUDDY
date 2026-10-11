@@ -58,6 +58,7 @@ export const chatRepository: ChatRepository = {
   subscribe,
   list: () => get().chat,
   append: (message) => set((s) => ({ chat: [...s.chat, message].slice(-CHAT_LIMIT) })),
+  replaceAll: (messages) => set({ chat: messages }),
 };
 
 export const caregiverRepository: CaregiverRepository = {

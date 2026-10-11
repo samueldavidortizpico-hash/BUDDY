@@ -9,7 +9,9 @@ import {
   wellbeingRepository,
 } from '@/repositories/in-memory';
 
-import { respond, sendUserMessage } from './use-cases';
+import { resetChat, respond, sendUserMessage } from './use-cases';
+
+export { SAFETY_NOTE, SUGGESTIONS } from './replies';
 
 const deps = {
   chat: chatRepository,
@@ -43,5 +45,7 @@ export function useChat() {
     return true;
   }, []);
 
-  return { messages, typing, send };
+  const reset = useCallback(() => resetChat(chatRepository, profileRepository, new Date()), []);
+
+  return { messages, typing, send, reset };
 }

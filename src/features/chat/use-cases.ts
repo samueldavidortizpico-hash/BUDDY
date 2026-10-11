@@ -14,7 +14,12 @@ import { doseLabel, strengthLabel } from '../medications/use-cases';
 import { entriesOf, formatVitalValue } from '../vitals/use-cases';
 import { HABITS, WATER_GOAL } from '../wellbeing/use-cases';
 
-import { replyTo, type ChatContext } from './replies';
+import { initialChat, replyTo, type ChatContext } from './replies';
+
+/** Vuelve a la conversación de bienvenida (solo afecta a este teléfono). */
+export function resetChat(repo: ChatRepository, profile: ProfileRepository, now: Date): void {
+  repo.replaceAll(initialChat(now, profile.settings().userName));
+}
 
 export interface ChatDeps {
   chat: ChatRepository;

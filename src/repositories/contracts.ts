@@ -54,6 +54,7 @@ export interface VitalsRepository extends Subscribable {
 export interface ChatRepository extends Subscribable {
   list(): ChatMessage[];
   append(message: ChatMessage): void;
+  replaceAll(messages: ChatMessage[]): void;
 }
 
 export interface CaregiverRepository extends Subscribable {
