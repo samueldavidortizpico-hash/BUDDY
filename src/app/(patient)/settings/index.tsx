@@ -112,5 +112,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logout: { borderColor: '#F1C2BD' },
+  logout: { borderColor: palette.logoutBorder },
 });

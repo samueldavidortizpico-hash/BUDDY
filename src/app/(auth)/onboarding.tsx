@@ -58,7 +58,7 @@ function Dot({ active, index, onPress }: { active: boolean; index: number; onPre
       accessibilityState={{ selected: active }}
       style={styles.dotHit}
     >
-      <Animated.View style={[styles.dot, { backgroundColor: active ? palette.mintDeep : '#CDD9D6' }, style]} />
+      <Animated.View style={[styles.dot, { backgroundColor: active ? palette.mintDeep : palette.dotIdle }, style]} />
     </Pressable>
   );
 }

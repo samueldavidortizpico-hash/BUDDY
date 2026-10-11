@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
     borderWidth: 1,
-    borderColor: '#B9D9EF',
+    borderColor: palette.glassBorder,
     overflow: 'hidden',
     backgroundColor: palette.white,
   },

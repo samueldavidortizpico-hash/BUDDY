@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   notice: {
     flexDirection: 'row',
     gap: spacing.sm,
-    backgroundColor: '#EEF5F3',
+    backgroundColor: palette.notice,
     borderRadius: 14,
     padding: spacing.md,
     alignItems: 'flex-start',

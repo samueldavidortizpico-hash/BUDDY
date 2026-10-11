@@ -125,7 +125,7 @@ export default function Health() {
               HIDRATACIÓN
             </AppText>
             <AppText variant="bodyStrong">{`${glasses} de ${WATER_GOAL} vasos`}</AppText>
-            <ProgressBar value={glasses / WATER_GOAL} gradient="water" track="#C5DDED" height={8} accessibilityLabel={`Hidratación: ${glasses} de ${WATER_GOAL} vasos`} />
+            <ProgressBar value={glasses / WATER_GOAL} gradient="water" track={palette.waterTrack} height={8} accessibilityLabel={`Hidratación: ${glasses} de ${WATER_GOAL} vasos`} />
           </View>
           <IconButton
             icon="plus"

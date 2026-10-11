@@ -75,8 +75,8 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingTop: spacing.sm, gap: spacing.lg },
   copy: { gap: spacing.sm },
   orb: { position: 'absolute', borderRadius: radius.pill },
-  orbOne: { width: 240, height: 240, backgroundColor: '#E5F8F1', top: 140, right: -150 },
-  orbTwo: { width: 180, height: 180, backgroundColor: '#FFF0E9', top: 360, left: -120 },
+  orbOne: { width: 240, height: 240, backgroundColor: palette.orbMint, top: 140, right: -150 },
+  orbTwo: { width: 180, height: 180, backgroundColor: palette.orbCoral, top: 360, left: -120 },
   visual: { flexGrow: 1, justifyContent: 'center', minHeight: 260 },
   trustPill: {
     position: 'absolute',

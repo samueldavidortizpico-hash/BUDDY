@@ -95,7 +95,7 @@ export default function Symptoms() {
                   onPress={() => set('intensity', level)}
                   style={[styles.level, { backgroundColor: active ? t.bg : palette.slatePale }]}
                 >
-                  <View style={[styles.levelNum, { backgroundColor: active ? t.solid : '#DBE5E3' }]}>
+                  <View style={[styles.levelNum, { backgroundColor: active ? t.solid : palette.levelIdle }]}>
                     <AppText variant="captionStrong" color={ink.title}>
                       {level}
                     </AppText>

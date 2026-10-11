@@ -1,5 +1,6 @@
 /** Los 24 iconos del prototipo de Figma (trazo 1.8, redondeado), portados a react-native-svg. */
 import type { ReactNode } from 'react';
+import { Platform, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { ink } from '@/theme';
@@ -52,6 +53,9 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
 };
 
+/** Oculto a lectores de pantalla (decorativo). En web se usa aria-hidden para no pasar props nativas al DOM. */
+const HIDDEN = Platform.OS === 'web' ? { 'aria-hidden': true } : { accessible: false, importantForAccessibility: 'no-hide-descendants' as const };
+
 export interface IconProps {
   name: IconName;
   size?: number;
@@ -61,21 +65,21 @@ export interface IconProps {
 
 /** Icono decorativo: el texto o la etiqueta del control que lo contiene da el significado. */
 export function Icon({ name, size = 22, color = ink.text, strokeWidth = 1.8 }: IconProps) {
+  // El View posicionado garantiza que el icono quede sobre fondos absolutos (degradados) también en web.
   return (
-    <Svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      accessible={false}
-      importantForAccessibility="no-hide-descendants"
-      pointerEvents="none"
-    >
-      {PATHS[name]}
-    </Svg>
+    <View pointerEvents="none" style={{ width: size, height: size }} {...HIDDEN}>
+      <Svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {PATHS[name]}
+      </Svg>
+    </View>
   );
 }

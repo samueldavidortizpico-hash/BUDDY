@@ -89,9 +89,9 @@ export function SwitchRow({
         onValueChange={onValueChange}
         accessibilityLabel={title}
         accessibilityHint={subtitle}
-        trackColor={{ false: '#C9D6D3', true: palette.mintDeep }}
+        trackColor={{ false: palette.switchOff, true: palette.mintDeep }}
         thumbColor={palette.white}
-        ios_backgroundColor="#C9D6D3"
+        ios_backgroundColor={palette.switchOff}
       />
     </View>
   );

@@ -43,6 +43,19 @@ export const palette = {
   mapPark: '#D8ECDA',
   scrim: 'rgba(13, 57, 70, 0.45)',
   glass: 'rgba(255, 255, 255, 0.92)',
+  // Detalles del prototipo de Figma
+  orbMint: '#E5F8F1',
+  orbCoral: '#FFF0E9',
+  dotIdle: '#CDD9D6',
+  timeline: '#C8D6D2',
+  glassBorder: '#B9D9EF',
+  waterTrack: '#C5DDED',
+  logoutBorder: '#F1C2BD',
+  levelIdle: '#DBE5E3',
+  dashedMint: '#B7D2CB',
+  notice: '#EEF5F3',
+  pillWarm: '#FFF7F3',
+  switchOff: '#C9D6D3',
 } as const;
 
 /** Colores de texto/icono con contraste verificado sobre su fondo pálido correspondiente. */

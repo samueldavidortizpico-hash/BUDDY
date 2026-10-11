@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
 import type { PillColor } from '@/types/domain';
-import { gradients } from '@/theme';
+import { gradients, palette } from '@/theme';
 
 const SIZES = {
   sm: { w: 37, h: 19, border: 0, rotate: '-42deg' },
@@ -41,5 +41,5 @@ const styles = StyleSheet.create({
   box: { alignItems: 'center', justifyContent: 'center' },
   pill: { overflow: 'hidden', borderColor: 'rgba(255, 255, 255, 0.75)' },
   half: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%', backgroundColor: 'rgba(255, 255, 255, 0.78)' },
-  halfWarm: { backgroundColor: '#FFF7F3' },
+  halfWarm: { backgroundColor: palette.pillWarm },
 });

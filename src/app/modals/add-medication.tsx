@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.button,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#B7D2CB',
+    borderColor: palette.dashedMint,
     backgroundColor: palette.white,
   },
   photoIcon: { width: 44, height: 44, borderRadius: 13, backgroundColor: palette.mintPale, alignItems: 'center', justifyContent: 'center' },

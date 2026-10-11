@@ -24,8 +24,12 @@ import { ink, palette, shadow, spacing, type as typeScale } from '@/theme';
 import { AppText } from './app-text';
 
 const ROBOT = require('../../assets/branding/buddy-logo.png');
-/** Recorte del Figma: imagen al 244 % del ancho del contenedor, desplazada −2 %. */
-const CROP = { widthRatio: 2.44, left: -0.02 };
+/**
+ * Recorte del robot dentro del PNG (358×147): el robot ocupa x 13–125, y 5–133 y su centro está en (69, 69).
+ * El Figma usaba la imagen al 244 % con left −2 %, lo que dejaba ver el borde de la "B"; aquí se muestran
+ * 130 px de la imagen centrados en el robot.
+ */
+const CROP = { imageW: 358, imageH: 147, visible: 130, centerX: 69, centerY: 69 };
 const DEMO_PHOTO = require('../../assets/images/carmen-demo.jpg');
 
 export const AVATAR_SIZES = { small: 40, medium: 58, large: 92, hero: 238 } as const;
@@ -42,6 +46,7 @@ export function BuddyAvatar({
   style?: StyleProp<ViewStyle>;
 }) {
   const px = typeof size === 'number' ? size : AVATAR_SIZES[size];
+  const k = px / CROP.visible;
   return (
     <View
       accessible
@@ -59,7 +64,13 @@ export function BuddyAvatar({
         <Image
           source={ROBOT}
           contentFit="fill"
-          style={{ position: 'absolute', top: 0, height: '100%', width: px * CROP.widthRatio, left: px * CROP.left }}
+          style={{
+            position: 'absolute',
+            width: CROP.imageW * k,
+            height: CROP.imageH * k,
+            left: px / 2 - CROP.centerX * k,
+            top: px / 2 - CROP.centerY * k,
+          }}
         />
       </View>
     </View>

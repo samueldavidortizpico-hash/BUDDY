@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   section: { marginBottom: 0 },
   event: { flexDirection: 'row', gap: spacing.sm, minHeight: 96 },
   rail: { alignItems: 'center' },
-  line: { flex: 1, width: 0, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: '#C8D6D2', marginVertical: 4 },
+  line: { flex: 1, width: 0, borderLeftWidth: 1, borderStyle: 'dashed', borderColor: palette.timeline, marginVertical: 4 },
   body: { flex: 1, gap: 2, paddingBottom: spacing.lg },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, flexWrap: 'wrap' },
   attend: { alignSelf: 'flex-start', marginTop: spacing.xs },

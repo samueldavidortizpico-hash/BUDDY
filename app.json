@@ -3,24 +3,36 @@
     "name": "BUDDY",
     "slug": "buddy",
     "version": "1.0.0",
+    "description": "BUDDY, siempre contigo: acompañamiento, bienestar y recordatorios de medicamentos para adultos mayores y sus familias. Versión de demostración con datos de ejemplo.",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "buddy",
     "userInterfaceStyle": "light",
+    "primaryColor": "#174A59",
+    "backgroundColor": "#F8FAF8",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "co.buddy.app",
+      "supportsTablet": false
     },
     "android": {
+      "package": "co.buddy.app",
       "adaptiveIcon": {
         "backgroundColor": "#F8FAF8",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [],
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "single",
+      "name": "BUDDY",
+      "shortName": "BUDDY",
+      "lang": "es",
+      "themeColor": "#174A59",
+      "backgroundColor": "#F8FAF8",
+      "description": "BUDDY, siempre contigo. Versión de demostración con datos de ejemplo.",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -30,7 +42,7 @@
         {
           "backgroundColor": "#F8FAF8",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 200
         }
       ]
     ],
