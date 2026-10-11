@@ -1,5 +1,5 @@
 /** Utilidades de fecha y hora en hora local del dispositivo (formato es-CO, sin depender de Intl). */
-import type { ClockTime, ISODate } from '@/types/domain';
+import type { ClockTime, ISODate } from '@/domain/types';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 

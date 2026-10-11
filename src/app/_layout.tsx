@@ -12,10 +12,11 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useSyncExternalStore } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { ErrorState } from '@/components/states';
 import { ToastProvider } from '@/components/feedback';
 import { RobotStageProvider } from '@/components/robot/stage';
-import { useStorageReady } from '@/features/profile/hooks';
+import { ErrorState } from '@/components/states';
+import { db } from '@/infrastructure/local/db';
+import { startSession, useSession } from '@/state/session';
 import { ThemeProvider, useAppearanceStore, useTheme } from '@/theme/provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -40,10 +41,17 @@ export default function RootLayout() {
     Manrope_700Bold,
     Manrope_800ExtraBold,
   });
-  const storageReady = useStorageReady();
+  const dbReady = useSyncExternalStore(db.onReady, db.isReady, db.isReady);
   const appearanceReady = useSyncExternalStore(subscribeAppearance, appearanceHydrated, appearanceHydrated);
+  const session = useSession((s) => s.status);
+
+  // La sesión se lee cuando la base local ya está hidratada (crea los ajustes de la cuenta si faltan).
+  useEffect(() => {
+    if (dbReady) startSession();
+  }, [dbReady]);
+
   // Si la fuente falla, seguimos con la del sistema en lugar de bloquear la app.
-  const ready = (fontsLoaded || !!fontError) && storageReady && appearanceReady;
+  const ready = (fontsLoaded || !!fontError) && dbReady && appearanceReady && session !== 'loading';
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -69,18 +77,10 @@ function ThemedStack() {
   return (
     <>
       <StatusBar style={t.dark ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: t.c.bg } }}>
+      <Stack screenOptions={{ headerShown: false, gestureEnabled: true, animation: 'slide_from_right', contentStyle: { backgroundColor: t.c.bg } }}>
         <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(patient)" />
-        <Stack.Screen name="(caregiver)" />
-        <Stack.Screen name="modals/add-medication" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="modals/add-vital" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="modals/reminder" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-        <Stack.Screen
-          name="modals/emergency"
-          options={{ presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }}
-        />
-        <Stack.Screen name="dev/gallery" />
+        <Stack.Screen name="legal/[doc]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="dev/robot" />
       </Stack>
     </>
   );

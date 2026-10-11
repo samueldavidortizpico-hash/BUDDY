@@ -366,6 +366,34 @@ export function RobotPerch({ name, style, ...opts }: PerchOptions & { name: stri
   );
 }
 
+/**
+ * Reacción del robot a los campos de un formulario: al enfocar vuela junto al campo y lo mira (o se tapa los ojos si es
+ * una contraseña); al salir de todos los campos vuelve a su ancla.
+ */
+export function useRobotFieldFocus() {
+  const robot = useRobot();
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focus = useCallback(
+    (ref: React.RefObject<RNView | null>, kind: 'text' | 'password' = 'text') => {
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+      // Espera a que el teclado termine de abrirse antes de medir.
+      setTimeout(async () => {
+        const rect = await measure(ref);
+        if (rect) robot.flyTo(rect, { size: 96, side: 'right', mood: kind === 'password' ? 'cover' : 'look', look: -1 });
+      }, 260);
+    },
+    [robot],
+  );
+  const blur = useCallback(() => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    blurTimer.current = setTimeout(() => robot.goHome(), 200);
+  }, [robot]);
+  useEffect(() => () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+  }, []);
+  return { focus, blur, robot };
+}
+
 /** Mide un elemento en coordenadas de ventana (para `flyTo`). */
 export function measure(ref: React.RefObject<RNView | null>): Promise<Rect | null> {
   return new Promise((resolve) => {

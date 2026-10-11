@@ -1,30 +1,34 @@
-/** Retroalimentación: Toast (aviso breve), BottomSheet (hoja inferior) y SuccessBurst (éxito animado). */
+/**
+ * Retroalimentación: Toast (aviso breve con acción opcional, p. ej. Deshacer), BottomSheet (hoja inferior),
+ * ConfirmDialog (confirmación de acciones destructivas) y SuccessBurst (éxito animado).
+ */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeInUp,
   FadeOutUp,
   SlideInDown,
+  ZoomIn,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
   withTiming,
-  ZoomIn,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ink, palette, radius, shadow, spacing, tones } from '@/theme';
+import { strings } from '@/i18n';
+import { radius, spacing, touch } from '@/theme';
+import { makeStyles, useTheme } from '@/theme/provider';
 
 import { AppText } from './app-text';
-import { IconButton } from './button';
+import { Button } from './button';
 import { Icon, type IconName } from './icon';
 
 // ── Toast ────────────────────────────────────────────────────
 
-/** `action`: acción breve (p. ej. Deshacer). El toast nunca es la única vía para información crítica. */
 type ToastInput = { message: string; icon?: IconName; action?: { label: string; onPress: () => void } };
 const ToastContext = createContext<(t: ToastInput | string) => void>(() => undefined);
 
@@ -34,21 +38,27 @@ export function useToast() {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
+  const t = useTheme();
+  const s = useStyles();
   const [toast, setToast] = useState<(ToastInput & { id: number }) | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const show = useCallback((t: ToastInput | string) => {
-    const next = typeof t === 'string' ? { message: t } : t;
+  const show = useCallback((input: ToastInput | string) => {
+    const next = typeof input === 'string' ? { message: input } : input;
     setToast({ ...next, id: Date.now() });
     AccessibilityInfo.announceForAccessibility(next.message);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), next.action ? 5000 : 3200);
+    timer.current = setTimeout(() => setToast(null), next.action ? 5500 : 3200);
   }, []);
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
 
+  const fg = t.hc ? t.c.bg : '#FFFFFF';
   return (
     <ToastContext.Provider value={show}>
       {children}
@@ -59,10 +69,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           exiting={FadeOutUp.duration(180)}
           pointerEvents={toast.action ? 'box-none' : 'none'}
           accessibilityLiveRegion="polite"
-          style={[styles.toast, { top: insets.top + spacing.xs }]}
+          style={[s.toast, { top: insets.top + spacing.xs }]}
         >
-          <Icon name={toast.icon ?? 'check'} color={palette.mint} />
-          <AppText variant="secondaryStrong" color={ink.inverse} style={styles.flex}>
+          <Icon name={toast.icon ?? 'check'} color={t.hc ? fg : t.c.mint} />
+          <AppText variant="secondaryStrong" color={fg} style={s.flex}>
             {toast.message}
           </AppText>
           {toast.action ? (
@@ -70,13 +80,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               accessibilityRole="button"
               accessibilityLabel={toast.action.label}
               hitSlop={8}
-              style={styles.toastAction}
+              style={s.toastAction}
               onPress={() => {
                 toast.action?.onPress();
                 setToast(null);
               }}
             >
-              <AppText variant="captionStrong" color={ink.inverse}>
+              <AppText variant="captionStrong" color={fg}>
                 {toast.action.label}
               </AppText>
             </Pressable>
@@ -89,38 +99,76 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 // ── BottomSheet ──────────────────────────────────────────────
 
-export function BottomSheet({
-  visible,
-  onClose,
-  title,
-  children,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  title: string;
-  children: ReactNode;
-}) {
+export function BottomSheet({ visible, onClose, title, children }: { visible: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const insets = useSafeAreaInsets();
+  const t = useTheme();
+  const s = useStyles();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={styles.sheetRoot}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Cerrar">
-          <View style={styles.scrim} />
+      <View style={s.sheetRoot}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={strings.common.close}>
+          <View style={s.scrim} />
         </Pressable>
-        <Animated.View
-          entering={SlideInDown.duration(280)}
-          accessibilityViewIsModal
-          style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}
-        >
-          <View style={styles.handle} />
-          <View style={styles.sheetHead}>
-            <AppText variant="h2" style={styles.flex} accessibilityRole="header">
+        <Animated.View entering={SlideInDown.duration(280)} accessibilityViewIsModal style={[s.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
+          <View style={s.handle} />
+          <View style={s.sheetHead}>
+            <AppText variant="h2" style={s.flex} accessibilityRole="header">
               {title}
             </AppText>
-            <IconButton icon="close" label="Cerrar" onPress={onClose} variant="soft" />
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={strings.common.close} hitSlop={8} style={s.close}>
+              <Icon name="close" color={t.c.text} size={24} />
+            </Pressable>
           </View>
-          {children}
+          <ScrollView contentContainerStyle={s.sheetBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {children}
+          </ScrollView>
         </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── ConfirmDialog ────────────────────────────────────────────
+
+export function ConfirmDialog({
+  visible,
+  title,
+  body,
+  confirmLabel,
+  cancelLabel = strings.common.cancel,
+  destructive = false,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  title: string;
+  body?: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  destructive?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const s = useStyles();
+  const t = useTheme();
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
+      <View style={s.dialogRoot}>
+        <View style={s.scrimAbs} />
+        <View style={s.dialog} accessibilityViewIsModal accessibilityRole="alert">
+          <AppText variant="h2" accessibilityRole="header">
+            {title}
+          </AppText>
+          {body ? (
+            <AppText variant="secondary" color={t.c.muted}>
+              {body}
+            </AppText>
+          ) : null}
+          <View style={s.dialogActions}>
+            <Button label={confirmLabel} variant={destructive ? 'danger' : 'primary'} size="md" onPress={onConfirm} />
+            <Button label={cancelLabel} variant="ghost" size="md" onPress={onCancel} />
+          </View>
+        </View>
       </View>
     </Modal>
   );
@@ -129,79 +177,100 @@ export function BottomSheet({
 // ── SuccessBurst ─────────────────────────────────────────────
 
 function Ring({ delay }: { delay: number }) {
+  const s = useStyles();
   const reduceMotion = useReducedMotion();
   const p = useSharedValue(0);
   useEffect(() => {
     if (!reduceMotion) p.set(withDelay(delay, withRepeat(withTiming(1, { duration: 1400, easing: Easing.out(Easing.quad) }), 2)));
   }, [delay, p, reduceMotion]);
   const style = useAnimatedStyle(() => ({ opacity: 0.5 * (1 - p.value), transform: [{ scale: 0.7 + p.value * 0.7 }] }));
-  return <Animated.View style={[styles.ring, style]} />;
+  return <Animated.View style={[s.ring, style]} />;
 }
 
 /** Anillos que se expanden y check con rebote: confirmación de guardado. */
 export function SuccessBurst({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
+  const s = useStyles();
+  const t = useTheme();
   return (
-    <View style={styles.success} accessibilityLiveRegion="polite">
-      <View style={styles.burst}>
+    <View style={s.success} accessibilityLiveRegion="polite">
+      <View style={s.burst}>
         <Ring delay={0} />
         <Ring delay={450} />
-        <Animated.View entering={ZoomIn.springify().damping(11)} style={styles.checkOrb}>
-          <Icon name="check" size={52} color={tones.mint.fg} strokeWidth={2.4} />
+        <Animated.View entering={ZoomIn.springify().damping(11)} style={s.checkOrb}>
+          <Icon name="check" size={52} color={t.ink.mint} strokeWidth={2.4} />
         </Animated.View>
       </View>
       <AppText variant="h1" align="center">
         {title}
       </AppText>
-      <AppText variant="body" color={ink.muted} align="center">
+      <AppText variant="body" color={t.c.muted} align="center">
         {text}
       </AppText>
-      <View style={styles.successActions}>{children}</View>
+      <View style={s.successActions}>{children}</View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  toast: {
-    position: 'absolute',
-    left: spacing.lg,
-    right: spacing.lg,
-    zIndex: 100,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: palette.petrol,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    ...shadow.elevated,
-  },
-  toastAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.pill, backgroundColor: 'rgba(255, 255, 255, 0.18)' },
-  sheetRoot: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { flex: 1, backgroundColor: palette.scrim },
-  sheet: {
-    backgroundColor: palette.warm,
-    borderTopLeftRadius: radius.modal,
-    borderTopRightRadius: radius.modal,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    gap: spacing.md,
-    maxHeight: '88%',
-  },
-  handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: palette.line },
-  sheetHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  success: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl },
-  burst: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
-  ring: { position: 'absolute', width: 150, height: 150, borderRadius: 75, borderWidth: 14, borderColor: 'rgba(94, 217, 181, 0.35)' },
-  checkOrb: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    backgroundColor: palette.mintPale,
-    borderWidth: 12,
-    borderColor: 'rgba(94, 217, 181, 0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successActions: { alignSelf: 'stretch', gap: spacing.sm, marginTop: spacing.md },
-});
+const useStyles = makeStyles((t) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    toast: {
+      position: 'absolute',
+      left: spacing.lg,
+      right: spacing.lg,
+      zIndex: 100,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      backgroundColor: t.hc ? t.c.text : '#174A59',
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      ...t.shadow.elevated,
+    },
+    toastAction: {
+      minHeight: 44,
+      justifyContent: 'center',
+      paddingHorizontal: spacing.sm,
+      borderRadius: radius.pill,
+      borderWidth: t.hc ? 2 : 0,
+      borderColor: t.c.bg,
+      backgroundColor: t.hc ? 'transparent' : 'rgba(255, 255, 255, 0.18)',
+    },
+    sheetRoot: { flex: 1, justifyContent: 'flex-end' },
+    scrim: { flex: 1, backgroundColor: t.c.scrim },
+    scrimAbs: { ...StyleSheet.absoluteFill, backgroundColor: t.c.scrim },
+    sheet: {
+      backgroundColor: t.c.bg,
+      borderTopLeftRadius: radius.modal,
+      borderTopRightRadius: radius.modal,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+      gap: spacing.md,
+      maxHeight: '88%',
+      borderWidth: t.hc ? 2 : 0,
+      borderColor: t.c.border,
+    },
+    sheetBody: { gap: spacing.sm, paddingBottom: spacing.xs },
+    handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: t.hc ? t.c.text : t.c.surface2 },
+    sheetHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    close: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.surface, ...t.hairline },
+    dialogRoot: { flex: 1, justifyContent: 'center', padding: spacing.xl },
+    dialog: { backgroundColor: t.c.bg, borderRadius: radius.card, padding: spacing.xl, gap: spacing.sm, ...t.shadow.hero, ...t.hairline },
+    dialogActions: { gap: spacing.sm, marginTop: spacing.sm },
+    success: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl },
+    burst: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
+    ring: { position: 'absolute', width: 150, height: 150, borderRadius: 75, borderWidth: 14, borderColor: t.hc ? t.c.text : 'rgba(94, 217, 181, 0.35)' },
+    checkOrb: {
+      width: 112,
+      height: 112,
+      borderRadius: 56,
+      backgroundColor: t.c.mintPale,
+      borderWidth: t.hc ? 3 : 12,
+      borderColor: t.hc ? t.c.text : 'rgba(94, 217, 181, 0.18)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    successActions: { alignSelf: 'stretch', gap: spacing.sm, marginTop: spacing.md },
+  }),
+);

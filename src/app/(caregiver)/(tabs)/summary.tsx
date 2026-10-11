@@ -1,201 +1,229 @@
-import { useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useRouter, type Href } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ActivityRow } from '@/components/activity-row';
 import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
-import { DemoBadge, IconTile, SectionHeader, StatCard } from '@/components/blocks';
-import { InitialsAvatar, PersonAvatar } from '@/components/buddy';
-import { Button } from '@/components/button';
+import { Button, IconButton } from '@/components/button';
 import { Card } from '@/components/card';
-import { useToast } from '@/components/feedback';
+import { BottomSheet } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
-import { MapIllustration } from '@/components/map-illustration';
-import { PressableScale } from '@/components/pressable-scale';
+import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
-import { DEMO_CAREGIVER, useCaregiverOverview } from '@/features/caregiver/hooks';
-import { DEMO_PROFILE } from '@/features/profile/hooks';
-import { moodLabel } from '@/features/wellbeing/hooks';
-import { useNow } from '@/hooks/use-now';
-import { ink, palette, radius, shadow, spacing, type Tone } from '@/theme';
-import { formatAgo, formatDuration } from '@/utils/dates';
+import { TodayPanel } from '@/features/summary/today';
+import { strings } from '@/i18n';
+import { elderActions } from '@/state/actions';
+import { useActiveElder, useElders, useRecords } from '@/state/data';
+import { useSession } from '@/state/session';
+import { radius, spacing, touch } from '@/theme';
+import { makeStyles, useTheme } from '@/theme/provider';
 
-function StatusTile({ icon, tone, value, label, onPress }: { icon: IconName; tone: Tone; value: string; label: string; onPress: () => void }) {
-  return (
-    <PressableScale onPress={onPress} accessibilityLabel={`${label}: ${value}`} style={styles.statusTile}>
-      <IconTile icon={icon} tone={tone} size={36} />
-      <AppText variant="secondaryStrong" align="center" numberOfLines={2}>
-        {value}
-      </AppText>
-      <AppText variant="caption" color={ink.muted}>
-        {label}
-      </AppText>
-    </PressableScale>
-  );
-}
+const S = strings.summary;
 
-export default function CaregiverSummary() {
+export default function Summary() {
   const router = useRouter();
-  const toast = useToast();
-  const now = useNow();
-  const o = useCaregiverOverview(now);
-  const allGood = o.plan.unconfirmed === 0;
-  const openWellbeing = () => router.push({ pathname: '/tracking', params: { tab: 'wellbeing' } });
-  const symptomText = o.symptomsToday.length ? `${o.symptomsToday.length} registrado${o.symptomsToday.length > 1 ? 's' : ''}` : 'Ninguno';
+  const t = useTheme();
+  const s = useStyles();
+  const user = useSession((x) => x.user);
+  const elders = useElders();
+  const elder = useActiveElder();
+  const alerts = useRecords('alerts', { scope: 'account' }).filter((a) => a.status === 'pending');
+  const [picker, setPicker] = useState(false);
+  const ready = elder?.setupDone ? elder : null;
 
   return (
     <ScreenContainer insideTabs>
-      <View style={styles.header}>
-        <View style={styles.flex}>
-          <AppText variant="eyebrow" color={ink.mint}>
-            BUDDY CUIDADOR
+      <View style={s.top}>
+        <View style={s.flex}>
+          <AppText variant="secondary" color={t.c.muted}>
+            {S.greeting(user?.name.split(' ')[0] ?? '')}
           </AppText>
-          <AppText variant="h1" color={ink.title}>
-            Panel del cuidador
-          </AppText>
-        </View>
-        <PressableScale onPress={() => router.push('/account')} accessibilityLabel={`Tu cuenta: ${DEMO_CAREGIVER.name}`} style={styles.round}>
-          <InitialsAvatar initials={DEMO_CAREGIVER.initials} size={52} label="" />
-        </PressableScale>
-      </View>
-      <DemoBadge style={styles.demo} />
-
-      <View style={styles.stack}>
-        <Appear index={0}>
-          <Card style={styles.person}>
-            <PersonAvatar size={64} />
-            <View style={styles.flex}>
-              <AppText variant="bodyStrong">{DEMO_PROFILE.fullName}</AppText>
-              <View style={styles.inline}>
-                <View style={[styles.dot, { backgroundColor: allGood ? palette.success : palette.yellow }]} />
-                <AppText variant="captionStrong" color={allGood ? ink.success : ink.yellow}>
-                  {allGood ? 'Todo en orden hoy' : `${o.plan.unconfirmed} ${o.plan.unconfirmed === 1 ? 'toma sin confirmar' : 'tomas sin confirmar'}`}
-                </AppText>
-              </View>
-              <AppText variant="caption" color={ink.muted}>
-                {o.lastActivity ? `Última actividad ${formatAgo(new Date(o.lastActivity.at), now)}` : 'Sin actividad registrada hoy'}
+          {elder ? (
+            <Pressable onPress={() => setPicker(true)} accessibilityRole="button" accessibilityLabel={`${S.caring(elder.firstName)}. ${S.switchPerson}`} style={s.personBtn}>
+              <AppText variant="h1" numberOfLines={1} style={s.shrink}>
+                {elder.firstName}
               </AppText>
-            </View>
+              <Icon name="chevron" color={t.c.muted} size={22} strokeWidth={2.2} />
+            </Pressable>
+          ) : (
+            <AppText variant="h1">{strings.brand.name}</AppText>
+          )}
+        </View>
+        <IconButton icon="bell" label={S.alerts} showLabel={false} badge={alerts.length} onPress={() => router.push('/alerts' as Href)} />
+      </View>
+
+      {!ready ? (
+        <Appear>
+          <Card variant="gradient" domain="activity" elevation="hero" radius={radius.hero} style={s.hero}>
+            <BuddyRobot size={120} mood="wave" style={s.heroRobot} />
+            <AppText variant="display" color={t.domains.activity.text}>
+              {S.emptyTitle}
+            </AppText>
+            <AppText variant="body" color={t.domains.activity.muted}>
+              {S.emptyBody}
+            </AppText>
+            <HowItWorks />
+            <Button
+              label={elder ? S.resume : S.steps.register}
+              variant="primary"
+              trailing="arrow"
+              size="elder"
+              onPress={() => router.push(elder ? { pathname: '/setup', params: { elderId: elder.id } } : '/setup')}
+            />
           </Card>
         </Appear>
+      ) : (
+        <>
+          <FirstSteps />
+          <TodayPanel elder={ready} />
+        </>
+      )}
 
-        <Appear index={1} style={styles.row}>
-          <StatCard
-            icon="meds"
-            value={`${o.plan.taken}/${o.plan.total}`}
-            label="Tomas confirmadas"
-            onPress={openWellbeing}
-            accessibilityHint="Abre el bienestar de hoy"
-          />
-          <StatCard
-            icon="bell"
-            tone="coral"
-            value={`${o.counts.pending + o.counts.important}`}
-            label="Alertas por revisar"
-            onPress={() => router.push('/alerts')}
-            accessibilityHint="Abre las alertas de seguimiento"
-          />
-        </Appear>
-
-        <Appear index={2} style={styles.row}>
-          <StatusTile icon="heart" tone="lavender" value={o.mood ? moodLabel(o.mood.mood) : 'Sin registro'} label="Ánimo" onPress={openWellbeing} />
-          <StatusTile icon="clock" tone="sky" value={o.sleep.lastMinutes !== null ? formatDuration(o.sleep.lastMinutes) : '—'} label="Sueño" onPress={openWellbeing} />
-          <StatusTile icon="warning" tone="yellow" value={symptomText} label="Síntomas" onPress={openWellbeing} />
-        </Appear>
-
-        <Appear index={3}>
-          <PressableScale onPress={() => router.push('/tracking')} accessibilityLabel="Ver ubicación compartida (vista de ejemplo)" style={styles.mapWrap}>
-            {o.locationSharing.enabled ? (
-              <>
-                <MapIllustration height={150} />
-                <View style={styles.caption}>
-                  <View style={styles.inline}>
-                    <Icon name="location" size={16} color={ink.text} />
-                    <AppText variant="captionStrong">En casa (ejemplo)</AppText>
-                  </View>
-                  <AppText variant="meta" color={ink.muted}>
-                    {o.locationSharing.updatedAt ? `Actualizado ${formatAgo(new Date(o.locationSharing.updatedAt), now)}` : ''}
-                  </AppText>
-                </View>
-              </>
-            ) : (
-              <View style={styles.noMap}>
-                <IconTile icon="location" tone="slate" />
-                <AppText variant="secondaryStrong" style={styles.flex}>
-                  Ubicación no compartida
-                </AppText>
-                <Icon name="chevron" color={ink.muted} />
-              </View>
-            )}
-          </PressableScale>
-        </Appear>
-
-        <View style={styles.row}>
-          <Button
-            label="Llamar"
-            icon="phone"
-            size="md"
-            style={styles.flex}
-            onPress={() => toast({ message: `Demostración: aquí se llamaría a ${DEMO_PROFILE.fullName}. No se realizó ninguna llamada.`, icon: 'phone' })}
-          />
-          <Button
-            label="Mensaje"
-            icon="chat"
-            variant="secondary"
-            size="md"
-            style={styles.flex}
-            onPress={() => toast({ message: 'Los mensajes estarán disponibles próximamente.', icon: 'chat' })}
-          />
-        </View>
-
-        <SectionHeader
-          title="Actividad de hoy"
-          action={{ label: 'Ver reporte', onPress: () => router.push({ pathname: '/reports', params: { viewer: 'caregiver' } }) }}
-          style={styles.section}
+      <BottomSheet visible={picker} onClose={() => setPicker(false)} title={S.switchPerson}>
+        {elders.map((e) => (
+          <Pressable
+            key={e.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected: e.id === elder?.id }}
+            onPress={() => {
+              elderActions.setActive(e.id);
+              setPicker(false);
+              if (!e.setupDone) router.push({ pathname: '/setup', params: { elderId: e.id } });
+            }}
+            style={[s.personRow, e.id === elder?.id && s.personOn]}
+          >
+            <Icon name="user" color={t.ink.lavender} />
+            <AppText variant="bodyStrong" style={s.flex}>
+              {`${e.firstName} ${e.lastName}`.trim()}
+            </AppText>
+            {e.id === elder?.id ? <Icon name="check" color={t.ink.mint} /> : null}
+          </Pressable>
+        ))}
+        <Button
+          label={S.addPerson}
+          icon="plus"
+          variant="tonal"
+          tone="mint"
+          onPress={() => {
+            setPicker(false);
+            router.push({ pathname: '/setup', params: { new: '1' } });
+          }}
         />
-        {o.activity.length ? (
-          o.activity.slice(0, 4).map((a) => <ActivityRow key={a.id} item={a} now={now} />)
-        ) : (
-          <AppText variant="secondary" color={ink.muted}>
-            Aún no hay actividad registrada hoy.
-          </AppText>
-        )}
-      </View>
+      </BottomSheet>
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, gap: 2 },
-  header: { minHeight: 80, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  round: { borderRadius: radius.pill },
-  demo: { marginBottom: spacing.sm },
-  stack: { gap: spacing.sm },
-  person: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  inline: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, flexWrap: 'wrap' },
-  dot: { width: 9, height: 9, borderRadius: 5 },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  statusTile: {
-    flex: 1,
-    minHeight: 104,
-    backgroundColor: palette.white,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xxs,
-    padding: spacing.xs,
-    ...shadow.soft,
-  },
-  mapWrap: { borderRadius: 22 },
-  caption: {
-    position: 'absolute',
-    left: spacing.sm,
-    bottom: spacing.sm,
-    backgroundColor: palette.glass,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.sm,
-  },
-  noMap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: palette.white, borderRadius: 22, padding: spacing.md, ...shadow.soft },
-  section: { marginTop: spacing.sm, marginBottom: 0 },
-});
+/** Los tres pasos de la idea central (estado vacío del Resumen). */
+function HowItWorks() {
+  const t = useTheme();
+  const s = useStyles();
+  const icons: IconName[] = ['users', 'bell', 'chart'];
+  return (
+    <View style={s.how}>
+      {S.howItWorks.map((text, i) => (
+        <View key={text} style={s.howRow}>
+          <View style={s.howNum}>
+            <Icon name={icons[i]} color={t.hc ? t.c.text : t.domains.activity.accent} size={22} />
+          </View>
+          <AppText variant="secondaryStrong" color={t.domains.activity.text} style={s.flex}>
+            {`${i + 1}. ${text}`}
+          </AppText>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Tarjeta "Primeros pasos": visible hasta completar lo básico. */
+function FirstSteps() {
+  const router = useRouter();
+  const t = useTheme();
+  const s = useStyles();
+  const elder = useActiveElder();
+  const meds = useRecords('medications');
+  const contacts = useRecords('contacts');
+  const water = useRecords('waterPlans');
+  const items: { label: string; done: boolean; href: Href }[] = [
+    { label: S.steps.register, done: !!elder?.setupDone, href: '/setup' },
+    { label: S.steps.medication, done: meds.length > 0, href: '/medication/new' as Href },
+    { label: S.steps.contacts, done: contacts.length > 0, href: '/routine/contacts' as Href },
+    { label: S.steps.water, done: water.length > 0, href: '/routine/water' as Href },
+    { label: S.steps.checkin, done: !!elder?.checkinTime, href: '/routine/checkin' as Href },
+  ];
+  const doneCount = items.filter((i) => i.done).length;
+  if (doneCount === items.length) return null;
+  return (
+    <Appear>
+      <Card style={s.steps}>
+        <View style={s.stepsHead}>
+          <View style={s.flex}>
+            <AppText variant="h3">{S.firstSteps}</AppText>
+            <AppText variant="caption" color={t.c.muted}>
+              {S.firstStepsBody}
+            </AppText>
+          </View>
+          <AppText variant="h2" color={t.ink.mint} style={s.tabular}>{`${doneCount}/${items.length}`}</AppText>
+        </View>
+        {items.map((it) => (
+          <Pressable
+            key={it.label}
+            disabled={it.done}
+            onPress={() => router.push(it.href)}
+            accessibilityRole="button"
+            accessibilityState={{ checked: it.done, disabled: it.done }}
+            accessibilityLabel={it.label}
+            style={s.stepRow}
+          >
+            <View style={[s.check, it.done && { backgroundColor: t.hc ? t.c.text : t.c.mintStrong, borderColor: t.hc ? t.c.text : t.c.mintStrong }]}>
+              {it.done ? <Icon name="check" size={16} color={t.hc ? t.c.bg : '#FFFFFF'} strokeWidth={3} /> : null}
+            </View>
+            <AppText variant="secondaryStrong" color={it.done ? t.c.muted : t.c.text} style={[s.flex, it.done && s.strike]}>
+              {it.label}
+            </AppText>
+            {!it.done ? <Icon name="chevron" color={t.c.muted} /> : null}
+          </Pressable>
+        ))}
+      </Card>
+    </Appear>
+  );
+}
+
+const useStyles = makeStyles((t) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    shrink: { flexShrink: 1 },
+    tabular: { fontVariant: ['tabular-nums'] },
+    top: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.lg },
+    personBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, minHeight: touch.min, alignSelf: 'flex-start' },
+    hero: { gap: spacing.md, padding: spacing.xl, marginTop: spacing.xxl },
+    heroRobot: { position: 'absolute', top: -84, right: -10 },
+    how: { gap: spacing.sm, marginVertical: spacing.xs },
+    howRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    howNum: {
+      width: 44,
+      height: 44,
+      borderRadius: radius.icon,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: t.hc ? t.c.bg : 'rgba(255,255,255,0.7)',
+      ...(t.hc ? t.hairline : {}),
+    },
+    steps: { gap: spacing.xs, marginBottom: spacing.section },
+    stepsHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
+    stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.min },
+    check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: t.hc ? t.c.text : t.c.muted, alignItems: 'center', justifyContent: 'center' },
+    strike: { textDecorationLine: 'line-through' },
+    personRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      minHeight: touch.timeRow,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.input,
+      backgroundColor: t.c.surface,
+      ...t.hairline,
+    },
+    personOn: { borderColor: t.hc ? t.c.text : t.c.mintStrong, borderWidth: 2 },
+  }),
+);

@@ -20,14 +20,7 @@ const ROOTS = new Set<string>([
 ]);
 
 /** Rutas antiguas en proceso de eliminación (debe quedar vacía al cerrar la ronda v2.1). */
-const LEGACY = new Set<string>([
-  '(auth)/onboarding.tsx',
-  '(caregiver)/(tabs)/summary.tsx',
-  '(patient)/(tabs)/chat.tsx',
-  '(patient)/(tabs)/home.tsx',
-  'modals/emergency.tsx',
-  'modals/reminder.tsx',
-]);
+const LEGACY = new Set<string>([]);
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

@@ -1,0 +1,370 @@
+import * as Clipboard from 'expo-clipboard';
+import Constants from 'expo-constants';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import * as Speech from 'expo-speech';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
+
+import { AppText } from '@/components/app-text';
+import { Button } from '@/components/button';
+import { Card } from '@/components/card';
+import { ConfirmDialog, useToast } from '@/components/feedback';
+import { Chip, Field, Segmented, Stepper } from '@/components/forms';
+import { Icon } from '@/components/icon';
+import { BuddyRobot } from '@/components/robot';
+import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeader } from '@/components/screen-header';
+import { AuthError } from '@/domain/auth';
+import { ALERT_KINDS, type ElderAppearance } from '@/domain/types';
+import { db, useDb } from '@/infrastructure/local/db';
+import { strings } from '@/i18n';
+import { elderActions } from '@/state/actions';
+import { disableDemo, enableDemo } from '@/state/demo';
+import { useAccount, useActiveElder, useElders } from '@/state/data';
+import { sessionActions, useSession } from '@/state/session';
+import { radius, spacing, touch, type TextScale } from '@/theme';
+import { makeStyles, useAppearanceStore, useTheme, type AppearanceMode } from '@/theme/provider';
+
+const S = strings.settings;
+
+export default function SettingsSection() {
+  const { section } = useLocalSearchParams<{ section: string }>();
+  const elder = useActiveElder();
+  const titles: Record<string, string> = {
+    account: S.sections.account,
+    appearance: S.sections.appearance,
+    elder: elder ? S.sections.elderScreen(elder.firstName) : '',
+    alerts: S.sections.alerts,
+    people: S.sections.people,
+    devices: S.sections.devices,
+    legal: S.sections.legal,
+    advanced: S.sections.advanced,
+    about: S.sections.about,
+  };
+  const View_ = { account: Account, appearance: Appearance, elder: ElderScreenPrefs, alerts: MyAlerts, people: People, devices: Devices, legal: Legal, advanced: Advanced, about: About }[section as 'account'] ?? About;
+  return (
+    <ScreenContainer keyboard header={<ScreenHeader title={titles[section] ?? S.title} fallback="/settings" />}>
+      <View_ />
+    </ScreenContainer>
+  );
+}
+
+function Row({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <View style={s.switchRow}>
+      <View style={s.flex}>
+        <AppText variant="secondaryStrong">{label}</AppText>
+        {hint ? <AppText variant="caption" color={t.c.muted}>{hint}</AppText> : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        accessibilityLabel={label}
+        trackColor={{ true: t.hc ? t.c.text : t.c.mintStrong, false: t.dark ? '#3A5C66' : '#C9D6D3' }}
+        thumbColor="#FFFFFF"
+      />
+    </View>
+  );
+}
+
+// ── Cuenta ───────────────────────────────────────────────────
+function Account() {
+  const router = useRouter();
+  const toast = useToast();
+  const t = useTheme();
+  const s = useStyles();
+  const user = useSession((x) => x.user);
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [del, setDel] = useState(false);
+  const [delPass, setDelPass] = useState('');
+  const [delErr, setDelErr] = useState<string | null>(null);
+  return (
+    <View style={s.stack}>
+      <Card style={s.stack}>
+        <AppText variant="caption" color={t.c.muted}>{S.name}</AppText>
+        <AppText variant="bodyStrong">{user?.name}</AppText>
+        <AppText variant="caption" color={t.c.muted}>{S.email}</AppText>
+        <AppText variant="bodyStrong">{user?.email}</AppText>
+      </Card>
+      <AppText variant="h3">{S.changePassword}</AppText>
+      <Field label={S.current} value={current} onChangeText={setCurrent} secure autoCapitalize="none" />
+      <Field label={S.newPassword} value={next} onChangeText={setNext} secure autoCapitalize="none" hint={strings.auth.passwordHint} error={err} />
+      <Button
+        label={S.changePassword}
+        variant="ghost"
+        size="md"
+        onPress={async () => {
+          try {
+            await sessionActions.updatePassword(current, next);
+            setCurrent('');
+            setNext('');
+            setErr(null);
+            toast(S.passwordChanged);
+          } catch (e) {
+            setErr(e instanceof AuthError ? e.message : strings.auth.errors.unknown);
+          }
+        }}
+      />
+      <AppText variant="caption" color={t.c.muted}>{S.authNote}</AppText>
+      <Button label={S.signOut} icon="logout" onPress={async () => { await sessionActions.signOut(); router.replace('/'); }} />
+      <Button label={S.deleteAccount} icon="trash" variant="danger" size="md" onPress={() => setDel(true)} />
+      <ConfirmDialog visible={del} title={S.deleteTitle} body={S.deleteBody} confirmLabel={S.deleteAccount} destructive onCancel={() => setDel(false)}
+        onConfirm={async () => {
+          try {
+            await sessionActions.deleteAccount(delPass);
+            setDel(false);
+            toast(S.deleted);
+            router.replace('/');
+          } catch (e) {
+            setDelErr(e instanceof AuthError ? e.message : strings.auth.errors.unknown);
+          }
+        }}
+      />
+      {del ? <Field label={S.deleteConfirm} value={delPass} onChangeText={setDelPass} secure error={delErr} /> : null}
+    </View>
+  );
+}
+
+// ── Apariencia ───────────────────────────────────────────────
+function Appearance() {
+  const t = useTheme();
+  const s = useStyles();
+  const mode = useAppearanceStore((x) => x.mode);
+  const hc = useAppearanceStore((x) => x.highContrast);
+  const scale = useAppearanceStore((x) => x.textScale);
+  const set = useAppearanceStore((x) => x.set);
+  return (
+    <View style={s.stack}>
+      <Card variant="gradient" domain="activity" style={s.previewCard}>
+        <BuddyRobot size={96} mood="wave" shadow={false} />
+        <View style={s.flex}>
+          <AppText variant="h3" color={t.domains.activity.text}>{S.previewText}</AppText>
+          <Button label={strings.welcome.createAccount} size="sm" />
+        </View>
+      </Card>
+      <AppText variant="secondaryStrong">{S.mode}</AppText>
+      <Segmented label={S.mode} value={mode} onChange={(m: AppearanceMode) => set({ mode: m })} options={(['auto', 'light', 'dark'] as AppearanceMode[]).map((k) => ({ key: k, label: S.modes[k] }))} />
+      <Row label={S.contrast} hint={S.contrastHint} value={hc} onChange={(v) => set({ highContrast: v })} />
+      <AppText variant="secondaryStrong">{S.textSize}</AppText>
+      <View style={s.wrap}>
+        {(['normal', 'large', 'xlarge', 'huge', 'max'] as TextScale[]).map((k) => (
+          <Chip key={k} label={S.sizes[k]} selected={scale === k} onPress={() => set({ textScale: k })} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ── Pantalla del adulto mayor ───────────────────────────────
+function ElderScreenPrefs() {
+  const s = useStyles();
+  const elder = useActiveElder();
+  if (!elder) return null;
+  const p = elder.screen;
+  const upd = (patch: Partial<typeof p>) => elderActions.update(elder.id, { screen: { ...p, ...patch } });
+  return (
+    <View style={s.stack}>
+      <AppText variant="secondaryStrong">{S.textSize}</AppText>
+      <View style={s.wrap}>
+        {(['normal', 'large', 'xlarge', 'huge'] as TextScale[]).map((k) => (
+          <Chip key={k} label={S.sizes[k]} selected={p.textScale === k} onPress={() => upd({ textScale: k })} />
+        ))}
+      </View>
+      <AppText variant="secondaryStrong">{S.sections.appearance}</AppText>
+      <View style={s.wrap}>
+        {(['auto', 'light', 'dark', 'contrast'] as ElderAppearance[]).map((k) => (
+          <Chip key={k} label={S.elderAppearance[k]} selected={p.appearance === k} onPress={() => upd({ appearance: k })} />
+        ))}
+      </View>
+      <Row label={S.voice} value={p.voice} onChange={(voice) => upd({ voice })} />
+      <Segmented label={S.voiceRate} value={p.voiceRate < 0.85 ? 'slow' : 'normal'} onChange={(v) => upd({ voiceRate: v === 'slow' ? 0.75 : 0.95 })} options={[{ key: 'slow', label: S.slow }, { key: 'normal', label: S.normalRate }]} />
+      <Button label={S.testVoice} icon="play" variant="ghost" size="md" onPress={() => Speech.speak(S.voiceSample(elder.firstName), { language: 'es-CO', rate: p.voiceRate })} />
+      <Stepper label={S.maxSnoozes} value={p.maxSnoozes} min={0} max={5} onChange={(maxSnoozes) => upd({ maxSnoozes })} />
+    </View>
+  );
+}
+
+// ── Mis avisos ───────────────────────────────────────────────
+function MyAlerts() {
+  const s = useStyles();
+  const account = useAccount();
+  if (!account) return null;
+  return (
+    <View style={s.stack}>
+      {ALERT_KINDS.map((k) => (
+        <Row key={k} label={strings.alertKinds[k]} value={account.myAlerts[k]} onChange={(v) => db.update('accounts', account.id, { myAlerts: { ...account.myAlerts, [k]: v } })} />
+      ))}
+    </View>
+  );
+}
+
+// ── Mis personas ─────────────────────────────────────────────
+function People() {
+  const router = useRouter();
+  const t = useTheme();
+  const s = useStyles();
+  const elders = useElders();
+  const active = useActiveElder();
+  return (
+    <View style={s.stack}>
+      {elders.map((e) => (
+        <Card key={e.id} style={s.personRow}>
+          <Icon name="user" color={t.ink.lavender} />
+          <View style={s.flex}>
+            <AppText variant="bodyStrong">{`${e.firstName} ${e.lastName}`.trim()}</AppText>
+            <AppText variant="caption" color={t.c.muted}>{e.id === active?.id ? S.active : e.setupDone ? '' : strings.summary.resume}</AppText>
+          </View>
+          {e.id !== active?.id ? <Button label={S.makeActive} size="sm" variant="ghost" onPress={() => elderActions.setActive(e.id)} /> : null}
+          <Button label={strings.common.edit} size="sm" variant="ghost" onPress={() => router.push({ pathname: '/setup', params: { elderId: e.id } })} />
+        </Card>
+      ))}
+      <Button label={S.addPerson} icon="plus" variant="tonal" tone="mint" onPress={() => router.push({ pathname: '/setup', params: { new: '1' } })} />
+    </View>
+  );
+}
+
+// ── Dispositivos ─────────────────────────────────────────────
+function Devices() {
+  const router = useRouter();
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <View style={s.stack}>
+      <Card style={s.personRow}>
+        <Icon name="phone" color={t.ink.mint} />
+        <AppText variant="bodyStrong" style={s.flex}>{S.thisDevice}</AppText>
+      </Card>
+      <AppText variant="secondary" color={t.c.muted}>{S.devicesBody}</AppText>
+      <Button label={strings.health.watch} icon="watch" variant="ghost" size="md" onPress={() => router.push('/health/watch' as Href)} />
+    </View>
+  );
+}
+
+// ── Legal y permisos ─────────────────────────────────────────
+function Legal() {
+  const router = useRouter();
+  const toast = useToast();
+  const t = useTheme();
+  const s = useStyles();
+  const account = useAccount();
+  const userId = useSession((x) => x.user?.id);
+  const db_ = useDb();
+  const [wipe, setWipe] = useState(false);
+  if (!account || !userId) return null;
+  const perm = (k: keyof typeof account.permissions, v: boolean) => db.update('accounts', account.id, { permissions: { ...account.permissions, [k]: v } });
+  return (
+    <View style={s.stack}>
+      <Button label={strings.legal.terms.title} variant="ghost" size="md" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })} />
+      <Button label={strings.legal.privacy.title} variant="ghost" size="md" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacy' } })} />
+      <AppText variant="h3">{S.permissions}</AppText>
+      <Row label={S.camera} value={account.permissions.camera} onChange={(v) => perm('camera', v)} />
+      <Row label={S.notifications} hint={S.notificationsSoon} value={account.permissions.notifications} onChange={(v) => perm('notifications', v)} />
+      <Row label={S.healthPerm} hint={strings.health.watchExpoGo} value={account.permissions.health} onChange={(v) => perm('health', v)} />
+      <Button
+        label={S.export}
+        icon="download"
+        variant="tonal"
+        tone="sky"
+        onPress={async () => {
+          const mine = Object.fromEntries(
+            Object.entries(db_).filter(([, v]) => v && typeof v === 'object' && !Array.isArray(v)).map(([k, v]) => [k, Object.values(v as Record<string, { ownerUserId?: string }>).filter((r) => r?.ownerUserId === userId)]),
+          );
+          await Clipboard.setStringAsync(JSON.stringify(mine, null, 2));
+          toast(S.exported);
+        }}
+      />
+      <AppText variant="caption" color={t.c.muted}>{S.exportBody}</AppText>
+      <Button label={S.deleteData} icon="trash" variant="danger" size="md" onPress={() => setWipe(true)} />
+      <ConfirmDialog visible={wipe} title={`${S.deleteData}?`} body={S.deleteDataBody} confirmLabel={strings.common.delete} destructive onCancel={() => setWipe(false)}
+        onConfirm={() => {
+          const acc = { ...account };
+          db.purgeUser(userId);
+          db.putMany('accounts', [{ ...acc, activeElderId: null }]);
+          setWipe(false);
+          router.replace('/setup');
+        }}
+      />
+    </View>
+  );
+}
+
+// ── Avanzado ─────────────────────────────────────────────────
+function Advanced() {
+  const router = useRouter();
+  const toast = useToast();
+  const t = useTheme();
+  const s = useStyles();
+  const account = useAccount();
+  const userId = useSession((x) => x.user?.id);
+  const [reset, setReset] = useState(false);
+  if (!account || !userId) return null;
+  return (
+    <View style={s.stack}>
+      <Row
+        label={S.demo}
+        hint={S.demoBody}
+        value={account.demoMode}
+        onChange={(v) => {
+          db.update('accounts', account.id, { demoMode: v });
+          if (v) {
+            enableDemo();
+            toast(S.demoLoaded);
+          } else disableDemo();
+        }}
+      />
+      <Button label={S.reset} icon="trash" variant="danger" size="md" onPress={() => setReset(true)} />
+      <AppText variant="caption" color={t.c.muted}>{S.deleteDataBody}</AppText>
+      <ConfirmDialog visible={reset} title={S.resetTitle} body={S.deleteDataBody} confirmLabel={S.reset} destructive onCancel={() => setReset(false)}
+        onConfirm={() => {
+          const acc = { ...account };
+          db.purgeUser(userId);
+          db.putMany('accounts', [{ ...acc, activeElderId: null, demoMode: false }]);
+          setReset(false);
+          router.replace('/setup');
+        }}
+      />
+    </View>
+  );
+}
+
+// ── Acerca de ────────────────────────────────────────────────
+function About() {
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <View style={s.stack}>
+      <View style={s.center}>
+        <BuddyRobot size={120} mood="wave" />
+        <AppText variant="h2">{strings.brand.name}</AppText>
+        <AppText variant="secondary" color={t.c.muted}>{S.version(Constants.expoConfig?.version ?? '1.0.0')}</AppText>
+      </View>
+      <Card style={s.stack}>
+        <AppText variant="h3">{S.howAssistant}</AppText>
+        <AppText variant="secondary">{S.howAssistantBody}</AppText>
+      </Card>
+      <Card style={s.stack}>
+        <AppText variant="h3">{S.support}</AppText>
+        <AppText variant="secondary">{S.supportBody}</AppText>
+      </Card>
+      <Pressable accessibilityRole="text">
+        <AppText variant="caption" color={t.c.muted} align="center">{strings.brand.tagline}</AppText>
+      </Pressable>
+    </View>
+  );
+}
+
+const useStyles = makeStyles((t) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    stack: { gap: spacing.md },
+    wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    center: { alignItems: 'center', gap: spacing.xs },
+    previewCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    personRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md },
+    switchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.timeRow, padding: spacing.md, borderRadius: radius.input, backgroundColor: t.c.surface, ...t.hairline },
+  }),
+);
