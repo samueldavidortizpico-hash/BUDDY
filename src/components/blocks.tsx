@@ -205,7 +205,7 @@ export function EmptyState({
 export function Notice({ text, icon = 'shield', style }: { text: string; icon?: IconName; style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[styles.notice, style]} accessible accessibilityLabel={text}>
-      <Icon name={icon} color={palette.petrol} size={22} />
+      <Icon name={icon} color={ink.info} size={22} />
       <AppText variant="caption" color={ink.muted} style={styles.flex}>
         {text}
       </AppText>

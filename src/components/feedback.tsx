@@ -24,7 +24,8 @@ import { Icon, type IconName } from './icon';
 
 // ── Toast ────────────────────────────────────────────────────
 
-type ToastInput = { message: string; icon?: IconName };
+/** `action`: acción breve (p. ej. Deshacer). El toast nunca es la única vía para información crítica. */
+type ToastInput = { message: string; icon?: IconName; action?: { label: string; onPress: () => void } };
 const ToastContext = createContext<(t: ToastInput | string) => void>(() => undefined);
 
 export function useToast() {
@@ -41,7 +42,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToast({ ...next, id: Date.now() });
     AccessibilityInfo.announceForAccessibility(next.message);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), 3200);
+    timer.current = setTimeout(() => setToast(null), next.action ? 5000 : 3200);
   }, []);
 
   useEffect(() => () => {
@@ -56,7 +57,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           key={toast.id}
           entering={FadeInUp.duration(220)}
           exiting={FadeOutUp.duration(180)}
-          pointerEvents="none"
+          pointerEvents={toast.action ? 'box-none' : 'none'}
           accessibilityLiveRegion="polite"
           style={[styles.toast, { top: insets.top + spacing.xs }]}
         >
@@ -64,6 +65,22 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <AppText variant="secondaryStrong" color={ink.inverse} style={styles.flex}>
             {toast.message}
           </AppText>
+          {toast.action ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={toast.action.label}
+              hitSlop={8}
+              style={styles.toastAction}
+              onPress={() => {
+                toast.action?.onPress();
+                setToast(null);
+              }}
+            >
+              <AppText variant="captionStrong" color={ink.inverse}>
+                {toast.action.label}
+              </AppText>
+            </Pressable>
+          ) : null}
         </Animated.View>
       ) : null}
     </ToastContext.Provider>
@@ -153,12 +170,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: palette.petrolDeep,
+    backgroundColor: palette.petrol,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     ...shadow.elevated,
   },
+  toastAction: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.pill, backgroundColor: 'rgba(255, 255, 255, 0.18)' },
   sheetRoot: { flex: 1, justifyContent: 'flex-end' },
   scrim: { flex: 1, backgroundColor: palette.scrim },
   sheet: {

@@ -25,7 +25,7 @@ beforeEach(async () => {
 const ROUTES: [string, string | RegExp][] = [
   ['/onboarding', 'Omitir'],
   ['/profile-choice', 'Una experiencia hecha para ti'],
-  ['/home', 'TU PRÓXIMO MEDICAMENTO'],
+  ['/home', 'Pedir ayuda'],
   ['/medications', 'Mis medicamentos'],
   ['/medication/demo-med-amlodipino', 'Historial de tomas'],
   ['/modals/add-medication', 'Guardar medicamento'],

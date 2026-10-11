@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, gradients, spacing, type GradientName } from '@/theme';
 
-export const SCREEN_PADDING = spacing.lg;
+export const SCREEN_PADDING = spacing.screen;
 
 export interface ScreenContainerProps {
   children: ReactNode;
@@ -21,6 +21,8 @@ export interface ScreenContainerProps {
   /** Pantallas dentro de pestañas: la barra ya reserva el área inferior segura. */
   insideTabs?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  /** Capa decorativa fija detrás del contenido (orbes, arte). */
+  background?: ReactNode;
 }
 
 /** Contenedor de pantalla: fondo (con degradado opcional), safe areas, scroll y teclado. */
@@ -33,6 +35,7 @@ export function ScreenContainer({
   keyboard = false,
   insideTabs = false,
   contentStyle,
+  background,
 }: ScreenContainerProps) {
   const insets = useSafeAreaInsets();
   const bottomPad = (insideTabs ? 0 : insets.bottom) + spacing.xl;
@@ -61,6 +64,7 @@ export function ScreenContainer({
   return (
     <View style={styles.root}>
       <LinearGradient colors={gradients[gradient]} style={StyleSheet.absoluteFill} />
+      {background}
       <View style={[styles.flex, { paddingTop: insets.top }]}>
         {header ? <View style={styles.header}>{header}</View> : null}
         {keyboard ? (

@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "buddy",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "primaryColor": "#174A59",
     "backgroundColor": "#F8FAF8",
     "ios": {

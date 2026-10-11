@@ -33,6 +33,7 @@ export default function Safety() {
               <Icon name="shield" size={32} color={palette.mint} />
             </View>
             <View style={styles.flex}>
+              <StatusBadge label="Próximamente" tone="slate" />
               <AppText variant="h3" color={ink.inverse}>
                 Revisión farmacológica
               </AppText>
@@ -40,7 +41,6 @@ export default function Safety() {
                 {`${meds.length} medicamentos registrados · aún sin revisar`}
               </AppText>
             </View>
-            <StatusBadge label="Próximamente" tone="slate" />
           </Card>
         </Appear>
 

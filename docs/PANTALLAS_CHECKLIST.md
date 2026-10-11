@@ -1,5 +1,51 @@
 # BUDDY — Checklist de pantallas
 
+## Adenda de diseño v2 — verificación cruzada (2026-10-11)
+
+Estado: **Hecho** (implementado y revisado con captura), **Heredado** (tiene tokens v2 y modo oscuro, falta la recomposición
+pedida), **Pendiente**, **No aplica / futuro** (no se muestra como funcional). "Web" = Playwright en 390×844 y 360×740;
+"Nativo" = pendiente de revisar en Expo Go.
+
+### Sistema
+| Requisito | Estado | Archivo | Validación |
+|---|---|---|---|
+| Tokens exactos (tipo, espaciado, radios, alturas, sombras, bordes) | Hecho | `src/theme/index.ts` | tsc, capturas |
+| Modo oscuro diseñado en toda la app | Hecho (se fija al abrir la app) | `src/theme/index.ts`, `app.json` | Barrido de 17 pantallas en oscuro |
+| Contraste ≥ 4.5:1 en claro y oscuro | Hecho | `src/theme/__tests__/contrast.test.ts` | 84 pares en Jest |
+| Degradados y lenguaje por dominio (agua, medicamento, ánimo, sueño, actividad, seguimiento ámbar) | Hecho (tokens) | `domains` | Usado en "Ahora" |
+| Números héroe XL/L con tope de escala | Hecho | `type.heroXL/heroL`, `maxFontScale` | Captura "Ahora" |
+| Texto al 200 % | Pendiente de revisión nativa | `AppText` (tope ×2) | No se puede forzar en web |
+| Robot transparente | Hecho (baja resolución de origen) | `assets/branding/buddy-robot.png` | Revisado sobre claro y oscuro |
+| `BuddyRobot` (idle, wave, think, talk, celebrate, worry; entrada; toque) | Hecho | `src/components/robot/index.tsx` | Web: vuelo, fantasmas, destellos, reposo. Nativo pendiente |
+| Splash hasta fuentes listas | Hecho (ya existía; el robot se carga con la pantalla) | `src/app/_layout.tsx` | — |
+| Button (primary, coral, secondary, danger, ghost, tonal, white; 72/60/52; pressed, disabled, loading, brillo) | Hecho | `button.tsx` | Capturas |
+| Card (borde 1 px, héroe con degradado) | Hecho | `card.tsx`, héroe en `home.tsx` | Capturas |
+| FloatingTabBar (vidrio translúcido, píldora con resorte, rebote, etiqueta visible) | Hecho (ambos roles) | `bottom-tab-bar.tsx` | Capturas claro/oscuro |
+| Toast con acción (Deshacer) | Hecho | `feedback.tsx` | Captura |
+| IconBubble 48/56/64, Chip/SegmentedControl con píldora deslizante, BottomSheet v2, StatBento, Timeline con punto pulsante, EmptyState con robot, Skeleton, Confetti | Pendiente (incrementos 2–3) | — | — |
+| Transiciones de Expo Router (modales desde abajo, pestañas con fade) | Parcial (recordatorio desde abajo ya existía) | `_layout.tsx` | — |
+
+### Pantallas clave
+| # | Pantalla | Estado | Archivo | Validación |
+|---|---|---|---|---|
+| 1 | Bienvenida (orbes, robot volador, coreografía saltable, título palabra a palabra, CTA coral 64 con brillo) | Hecho | `src/app/(auth)/index.tsx` | Web claro/oscuro, 390/360, fotogramas, movimiento reducido |
+| 3 | Adulto mayor "Ahora" (héroe por dominio, robot 120, numeral XL, 72/56, chips "Más tarde hoy", Llamar/Pedir ayuda) | Hecho | `src/app/(patient)/(tabs)/home.tsx`, `src/features/now/pick.ts` | Web claro/oscuro, 390/360, toasts; Jest `pick.test.ts` |
+| 2 | Onboarding (arte a sangre 55 %, robot en arco entre diapositivas, puntos que se ensanchan) | Heredado | `(auth)/onboarding.tsx` | Captura oscura |
+| 4 | Resumen del cuidador (bento asimétrico, "Última actualización", timeline, BUDDY te sugiere, existencias) | Heredado — **siguiente** | `(caregiver)/(tabs)/summary.tsx` | — |
+| 5 | Rutina (segmentos, filas con barra de dominio, "+" flotante con hoja) | Pendiente — **siguiente** | — | — |
+| 6 | Agua a pantalla completa (vaso con ondas SVG, burbujas, confeti de gotas) | Pendiente | — | — |
+| 7 | Recordatorio de medicamento (cápsula con volumen, anillos, 72/56/52) | Heredado | `modals/reminder.tsx` | Captura oscura |
+| 8 | Chequeo de 3 preguntas | Pendiente | — | — |
+| 9 | TimeWheelPicker (con alternativa accesible) | Pendiente | — | — |
+| 10 | Chat del cuidador | Heredado (el chat del paciente usa tokens v2) | `(patient)/(tabs)/chat.tsx` | Captura oscura |
+
+### No se muestran como funcionales (futuro)
+Escanear receta y "Con BUDDY" (IA) en añadir, cámara y micrófono del chat, llamadas reales, "En vivo" del cuidador
+(no hay tiempo real: se mostrará "Última actualización"), voz de BUDDY (talk se conectará a `expo-speech` cuando exista),
+paralaje con sensores (opcional, descartado por ahora: añade dependencia y coste sin aportar a la tarea).
+
+## v1 (2026-10-10)
+
 Estado real al 2026-10-10. "Verificado" significa:
 - **Jest:** prueba de render o de interacción en `src/__tests__/` (rutas reales con `renderRouter`).
 - **Web:** recorrida con Playwright en la versión web de Expo.

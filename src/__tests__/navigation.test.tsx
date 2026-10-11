@@ -23,13 +23,13 @@ describe('navegación de BUDDY', () => {
     const user = userEvent.setup();
     const r = renderRouter('./src/app', { initialUrl: '/' });
 
-    await user.press(await screen.findByRole('button', { name: 'Iniciar sesión' }));
+    await user.press(await screen.findByRole('button', { name: 'Ya tengo cuenta' }));
     expect(r.getPathname()).toBe('/profile-choice');
 
     await user.press(await screen.findByRole('button', { name: /Adulto mayor/ }));
     expect(r.getPathname()).toBe('/home');
     expect(useAppStore.getState().settings.role).toBe('patient');
-    expect(await screen.findByText('TU PRÓXIMO MEDICAMENTO')).toBeOnTheScreen();
+    expect(await screen.findByText('Pedir ayuda')).toBeOnTheScreen();
   });
 
   it('familiar o cuidador abre el Resumen', async () => {
@@ -77,7 +77,7 @@ describe('navegación de BUDDY', () => {
     await screen.findByText('Omitir');
     act(() => useAppStore.setState((s) => ({ settings: { ...s.settings, role: 'patient', onboarded: true } })));
     act(() => router.navigate('/'));
-    expect(await screen.findByText('TU PRÓXIMO MEDICAMENTO')).toBeOnTheScreen();
+    expect(await screen.findByText('Pedir ayuda')).toBeOnTheScreen();
     expect(r.getPathname()).toBe('/home');
   });
 });

@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { gradients, palette, radius as radii, shadow, spacing, tones, type GradientName, type Tone } from '@/theme';
+import { border, gradients, palette, radius as radii, shadow, spacing, tones, type GradientName, type Tone } from '@/theme';
 
 import { PressableScale } from './pressable-scale';
 
@@ -28,10 +28,10 @@ export function Card({
   variant = 'white',
   tone = 'mint',
   gradient,
-  padding = spacing.md,
+  padding = spacing.lg,
   radius = radii.card,
   elevation = variant === 'white' ? 'soft' : 'none',
-  bordered = false,
+  bordered = variant !== 'gradient',
   onPress,
   accessibilityLabel,
   accessibilityHint,
@@ -83,5 +83,5 @@ export function Card({
 }
 
 const styles = StyleSheet.create({
-  border: { borderWidth: 1, borderColor: palette.line },
+  border: border.hairline,
 });

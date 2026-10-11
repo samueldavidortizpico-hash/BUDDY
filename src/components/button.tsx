@@ -1,36 +1,64 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
-import { gradients, ink, palette, radius, shadow, spacing, touch } from '@/theme';
+import { gradients, ink, palette, radius, shadow, spacing, tones, touch, type Tone } from '@/theme';
 
 import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
 import { PressableScale } from './pressable-scale';
 
-export type ButtonVariant = 'primary' | 'coral' | 'secondary' | 'danger' | 'ghost';
+export type ButtonVariant = 'primary' | 'coral' | 'secondary' | 'danger' | 'ghost' | 'tonal' | 'white';
 
-const VARIANTS: Record<
-  ButtonVariant,
-  { gradient?: readonly [string, string]; bg?: string; border?: string; borderWidth?: number; text: string; shadow?: ViewStyle }
-> = {
+type VariantStyle = { gradient?: readonly [string, string, ...string[]]; bg?: string; border?: string; borderWidth?: number; text: string; shadow?: ViewStyle };
+
+const VARIANTS: Record<Exclude<ButtonVariant, 'tonal'>, VariantStyle> = {
   primary: { gradient: gradients.primary, text: ink.inverse, shadow: shadow.petrol },
-  coral: { gradient: gradients.coral, text: ink.inverse, shadow: shadow.coral },
+  coral: { gradient: gradients.coral, text: ink.onCoral, shadow: shadow.coral },
   secondary: { bg: palette.mintPale, border: palette.mintBorder, borderWidth: 1, text: ink.text },
   danger: { bg: palette.coralPale, border: palette.coralBorder, borderWidth: 1, text: ink.coral },
   ghost: { bg: 'transparent', border: palette.ghostBorder, borderWidth: 1.5, text: ink.text },
+  /** Sobre degradados de dominio (agua): blanco con texto del dominio. */
+  white: { bg: '#FFFFFF', text: '#0B3A66', shadow: shadow.sky },
 };
+
+const GLOW: Partial<Record<Tone, ViewStyle>> = { mint: shadow.mint, coral: shadow.coral, sky: shadow.sky, lavender: shadow.lavender };
+
+/** Tonal por dominio: fondo pálido del tono, borde y texto del tono, con brillo de su color. */
+const tonal = (tone: Tone): VariantStyle => ({ bg: tones[tone].bg, border: tones[tone].soft, borderWidth: 1, text: tones[tone].fg, shadow: GLOW[tone] });
+
+const HEIGHTS = { elder: touch.elder, lg: touch.primary, md: touch.secondary } as const;
 
 export interface ButtonProps {
   label: string;
   onPress?: () => void;
   variant?: ButtonVariant;
+  /** Tono para `variant="tonal"`. */
+  tone?: Tone;
   icon?: IconName;
   trailing?: IconName;
-  /** lg = 56 (acción principal); md = 48 (acciones secundarias en fila). */
-  size?: 'lg' | 'md';
+  /** elder = 72 (acciones del adulto mayor); lg = 60 (principal); md = 52 (secundario). */
+  size?: keyof typeof HEIGHTS;
+  /** Color de texto propio (p. ej. azul profundo del agua sobre el botón blanco). */
+  textColor?: string;
   disabled?: boolean;
   loading?: boolean;
   haptic?: boolean;
+  /** Icono arriba y texto debajo (pares de acciones lado a lado con texto largo). */
+  stacked?: boolean;
+  /** Brillo que recorre el botón cada 5 s (solo la acción protagonista de la bienvenida). */
+  shine?: boolean;
   accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -40,17 +68,22 @@ export function Button({
   label,
   onPress,
   variant = 'primary',
+  tone = 'mint',
   icon,
   trailing,
   size = 'lg',
+  textColor,
   disabled = false,
   loading = false,
   haptic = false,
+  shine = false,
+  stacked = false,
   accessibilityHint,
   style,
   testID,
 }: ButtonProps) {
-  const v = VARIANTS[variant];
+  const base = variant === 'tonal' ? tonal(tone) : VARIANTS[variant];
+  const v = textColor ? { ...base, text: textColor } : base;
   const spread = variant === 'danger' && !!trailing;
   return (
     <PressableScale
@@ -63,9 +96,10 @@ export function Button({
       onPress={onPress}
       style={[
         styles.base,
-        { minHeight: size === 'lg' ? touch.primary : touch.min, backgroundColor: v.bg },
+        { minHeight: HEIGHTS[size], backgroundColor: v.bg },
         v.border ? { borderColor: v.border, borderWidth: v.borderWidth } : null,
         !disabled ? v.shadow : null,
+        stacked && styles.stacked,
         disabled && styles.disabled,
         style,
       ]}
@@ -73,18 +107,39 @@ export function Button({
       {v.gradient ? (
         <LinearGradient colors={v.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.fill} />
       ) : null}
+      {shine && !disabled ? <Shine /> : null}
       {loading ? (
         <ActivityIndicator color={v.text} />
       ) : (
         <>
-          {icon ? <Icon name={icon} color={v.text} size={22} /> : null}
-          <AppText variant="button" color={v.text} align={spread ? 'left' : 'center'} style={spread ? styles.grow : undefined}>
+          {icon ? <Icon name={icon} color={v.text} size={size === 'elder' ? 28 : 22} /> : null}
+          <AppText variant={stacked ? 'secondaryStrong' : size === 'elder' ? 'h3' : 'button'} color={v.text} numberOfLines={stacked ? 2 : undefined} align={spread ? 'left' : 'center'} style={spread ? styles.grow : undefined}>
             {label}
           </AppText>
           {trailing ? <Icon name={trailing} color={v.text} size={20} /> : null}
         </>
       )}
     </PressableScale>
+  );
+}
+
+/** Franja de luz diagonal que cruza el botón (solo transform). */
+function Shine() {
+  const reduce = useReducedMotion();
+  const x = useSharedValue(-1);
+  useEffect(() => {
+    if (reduce) return;
+    x.set(withRepeat(withSequence(withDelay(4100, withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) })), withTiming(-1, { duration: 0 })), -1));
+    return () => cancelAnimation(x);
+  }, [reduce, x]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateX: `${x.value * 120}%` }, { skewX: '-20deg' }] }));
+  if (reduce) return null;
+  return (
+    <View pointerEvents="none" style={styles.shineClip}>
+      <Animated.View style={[styles.shine, style]}>
+        <LinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.45)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+      </Animated.View>
+    </View>
   );
 }
 
@@ -159,7 +214,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   fill: { ...StyleSheet.absoluteFill, borderRadius: radius.button },
+  shineClip: { ...StyleSheet.absoluteFill, borderRadius: radius.button, overflow: 'hidden' },
+  shine: { position: 'absolute', top: 0, bottom: 0, left: '35%', width: '28%' },
   grow: { flex: 1 },
+  stacked: { flexDirection: 'column', gap: 2, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   disabled: { opacity: 0.45 },
   circle: {
     width: touch.min,

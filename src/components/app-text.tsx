@@ -1,7 +1,7 @@
 import { Text, type TextProps, type TextStyle } from 'react-native';
 
 import { useTextScale } from '@/features/profile/hooks';
-import { ink, type, type TypeVariant } from '@/theme';
+import { ink, maxFontScale, type, type TypeVariant } from '@/theme';
 
 export interface AppTextProps extends TextProps {
   variant?: TypeVariant;
@@ -10,6 +10,8 @@ export interface AppTextProps extends TextProps {
 }
 
 const HEADERS: TypeVariant[] = ['display', 'h1', 'h2'];
+
+// Texto al 200 %: los números héroe tienen tope propio (maxFontScale) para no romper su tarjeta.
 
 /**
  * Texto de BUDDY: aplica la escala tipográfica, respeta el tamaño de texto del sistema
@@ -21,7 +23,7 @@ export function AppText({ variant = 'body', color = ink.text, align, style, acce
   return (
     <Text
       allowFontScaling
-      maxFontSizeMultiplier={2}
+      maxFontSizeMultiplier={maxFontScale[variant] ?? 2}
       accessibilityRole={accessibilityRole ?? (HEADERS.includes(variant) ? 'header' : undefined)}
       style={[
         base,
