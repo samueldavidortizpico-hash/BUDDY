@@ -143,6 +143,7 @@ function Appearance() {
   const mode = useAppearanceStore((x) => x.mode);
   const hc = useAppearanceStore((x) => x.highContrast);
   const scale = useAppearanceStore((x) => x.textScale);
+  const barGestures = useAppearanceStore((x) => x.barGestures);
   const set = useAppearanceStore((x) => x.set);
   return (
     <View style={s.stack}>
@@ -162,6 +163,7 @@ function Appearance() {
           <Chip key={k} label={S.sizes[k]} selected={scale === k} onPress={() => set({ textScale: k })} />
         ))}
       </View>
+      <Row label={S.barGestures} hint={S.barGesturesHint} value={barGestures} onChange={(v) => set({ barGestures: v })} />
       <RobotPrefs />
     </View>
   );

@@ -22,7 +22,7 @@ Método: cada problema se reproduce con una prueba que falla (jest) o una captur
 | 7 | Los mensajes flotantes de BUDDY no se notan | Inspección de `features/feed/launcher.tsx`: una sola burbuja pequeña, sin acción, con borde fino, que desaparecía a los 6 s | Diseño de la burbuja como aviso pasajero | Burbujas por severidad (menta, ámbar, coral; rojo solo "pidió ayuda") con icono y texto, rebote y meneo al entrar (sin ellos con reducir movimiento), persistentes, hasta 3 con "+N", deslizar o "×" para descartar, acción en la primera, haptic suave (decisión 82) | `launcher.test.tsx` 6/6; `docs/capturas/v24/robot/1-burbujas-390.png` | **Corregido en web**; haptic y deslizar: dispositivo |
 | 8 | El robot no se puede mover | Inspección: posición fija abajo a la derecha | No existía gesto de arrastre | Arrastre con Gesture Handler, límites, imán, posición recordada, oculto con teclado, Ajustes > Apariencia > Robot BUDDY (imán, restablecer, ocultar por hoy) (decisiones 80 y 81) | `scripts/capture/v24-robot.mjs` en web: arrastre, imán al borde (x = 7,75), misma posición tras recargar | **Corregido en web**; dispositivo pendiente |
 | 9 | Falta Ubicación con mapa | — | — | Hito 6 | — | Pendiente |
-| 10 | Barra inferior Liquid Glass y gestos | — | — | Hito 5 | — | Pendiente |
+| 10 | Barra inferior Liquid Glass y gestos | Inspección: barra con color translúcido sin desenfoque, sobre un fondo liso (no flotaba sobre el contenido), sin gesto | La barra se dibujaba debajo de las pantallas y el comentario decía "vidrio sin blur" | Barra flotante con vidrio nativo (iOS 26+), desenfoque (iOS anterior y web) o translúcida (Android); gota que se estira; deslizar sobre la barra para cambiar de pestaña con haptic (decisiones 84–87) | `scripts/capture/v24-tabbar.mjs`: barra sobre el contenido, arrastre de Resumen a Salud, toque a Rutina, en claro y oscuro (`docs/capturas/v24/barra/`) | **Corregido en web**; Liquid Glass nativo: pendiente de iPhone con iOS 26 |
 | 11 | Portada de carga propia | — | — | Hito 7 | — | Pendiente |
 
 ## Hito 1: chat guiado, teclado y comprensión
@@ -74,3 +74,12 @@ Teclado en iOS y Android (que la tarjeta y "Confirmar" queden visibles, sin salt
 - La verificación en web (`scripts/capture/v24-robot.mjs`) encontró y corrigió tres fallos: al soltar el robot se abría el chat; con las burbujas a la izquierda el robot quedaba fuera de la pantalla (x = −200); los límites usaban 72 dp en vez de la huella real de 96 dp.
 - "Registrar compra" suma una caja si se conoce su tamaño; si no, abre el medicamento (nunca inventa la cantidad). "Posponer" silencia el aviso 24 h.
 - Pendiente de dispositivo: suavidad a 60 fps (no medida), haptic, deslizar para descartar con el dedo, ojos que siguen el arrastre.
+
+## Hito 5: barra Liquid Glass y gestos
+
+**Skills aplicadas:** `fixing-motion-performance` (gota con translateX + scaleX, sin desenfoques animados, React solo al soltar), `fixing-accessibility` (reducir transparencia → barra sólida, reducir movimiento → sin estiramiento, gesto desactivable, etiquetas siempre visibles, áreas ≥ 56, visor de contenido grande).
+
+- Dependencia instalada con `npx expo install`: `expo-blur ~57.0.3` (incluida en Expo Go según la doc. de SDK 57).
+- La verificación web encontró y corrigió: navegación del gesto sin efecto en web (decisión 85) y el "+" de Rutina sobre la barra al pasarla a flotante (ahora está en el flujo del contenido).
+- 60 fps: **no medido** (requiere dispositivo de gama media).
+- Pendiente de pulido (Hito 8): el selector de Rutina corta "Medicamentos" y "Comidas" a mitad de palabra en 390 px (defecto anterior a esta ronda).

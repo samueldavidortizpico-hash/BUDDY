@@ -153,7 +153,6 @@ export default function Routine() {
         ) : null}
       </View>
 
-      <View style={s.fabSpace} />
       <PressableScale haptic onPress={fab} accessibilityLabel={seg === 'meds' ? R.addMed : R.add} style={s.fab}>
         <Icon name="plus" size={32} color={t.hc ? t.c.bg : '#FFFFFF'} strokeWidth={2.4} />
       </PressableScale>
@@ -234,11 +233,10 @@ const useStyles = makeStyles((t) =>
     bar: { width: 5, alignSelf: 'stretch' },
     newBadge: { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.pill },
     iconBox: { width: 44, height: 44, borderRadius: radius.icon, alignItems: 'center', justifyContent: 'center' },
-    fabSpace: { height: 80 },
+    // En el flujo, al final del contenido: con la barra flotante (V2.4) un botón absoluto quedaba sobre la barra.
     fab: {
-      position: 'absolute',
-      right: 0,
-      bottom: spacing.md,
+      alignSelf: 'flex-end',
+      marginTop: spacing.lg,
       width: 64,
       height: 64,
       borderRadius: 32,

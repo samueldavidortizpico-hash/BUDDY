@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { gradients as legacyGradients, spacing, type GradientName } from '@/theme';
 import { useTheme } from '@/theme/provider';
 
+import { tabBarSpace } from './bottom-tab-bar';
+
 export const SCREEN_PADDING = spacing.screen;
 
 export interface ScreenContainerProps {
@@ -47,8 +49,8 @@ export function ScreenContainer({
 }: ScreenContainerProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  // Dentro de pestañas se deja sitio para el robot lanzador (72 dp) que flota sobre la barra.
-  const bottomPad = (insideTabs ? 88 : insets.bottom) + spacing.xl;
+  // Dentro de pestañas la barra flota sobre el contenido (V2.4): se reserva su alto más el del robot lanzador.
+  const bottomPad = (insideTabs ? tabBarSpace(insets.bottom) + 88 : insets.bottom) + spacing.xl;
   const colors =
     gradientColors ?? (gradient === 'screen' || gradient === 'welcome' ? t.gradients[gradient] : legacyGradients[gradient]);
 
@@ -75,7 +77,7 @@ export function ScreenContainer({
   const inner = (
     <>
       {body}
-      {footer ? <View style={[styles.footer, { paddingBottom: insideTabs ? spacing.sm : insets.bottom + spacing.sm }]}>{footer}</View> : null}
+      {footer ? <View style={[styles.footer, { paddingBottom: insideTabs ? tabBarSpace(insets.bottom) + spacing.sm : insets.bottom + spacing.sm }]}>{footer}</View> : null}
     </>
   );
 

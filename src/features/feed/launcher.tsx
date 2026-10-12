@@ -173,7 +173,7 @@ export function BuddyLauncher() {
       {/* Las burbujas se colocan respecto al robot (no lo desplazan): hacia el lado y la altura con espacio. */}
       {pending.length ? (
         <View pointerEvents="box-none" style={[styles.bubbles, side.align === 'left' ? styles.fromLeft : styles.fromRight, side.below ? styles.below : styles.above]}>
-          <BubbleStack items={pending.slice(0, MAX_BUBBLES)} extra={Math.max(0, pending.length - MAX_BUBBLES)} />
+          <BubbleStack items={pending} />
         </View>
       ) : null}
       <View pointerEvents="box-none">
@@ -199,8 +199,15 @@ function look(f: FeedItem, t: ReturnType<typeof useTheme>): { bg: string; border
   };
 }
 
-function BubbleStack({ items, extra }: { items: FeedItem[]; extra: number }) {
+/**
+ * Por defecto solo la novedad más importante (no tapa la pantalla); "+N" despliega hasta 3 apiladas y "Menos" las
+ * recoge. Lo que no cabe queda en el feed.
+ */
+function BubbleStack({ items: all }: { items: FeedItem[] }) {
   const s = useStyles();
+  const [open, setOpen] = useState(false);
+  const items = all.slice(0, open ? MAX_BUBBLES : 1);
+  const extra = all.length - items.length;
   const lastTop = useRef<string | null>(null);
   // Haptic suave cuando llega una novedad nueva arriba.
   useEffect(() => {
@@ -213,10 +220,10 @@ function BubbleStack({ items, extra }: { items: FeedItem[]; extra: number }) {
       {items.map((f, i) => (
         <Bubble key={f.key} item={f} index={i} compact={i > 0} />
       ))}
-      {extra ? (
-        <AppText variant="captionStrong" style={s.more} accessibilityLabel={F.moreBubbles(extra)}>
-          {`+${extra}`}
-        </AppText>
+      {all.length > 1 ? (
+        <Pressable onPress={() => setOpen(!open)} accessibilityRole="button" accessibilityLabel={open ? F.fewerBubbles : F.moreBubbles(extra)} style={s.moreHit}>
+          <AppText variant="captionStrong" style={s.more}>{open ? (extra ? `+${extra} · ${F.fewer}` : F.fewer) : `+${extra}`}</AppText>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -316,6 +323,7 @@ const useStyles = makeStyles((t) =>
     head: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
     close: { marginLeft: 'auto', width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center' },
+    moreHit: { alignSelf: 'center', minHeight: touch.min, justifyContent: 'center' },
     more: { alignSelf: 'center', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden', backgroundColor: t.c.surface, color: t.c.text },
   }),
 );

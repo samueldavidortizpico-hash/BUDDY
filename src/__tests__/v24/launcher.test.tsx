@@ -67,9 +67,12 @@ describe('burbujas de novedades', () => {
     for (const n of ['A', 'B', 'C', 'D']) lowStockMed(`[PRUEBA] ${n}`);
     ui();
     act(() => { jest.advanceTimersByTime(20_000); });
+    // Por defecto solo la más importante (no tapa la pantalla) y "+4"; al desplegar, 3 apiladas y "+2".
+    expect(screen.getAllByTestId('launcher-bubble')).toHaveLength(1);
+    fireEvent.press(screen.getByRole('button', { name: F.moreBubbles(4) })); // 4 de existencias + sugerencia de actividad
     const bubbles = screen.getAllByTestId('launcher-bubble');
     expect(bubbles).toHaveLength(3);
-    expect(screen.getByLabelText(F.moreBubbles(2))).toBeTruthy(); // 4 de existencias + sugerencia de actividad
+    expect(screen.getByText(`+2 · ${F.fewer}`)).toBeTruthy();
     // La primera, completa con su acción; las otras, compactas: tocarlas abre las novedades.
     expect(within(bubbles[0]).getByRole('button', { name: F.actions.purchase })).toBeTruthy();
     for (const bubble of bubbles.slice(1)) expect(within(bubble).getByRole('button', { name: new RegExp(F.openFeed) })).toBeTruthy();

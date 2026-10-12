@@ -1,12 +1,13 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { FlatList, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { tabBarSpace } from '@/components/bottom-tab-bar';
 import { BottomSheet } from '@/components/feedback';
 import { Icon } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
@@ -52,6 +53,16 @@ export default function Buddy() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [atEnd, setAtEnd] = useState(true);
   const [listH, setListH] = useState(0);
+  // La barra flota sobre el contenido: el chat reserva su alto, salvo con el teclado abierto (lo tapa o se oculta).
+  const [keyboard, setKeyboard] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboard(true));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboard(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   const list = useRef<FlatList<AssistantMessage>>(null);
 
   const openRoutine = (seg: RoutineSegment) => router.push({ pathname: '/routine', params: { seg } } as unknown as Href);
@@ -131,7 +142,7 @@ export default function Buddy() {
         ) : null}
       </View>
 
-      <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView style={[s.flex, { paddingBottom: keyboard ? 0 : tabBarSpace(insets.bottom) }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={s.flex}>
           <FlatList
             ref={list}

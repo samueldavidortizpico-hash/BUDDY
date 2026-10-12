@@ -44,6 +44,19 @@ Ver también `docs/NOTIFICACIONES.md`.
 | 3.7 | Ajustes > Apariencia > "Ocultar el robot por hoy" y luego "Restablecer posición del robot". | Desaparece hoy de todas las pestañas; al restablecer vuelve abajo a la derecha. | ☐ | ☐ |
 | 3.8 | Activa "Reducir movimiento" en el sistema. | Sin rebotes, meneos ni zoom; el arrastre sigue funcionando. | ☐ | ☐ |
 
+## 4. Barra Liquid Glass y gestos (V2.4, Hito 5)
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 4.1 | iPhone con iOS 26 o superior: abre Resumen y desplázate. | La barra es de vidrio líquido nativo y deja ver el contenido detrás. Anotar si en Expo Go se ve o no. | ☐ | — |
+| 4.2 | iPhone con iOS 25 o anterior. | Barra desenfocada (blur) con reflejo arriba. | ☐ | — |
+| 4.3 | Android. | Barra translúcida con reflejo, legible sobre cualquier contenido. | — | ☐ |
+| 4.4 | Desliza el dedo sobre la barra de Resumen a Salud y suelta. | La gota sigue el dedo, vibra al pasar cada pestaña y abre Salud. | ☐ | ☐ |
+| 4.5 | Toca Rutina y luego Ajustes (lejos). | La gota se estira hacia el destino y se asienta. | ☐ | ☐ |
+| 4.6 | Activa "Reducir transparencia" (iOS) o "Quitar animaciones" (Android). | Barra sólida / sin estiramiento. | ☐ | ☐ |
+| 4.7 | Ajustes > Apariencia: apaga "Deslizar el dedo sobre la barra". | El gesto ya no cambia de pestaña; tocar sigue funcionando. | ☐ | ☐ |
+| 4.8 | Desplázate rápido en Resumen y Rutina. | Inercia natural, sin tirones ni cambios de pestaña accidentales. | ☐ | ☐ |
+
 ## Pendiente de agregar en los hitos siguientes
 
-Barra Liquid Glass y gestos entre pestañas (Hito 5), ubicación y mapa (Hito 6), splash nativo y portada de carga (Hito 7).
+Ubicación y mapa (Hito 6), splash nativo y portada de carga (Hito 7).
