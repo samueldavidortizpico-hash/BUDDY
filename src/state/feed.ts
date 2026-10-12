@@ -12,7 +12,7 @@ import { toISODate } from '@/utils/dates';
 
 import { activeElderId, routineActions } from './actions';
 import { execute } from './assistant';
-import { alertActions, doseActions } from './care';
+import { alertActions, doseActions, medicationActions } from './care';
 import { useActiveElder, useRecords, useUserId } from './data';
 import { markRecent } from './recent';
 import { currentUserId } from './session';
@@ -49,7 +49,7 @@ export function computeFeed(now = new Date()): FeedItem[] {
 }
 
 /** Feed visible y novedades sin leer de la persona activa. Se recalcula al cambiar los datos o cada minuto. */
-export function useFeed(): { items: FeedItem[]; unread: number; alarm: boolean } {
+export function useFeed(): { items: FeedItem[]; unread: number; alarm: boolean; unreadItems: FeedItem[] } {
   const now = useNow(60_000);
   const userId = useUserId();
   const elder = useActiveElder();
@@ -66,7 +66,7 @@ export function useFeed(): { items: FeedItem[]; unread: number; alarm: boolean }
   const prefs = useDb((s) => (userId && elder ? (s.drafts[userId]?.[prefsKey(elder.id)] as FeedPrefs | undefined) : undefined)) ?? EMPTY_PREFS;
   const thresholds = useDb((s) => (userId && elder ? (s.drafts[userId]?.[thresholdsKey(elder.id)] as Thresholds | undefined) : undefined)) ?? EMPTY_THRESHOLDS;
   return useMemo(() => {
-    if (!elder?.setupDone) return { items: [], unread: 0, alarm: false };
+    if (!elder?.setupDone) return { items: [], unread: 0, alarm: false, unreadItems: [] };
     const all = buildFeed({
       now,
       elderName: elder.firstName,
@@ -85,7 +85,7 @@ export function useFeed(): { items: FeedItem[]; unread: number; alarm: boolean }
       thresholds,
     });
     const items = visibleFeed(all, prefs, now);
-    return { items, unread: unreadCount(items, prefs), alarm: items.some((f) => f.severity === 'alarm') };
+    return { items, unread: unreadCount(items, prefs), alarm: items.some((f) => f.severity === 'alarm'), unreadItems: items.filter((f) => prefs.read[f.key] !== itemVersion(f)) };
   }, [now, elder, meds, doses, checkins, water, plans, meals, mealLogs, activities, alerts, appointments, prefs, thresholds]);
 }
 
@@ -144,6 +144,14 @@ export const feedActions = {
         return { done: 'Marcado como atendido.' };
       case 'open':
         return { open: action.href };
+      case 'purchase': {
+        const med = db.get('medications', action.medicationId);
+        if (!med) return {};
+        // Sin saber cuántas unidades trae la caja no se inventa: se abre el medicamento para registrarla.
+        if (!med.unitsPerPackage) return { open: `/medication/${med.id}` };
+        medicationActions.registerPurchase(med.id, { packages: 1 });
+        return { done: `Listo, sumé 1 caja de ${med.name} (${med.unitsPerPackage} unidades). Si compraste otra cantidad, corrígelo en Rutina.` };
+      }
       case 'call': {
         // Llamar al adulto mayor (su celular, si se registró). Sin teléfono, la pantalla indica dónde agregarlo.
         const phone = elderId ? db.get('elders', elderId)?.phone : undefined;

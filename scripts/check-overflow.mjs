@@ -102,7 +102,10 @@ try {
               if (r.width === 0 || r.bottom < 0 || r.top > innerHeight * 3) continue;
               if (r.right > vw + 1 || r.left < -1) out.push(`se sale de la pantalla: "${text.slice(0, 40)}"`);
               // Una palabra más ancha que su caja (p. ej. "Regular" bajo una barra estrecha).
-              if (el.scrollWidth > el.clientWidth + 2 && el.clientWidth > 0) out.push(`texto más ancho que su caja: "${text.slice(0, 40)}"`);
+              // Única excepción: las burbujas compactas del robot se recortan a una línea con "…" a propósito (el texto
+              // completo está en el feed y en su etiqueta accesible). Cualquier otro recorte sigue contando como fallo.
+              const intended = getComputedStyle(el).textOverflow === 'ellipsis' && el.closest('[data-testid="launcher-bubble"]');
+              if (!intended && el.scrollWidth > el.clientWidth + 2 && el.clientWidth > 0) out.push(`texto más ancho que su caja: "${text.slice(0, 40)}"`);
               const clip = clipAncestor(el);
               if (clip) {
                 const c = clip.getBoundingClientRect();

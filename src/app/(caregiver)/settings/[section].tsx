@@ -19,6 +19,7 @@ import { ALERT_KINDS, type Elder, type ElderAppearance } from '@/domain/types';
 import { ElderAccessForm } from '@/features/setup/access';
 import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
 import { feedActions } from '@/state/feed';
+import { isHiddenToday, useLauncherStore } from '@/state/launcher';
 import { notificationPermission, sendTestNotification } from '@/infrastructure/notifications';
 import { TimeField } from '@/components/time-picker';
 import { db, useDb } from '@/infrastructure/local/db';
@@ -161,6 +162,24 @@ function Appearance() {
           <Chip key={k} label={S.sizes[k]} selected={scale === k} onPress={() => set({ textScale: k })} />
         ))}
       </View>
+      <RobotPrefs />
+    </View>
+  );
+}
+
+/** El robot flotante: imán a los bordes, restablecer su posición y ocultarlo por hoy. */
+function RobotPrefs() {
+  const s = useStyles();
+  const toast = useToast();
+  const magnet = useLauncherStore((x) => x.magnet);
+  const hidden = isHiddenToday(useLauncherStore((x) => x.hiddenOn));
+  const L = useLauncherStore.getState();
+  return (
+    <View style={s.stack}>
+      <AppText variant="h3">{S.robot}</AppText>
+      <Row label={S.robotMagnet} hint={S.robotMagnetHint} value={magnet} onChange={(v) => L.setMagnet(v)} />
+      <Button label={S.robotReset} icon="arrow" variant="ghost" onPress={() => { L.reset(); toast({ message: S.robotResetDone, icon: 'check' }); }} />
+      <Button label={hidden ? S.robotShow : S.robotHide} icon={hidden ? 'eye' : 'eyeOff'} variant="ghost" onPress={() => (hidden ? L.show() : L.hideToday())} />
     </View>
   );
 }

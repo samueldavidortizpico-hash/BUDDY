@@ -31,6 +31,19 @@ Ver también `docs/NOTIFICACIONES.md`.
 | 2.4 | Cierra BUDDY por completo y espera un aviso programado. | El aviso llega igual (es local, lo programa el propio teléfono). | ☐ | ☐ |
 | 2.5 | Activa No molestar y espera un aviso. | Se comporta según la configuración del sistema (anotar qué pasó). | ☐ | ☐ |
 
+## 3. Robot arrastrable y burbujas (V2.4, Hito 4)
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 3.1 | En Resumen, arrastra el robot hacia arriba y a la izquierda y suelta. | Sigue el dedo sin saltos, mira hacia donde va, da un saltito al soltar y se pega al borde izquierdo. No se abre el chat. | ☐ | ☐ |
+| 3.2 | Cierra y abre BUDDY. | El robot está donde lo dejaste. | ☐ | ☐ |
+| 3.3 | Toca el robot. | Se abre el chat con un zoom corto. | ☐ | ☐ |
+| 3.4 | Con un medicamento con pocas unidades, mira la burbuja. | Burbuja grande con "Atención" o "Información", su texto y "Registrar compra"; vibración suave al aparecer. | ☐ | ☐ |
+| 3.5 | Desliza la burbuja hacia un lado. | Se descarta y no vuelve hasta que la novedad cambie. | ☐ | ☐ |
+| 3.6 | Abre el teclado en cualquier pantalla. | El robot se oculta mientras el teclado está abierto. | ☐ | ☐ |
+| 3.7 | Ajustes > Apariencia > "Ocultar el robot por hoy" y luego "Restablecer posición del robot". | Desaparece hoy de todas las pestañas; al restablecer vuelve abajo a la derecha. | ☐ | ☐ |
+| 3.8 | Activa "Reducir movimiento" en el sistema. | Sin rebotes, meneos ni zoom; el arrastre sigue funcionando. | ☐ | ☐ |
+
 ## Pendiente de agregar en los hitos siguientes
 
-Existencias y burbujas del robot (Hitos 3 y 4), robot arrastrable (Hito 4), barra Liquid Glass y gestos entre pestañas (Hito 5), ubicación y mapa (Hito 6), splash nativo y portada de carga (Hito 7).
+Barra Liquid Glass y gestos entre pestañas (Hito 5), ubicación y mapa (Hito 6), splash nativo y portada de carga (Hito 7).

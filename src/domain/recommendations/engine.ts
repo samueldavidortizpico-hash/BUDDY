@@ -24,7 +24,9 @@ export type FeedAction =
   | { type: 'add_activity'; kind: 'walk' | 'stretch' | 'air' | 'breath' | 'music' | 'call'; title: string; time: string; minutes: number }
   | { type: 'message'; text: string }
   | { type: 'open'; href: string }
-  | { type: 'attend_alert'; alertId: string };
+  | { type: 'attend_alert'; alertId: string }
+  /** Suma una caja (si se conoce cuántas unidades trae) o abre el medicamento para registrar la compra. */
+  | { type: 'purchase'; medicationId: string };
 
 export interface FeedItem {
   /** Clave estable del patrón (una tarjeta por patrón). */
@@ -181,13 +183,16 @@ export function buildFeed(i: RecoInput): FeedItem[] {
       key: `stock-${m.id}`,
       kind: 'alert',
       severity: e.level === 'out' ? 'attention' : 'info',
-      title: e.level === 'out' ? `${m.name}: no quedan unidades registradas` : `Se está acabando ${m.name}`,
+      title:
+        e.level === 'out'
+          ? `${m.name}: no quedan unidades registradas`
+          : `Se están acabando las pastillas de ${m.name}: alcanzan para ${e.daysLeft} ${e.daysLeft === 1 ? 'día' : 'días'}`,
       reason: e.level === 'out' ? 'Las existencias registradas llegaron a cero.' : `Alcanza para unos ${e.daysLeft} días (estimado).`,
       support: [`Quedan ${m.unitsOnHand ?? 0} (estimado)`],
       at: nowIso,
       count: 1,
       expiresAt: null,
-      actions: [{ type: 'open', href: `/medication/${m.id}` }],
+      actions: [{ type: 'purchase', medicationId: m.id }, { type: 'open', href: `/medication/${m.id}` }],
     });
   }
 

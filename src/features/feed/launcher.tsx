@@ -1,26 +1,49 @@
 /**
- * BuddyLauncher: el robot flotante (~72 dp) sobre la barra de pestañas del administrador, en todas las pestañas salvo
- * el chat. Tocarlo abre el chat con un vuelo corto y zoom. Bolita roja con las novedades sin leer (alertas y
- * recomendaciones) que late; con novedades muestra 6 s una burbuja con la más importante. Ojos preocupados si hay
- * señal de alarma, saluda si hay novedades normales y, con todo en orden, de vez en cuando pone ojos de corazón.
- * Con "reducir movimiento": sin vuelo ni burbuja animada (solo cambios de expresión).
+ * BuddyLauncher (V2.4): el robot flotante (~72 dp) de todas las pestañas del administrador salvo el chat.
+ * - Se arrastra libremente con el dedo (Gesture Handler + Reanimated, en el hilo de UI): no sale de la pantalla ni tapa
+ *   la barra de pestañas, se va al borde más cercano si el imán está activo, recuerda su posición por tamaño de pantalla
+ *   y se oculta con el teclado. Mientras se arrastra mira hacia donde va; al soltar da un saltito. Tocarlo abre el chat.
+ * - Burbujas de novedades bien visibles: color por severidad CON icono y texto, se quedan hasta tocarlas o descartarlas,
+ *   hasta 3 apiladas con "+N", deslizar para descartar, siempre con una acción, y del lado del robot con espacio.
+ * - Con "reducir movimiento": sin rebotes ni meneos (solo cambios de expresión); el arrastre sigue funcionando.
  */
 import { useFocusEffect, usePathname, useRouter, type Href } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Keyboard, Linking, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  FadeOut,
+  ZoomIn,
+  runOnJS,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
+import { Button } from '@/components/button';
+import { useToast } from '@/components/feedback';
+import { Icon, type IconName } from '@/components/icon';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
+import { itemVersion, type FeedItem } from '@/domain/recommendations/engine';
 import { strings } from '@/i18n';
-import { useFeed } from '@/state/feed';
-import { radius, spacing, touch } from '@/theme';
+import { useActiveElder } from '@/state/data';
+import { feedActions, useFeed } from '@/state/feed';
+import { bounds, bubbleSide, clampPos, isHiddenToday, sizeKey, snapX, useLauncherStore, type Pos } from '@/state/launcher';
+import { motion, radius, spacing, touch } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
+import { softHaptic, successHaptic } from '@/utils/haptics';
 
 const F = strings.feed;
 const SIZE = 72;
-const BUBBLE_MS = 6000;
+/** Huella real en pantalla (el brillo alrededor del robot): con ella se calculan los límites. */
+const FOOTPRINT = 96;
+const MAX_BUBBLES = 3;
 const LOVE_EVERY_MS = 25_000;
 
 /** Distancia desde abajo: barra de pestañas + margen (la usan las pantallas para no quedar tapadas). */
@@ -31,40 +54,56 @@ export function launcherBottom(insetBottom: number) {
 export function BuddyLauncher() {
   const router = useRouter();
   const pathname = usePathname();
-  const t = useTheme();
-  const s = useStyles();
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
-  const { items, unread, alarm } = useFeed();
-  const top = items.find((f) => !f.positive) ?? null;
-  const [bubble, setBubble] = useState<string | null>(null);
-  const [love, setLove] = useState(false);
-  const x = useSharedValue(0);
-  const y = useSharedValue(0);
+  const { unreadItems, unread, alarm } = useFeed();
+  const key = sizeKey(width, height);
+  const saved = useLauncherStore((s) => s.positions[key]);
+  const magnet = useLauncherStore((s) => s.magnet);
+  const hiddenOn = useLauncherStore((s) => s.hiddenOn);
+  const dismissed = useLauncherStore((s) => s.dismissed);
+  const setPos = useLauncherStore((s) => s.setPos);
+  const b = bounds(width, height, FOOTPRINT, insets.top, launcherBottom(insets.bottom));
+
+  const x = useSharedValue(saved?.x ?? 0);
+  const y = useSharedValue(saved?.y ?? 0);
+  const sx = useSharedValue(0);
+  const sy = useSharedValue(0);
+  const dir = useSharedValue(0);
   const k = useSharedValue(1);
   const o = useSharedValue(1);
+  const [look, setLook] = useState(0);
+  const [keyboard, setKeyboard] = useState(false);
+  const [love, setLove] = useState(false);
+  /** Un arrastre no debe abrir el chat: el toque que llega al soltar se ignora (1 = se está arrastrando). */
+  const dragged = useSharedValue(0);
 
-  // Al volver a una pestaña, el robot regresa a su sitio.
+  // Cambio de tamaño de pantalla (rotación): se recoloca dentro de los nuevos límites.
+  useEffect(() => {
+    const p = clampPos(saved ?? { x: 0, y: 0 }, b);
+    x.set(p.x);
+    y.set(p.y);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, b.maxLeft, b.maxUp]);
+
+  // Al volver a una pestaña, el robot reaparece (tras el zoom hacia el chat).
   useFocusEffect(
     useCallback(() => {
-      x.set(0);
-      y.set(0);
       k.set(1);
       o.set(1);
-    }, [x, y, k, o]),
+    }, [k, o]),
   );
 
-  // Burbuja de 6 s con la novedad más importante cuando aparece o escala.
-  const topKey = top ? `${top.key}:${top.severity}:${top.count}` : null;
+  // Con el teclado abierto no tapa campos ni el compositor.
   useEffect(() => {
-    if (!topKey || !unread) return;
-    const show = setTimeout(() => setBubble(topKey), 300);
-    const hide = setTimeout(() => setBubble(null), 300 + BUBBLE_MS);
+    const a = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true));
+    const c = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false));
     return () => {
-      clearTimeout(show);
-      clearTimeout(hide);
+      a.remove();
+      c.remove();
     };
-  }, [topKey, unread]);
+  }, []);
 
   // Con todo en orden, de vez en cuando ojos de corazón.
   useEffect(() => {
@@ -76,41 +115,207 @@ export function BuddyLauncher() {
     return () => clearInterval(id);
   }, [unread, alarm, reduce]);
 
-  const fly = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateX: x.value }, { translateY: y.value }, { scale: k.value }] }));
+  const commit = useCallback(
+    (p: Pos) => {
+      setPos(key, p);
+      setLook(0);
+    },
+    [key, setPos],
+  );
 
-  if (pathname === '/buddy') return null;
+  const pan = Gesture.Pan()
+    .minDistance(8)
+    .onStart(() => {
+      sx.set(x.get());
+      sy.set(y.get());
+      dragged.set(1);
+    })
+    .onUpdate((e) => {
+      const p = clampPos({ x: sx.get() + e.translationX, y: sy.get() + e.translationY }, b);
+      x.set(p.x);
+      y.set(p.y);
+      // Los ojos siguen la dirección; solo se avisa a React cuando cambia (no en cada cuadro).
+      const d = e.velocityX > 60 ? 1 : e.velocityX < -60 ? -1 : dir.get();
+      if (d !== dir.get()) {
+        dir.set(d);
+        runOnJS(setLook)(d);
+      }
+    })
+    .onEnd(() => {
+      const fx = snapX(x.get(), b.maxLeft, magnet);
+      x.set(reduce ? fx : withSpring(fx, motion.spring));
+      if (!reduce) k.set(withSequence(withTiming(1.12, { duration: 110 }), withSpring(1, motion.spring)));
+      dir.set(0);
+      runOnJS(commit)({ x: fx, y: y.get() });
+      dragged.set(withDelay(120, withTiming(0, { duration: 0 })));
+    });
 
+  const place = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }, { translateY: y.get() }] }));
+  const fly = useAnimatedStyle(() => ({ opacity: o.get(), transform: [{ scale: k.get() }] }));
+  // Lado de las burbujas: se deriva de la posición guardada (se actualiza al soltar el robot).
+  const side = bubbleSide(clampPos(saved ?? { x: 0, y: 0 }, b), b);
+
+  if (pathname === '/buddy' || keyboard || isHiddenToday(hiddenOn)) return null;
+
+  const pending = unreadItems.filter((f) => !f.positive && dismissed[f.key] !== itemVersion(f));
   const mood: RobotMood = alarm ? 'worry' : unread ? 'wave' : love ? 'love' : 'idle';
   const open = () => {
+    if (dragged.get()) return;
     if (reduce) return router.push('/buddy' as Href);
-    // Vuelo corto hacia el centro con zoom; solo transform y opacidad.
-    const ease = { duration: 260, easing: Easing.in(Easing.cubic) };
-    x.set(withTiming(-120, ease));
-    y.set(withTiming(-220, ease));
-    k.set(withTiming(1.8, ease));
-    o.set(withTiming(0, { duration: 300 }));
-    setTimeout(() => router.push('/buddy' as Href), 240);
+    // Zoom hacia el chat: solo transform y opacidad.
+    k.set(withTiming(1.8, { duration: 240 }));
+    o.set(withTiming(0, { duration: 260 }));
+    setTimeout(() => router.push('/buddy' as Href), 220);
   };
 
   return (
-    <View pointerEvents="box-none" style={[s.wrap, { bottom: launcherBottom(insets.bottom) }]}>
-      {bubble && top ? (
-        <Animated.View entering={reduce ? undefined : FadeIn.duration(200)} exiting={reduce ? undefined : FadeOut.duration(200)} style={[s.bubble, t.shadow.elevated]} pointerEvents="none" accessibilityLiveRegion="polite">
-          <AppText variant="captionStrong" numberOfLines={2}>
-            {top.title}
-          </AppText>
-        </Animated.View>
+    <Animated.View pointerEvents="box-none" style={[styles.wrap, { bottom: launcherBottom(insets.bottom) }, place]}>
+      {/* Las burbujas se colocan respecto al robot (no lo desplazan): hacia el lado y la altura con espacio. */}
+      {pending.length ? (
+        <View pointerEvents="box-none" style={[styles.bubbles, side.align === 'left' ? styles.fromLeft : styles.fromRight, side.below ? styles.below : styles.above]}>
+          <BubbleStack items={pending.slice(0, MAX_BUBBLES)} extra={Math.max(0, pending.length - MAX_BUBBLES)} />
+        </View>
       ) : null}
-      <Animated.View style={fly}>
-        <BuddyRobot size={SIZE} compact mood={mood} badge={unread || undefined} shadow={false} glow onPress={open} accessibilityLabel={F.launcher(unread)} />
-      </Animated.View>
+      <View pointerEvents="box-none">
+        <GestureDetector gesture={pan}>
+          <Animated.View style={fly} testID="launcher-robot">
+            <BuddyRobot size={SIZE} compact mood={mood} look={look} badge={unread || undefined} shadow={false} glow onPress={open} accessibilityLabel={F.launcher(unread)} />
+          </Animated.View>
+        </GestureDetector>
+      </View>
+    </Animated.View>
+  );
+}
+
+/** Color e icono por severidad (nunca solo color: también icono y etiqueta). */
+function look(f: FeedItem, t: ReturnType<typeof useTheme>): { bg: string; border: string; fg: string; icon: IconName; label: string } {
+  const tone = f.help ? t.tones.red : f.severity === 'alarm' ? t.tones.coral : f.severity === 'attention' ? t.tones.yellow : t.tones.mint;
+  return {
+    bg: t.hc ? t.c.surface : tone.bg,
+    border: t.hc ? t.c.text : tone.fg,
+    fg: t.hc ? t.c.text : tone.fg,
+    icon: f.help ? 'shield' : f.severity === 'info' ? 'bell' : 'warning',
+    label: f.help ? F.help : F.severity[f.severity],
+  };
+}
+
+function BubbleStack({ items, extra }: { items: FeedItem[]; extra: number }) {
+  const s = useStyles();
+  const lastTop = useRef<string | null>(null);
+  // Haptic suave cuando llega una novedad nueva arriba.
+  useEffect(() => {
+    const top = items[0] ? `${items[0].key}:${itemVersion(items[0])}` : null;
+    if (top && top !== lastTop.current) softHaptic();
+    lastTop.current = top;
+  }, [items]);
+  return (
+    <View pointerEvents="box-none" style={s.stack}>
+      {items.map((f, i) => (
+        <Bubble key={f.key} item={f} index={i} compact={i > 0} />
+      ))}
+      {extra ? (
+        <AppText variant="captionStrong" style={s.more} accessibilityLabel={F.moreBubbles(extra)}>
+          {`+${extra}`}
+        </AppText>
+      ) : null}
     </View>
   );
 }
 
+/** La primera burbuja va completa con su acción; las siguientes, compactas (una línea) para no tapar la pantalla. */
+function Bubble({ item, index, compact }: { item: FeedItem; index: number; compact: boolean }) {
+  const router = useRouter();
+  const toast = useToast();
+  const t = useTheme();
+  const s = useStyles();
+  const reduce = useReducedMotion();
+  const elder = useActiveElder();
+  const dismiss = useLauncherStore((st) => st.dismiss);
+  const c = look(item, t);
+  const tx = useSharedValue(0);
+  const rot = useSharedValue(0);
+  const close = useCallback(() => dismiss(item.key, itemVersion(item)), [dismiss, item]);
+
+  // Meneo corto al aparecer (sin meneo con "reducir movimiento").
+  useEffect(() => {
+    if (reduce) return;
+    rot.set(withSequence(withTiming(-3, { duration: 90 }), withTiming(3, { duration: 90 }), withTiming(0, { duration: 90 })));
+  }, [reduce, rot]);
+
+  const swipe = Gesture.Pan()
+    .activeOffsetX([-12, 12])
+    .failOffsetY([-12, 12])
+    .onUpdate((e) => {
+      tx.set(e.translationX);
+    })
+    .onEnd((e) => {
+      if (Math.abs(e.translationX) > 90) runOnJS(close)();
+      else tx.set(withSpring(0, motion.spring));
+    });
+  const style = useAnimatedStyle(() => ({ opacity: 1 - Math.min(0.6, Math.abs(tx.get()) / 200), transform: [{ translateX: tx.get() }, { rotate: `${rot.get()}deg` }] }));
+
+  const action = item.actions[0];
+  const act = () => {
+    if (!action) return router.push('/alerts' as Href);
+    const r = feedActions.run(action);
+    if (r.open) return router.push(r.open as Href);
+    if (r.call !== undefined) return r.call ? Linking.openURL(`tel:${r.call}`) : toast({ message: F.noPhone(elder?.firstName ?? 'tu familiar'), icon: 'info' });
+    if (r.done) {
+      successHaptic();
+      toast({ message: r.done, icon: 'check' });
+    }
+  };
+  const snooze = () => feedActions.mute(item.key, 24);
+
+  return (
+    <GestureDetector gesture={swipe}>
+      <Animated.View
+        testID="launcher-bubble"
+        entering={reduce ? undefined : ZoomIn.springify().damping(14).delay(index * 80)}
+        exiting={reduce ? undefined : FadeOut.duration(160)}
+        style={[s.bubble, compact && s.compact, { backgroundColor: c.bg, borderColor: c.border }, t.shadow.elevated, style]}
+        accessibilityLiveRegion={index === 0 ? 'polite' : undefined}
+      >
+        <Pressable onPress={() => router.push('/alerts' as Href)} accessibilityRole="button" accessibilityLabel={`${c.label}. ${item.title}. ${F.openFeed}`} style={s.body}>
+          <View style={s.head}>
+            <Icon name={c.icon} color={c.fg} size={18} />
+            <AppText variant="captionStrong" color={c.fg} style={s.flex}>{c.label}</AppText>
+          </View>
+          <AppText variant="secondaryStrong" numberOfLines={compact ? 1 : 3}>{item.title}</AppText>
+        </Pressable>
+        {compact ? null : (
+        <View style={s.actions}>
+          <Button label={action ? F.actions[action.type] : F.actions.open} size="sm" variant="tonal" onPress={act} />
+          {action?.type === 'purchase' ? <Button label={F.snooze} size="sm" variant="ghost" onPress={snooze} /> : null}
+          <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={F.dismissBubble} hitSlop={8} style={s.close}>
+            <Icon name="close" color={t.c.muted} size={18} />
+          </Pressable>
+        </View>
+        )}
+      </Animated.View>
+    </GestureDetector>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { position: 'absolute', right: spacing.xs },
+  bubbles: { position: 'absolute', width: 288 },
+  fromRight: { right: 0, alignItems: 'flex-end' },
+  fromLeft: { left: 0, alignItems: 'flex-start' },
+  above: { bottom: FOOTPRINT },
+  below: { top: FOOTPRINT },
+});
+
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    wrap: { position: 'absolute', right: spacing.xs, alignItems: 'flex-end' },
-    bubble: { maxWidth: 240, marginRight: spacing.sm, marginBottom: -4, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.card, borderBottomRightRadius: 6, backgroundColor: t.c.surface, ...t.hairline },
+    flex: { flex: 1 },
+    stack: { gap: spacing.xs, maxWidth: 300 },
+    bubble: { width: 280, maxWidth: '100%', padding: spacing.sm, gap: spacing.xs, borderRadius: radius.card, borderWidth: 2 },
+    compact: { paddingVertical: spacing.xs, minHeight: touch.min },
+    body: { gap: 4 },
+    head: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
+    close: { marginLeft: 'auto', width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center' },
+    more: { alignSelf: 'center', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden', backgroundColor: t.c.surface, color: t.c.text },
   }),
 );
