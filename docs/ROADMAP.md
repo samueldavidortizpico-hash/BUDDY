@@ -1,6 +1,6 @@
 # Hoja de ruta de BUDDY
 
-Estado real al 2026-10-12 (ronda V2.4 en curso). "Hecho" significa implementado y probado en web y con Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`.
+Estado real al 2026-10-12 (ronda V2.4 completada). "Hecho" significa implementado y probado en web y con Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`.
 
 ## Hecho
 
