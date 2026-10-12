@@ -192,4 +192,73 @@ export function numberBefore(text: string, unit: RegExp): number | null {
   return null;
 }
 
+/** Distancia de edición (Levenshtein): cuántas letras hay que cambiar, quitar o poner para pasar de a a b. */
+export function editDistance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+/**
+ * Candidato más parecido a una palabra mal escrita ("losartn" → "Losartán"). Solo palabras de 5+ letras y como máximo
+ * 1 error (2 si tiene 8+ letras): más tolerancia confundiría palabras distintas. Compara sin tildes ni mayúsculas.
+ */
+export function closest(word: string, candidates: string[]): string | null {
+  const w = normalizeText(word);
+  if (w.length < 5) return null;
+  const max = w.length >= 8 ? 2 : 1;
+  let best: { c: string; d: number } | null = null;
+  for (const c of candidates) {
+    const d = editDistance(w, normalizeText(c));
+    if (d <= max && (!best || d < best.d)) best = { c, d };
+  }
+  return best?.c ?? null;
+}
+
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const WEEKDAY_NAMES = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
+/**
+ * Fecha en español respecto a `today`: "hoy", "mañana", "pasado mañana", "el jueves", "el próximo martes" (siguiente
+ * ocurrencia, nunca hoy), "15 de noviembre", "15/11", "en dos semanas", "en 3 días". Una fecha sin año que ya pasó
+ * se entiende del año siguiente. "de la mañana" no es una fecha.
+ */
+export function parseDate(text: string, today = new Date()): string | null {
+  const t = clean(text);
+  const plus = (n: number) => {
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + n);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+  const named = t.match(new RegExp(String.raw`\b(\d{1,2}) de (${MONTHS.join('|')})(?: de (\d{4}))?\b`));
+  const numeric = t.match(/\b(\d{1,2})\s*[/-]\s*(\d{1,2})(?:\s*[/-]\s*(\d{2,4}))?\b/);
+  if (named || numeric) {
+    const day = Number(named?.[1] ?? numeric?.[1]);
+    const month = named ? MONTHS.indexOf(named[2]) : Number(numeric![2]) - 1;
+    const y = named?.[3] ?? numeric?.[3];
+    if (day >= 1 && day <= 31 && month >= 0 && month <= 11) {
+      let year = y ? Number(y.length === 2 ? `20${y}` : y) : today.getFullYear();
+      if (!y && new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate())) year++;
+      return `${year}-${pad(month + 1)}-${pad(day)}`;
+    }
+  }
+  if (/\bpasado manana\b/.test(t)) return plus(2);
+  if (/\bmanana\b/.test(t) && !/\b(de|en|por) la manana\b/.test(t)) return plus(1);
+  if (/\bhoy\b/.test(t)) return plus(0);
+  const span = t.match(/\ben (\d+|una|un|dos|tres|cuatro|cinco) (semanas?|dias?)\b/);
+  if (span) {
+    const n = /\d/.test(span[1]) ? Number(span[1]) : NUMBER_WORDS[span[1]];
+    return plus(span[2].startsWith('semana') ? n * 7 : n);
+  }
+  const wd = t.match(/\b(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\b/);
+  if (wd) {
+    const diff = (WEEKDAY_NAMES.indexOf(wd[1]) - today.getDay() + 7) % 7;
+    return plus(diff === 0 ? 7 : diff);
+  }
+  return null;
+}
+
 export { intervalTimes, sortTimes };

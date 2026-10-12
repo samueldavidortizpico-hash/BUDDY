@@ -12,7 +12,7 @@ import type { Weekday } from '../types';
 import { formatPhone, normalizeText } from '../validation';
 
 import { applyAnswer } from './engine';
-import { clean, defaultTimes, parseDays, parseDoseAmount, parsePhones, parseTimes, parseTimesPerDay } from './parse';
+import { clean, defaultTimes, parseDate, parseDays, parseDoseAmount, parsePhones, parseTimes, parseTimesPerDay } from './parse';
 import type { AssistantAction, AssistantContext, FieldKey } from './types';
 
 export interface DraftField {
@@ -165,6 +165,10 @@ export function draftFields(a: AssistantAction): DraftField[] {
         { key: 'date', label: 'Fecha', value: a.date ? longDate(a.date) : null, required: true },
         { key: 'time', label: 'Hora', value: a.time ? clock(a.time) : null, required: true },
         { key: 'address', label: 'Dirección', value: text(a.address), required: false },
+        { key: 'institution', label: 'Lugar', value: text(a.institution), required: false },
+        { key: 'doctor', label: 'Médico', value: text(a.doctor), required: false },
+        { key: 'phone', label: 'Teléfono', value: a.phone ? formatPhone(a.phone) : null, required: false },
+        { key: 'questions', label: 'Preguntas', value: a.questions?.length ? a.questions.join(' · ') : null, required: false },
       ];
     case 'add_note_for_elder':
       return [
@@ -211,7 +215,7 @@ export function questionFor(a: AssistantAction, field: FieldKey, ctx: AssistantC
       const unit = a.type === 'add_medication' ? a.doseUnit : 'unit';
       return {
         question: `¿Cuánto toma de ${medName} cada vez? Escríbelo como lo indicó el médico.`,
-        quickReplies: unit === 'ml' ? ['5 ml', '10 ml'] : unit === 'drops' ? ['5 gotas', '10 gotas'] : ['½ tableta', '1 tableta', '2 tabletas'],
+        quickReplies: unit === 'ml' ? ['5 ml', '10 ml', '15 ml'] : unit === 'drops' ? ['5 gotas', '10 gotas', '20 gotas'] : ['½ tableta', '1 tableta', '1½ tabletas', '2 tabletas'],
       };
     }
     case 'time':
@@ -248,7 +252,13 @@ export function questionFor(a: AssistantAction, field: FieldKey, ctx: AssistantC
     case 'address':
       return { question: '¿En qué dirección? Calle, ciudad y una referencia.', quickReplies: ['Aún no la sé'] };
     case 'phone':
-      return { question: '¿Cuál es su teléfono?', quickReplies: [] };
+      return { question: a.type === 'add_appointment' ? '¿Cuál es el teléfono del consultorio?' : '¿Cuál es su teléfono?', quickReplies: a.type === 'add_appointment' ? ['No lo sé'] : [] };
+    case 'doctor':
+      return { question: '¿Con qué médico es?', quickReplies: ['No lo sé'] };
+    case 'institution':
+      return { question: '¿En qué clínica, hospital o consultorio?', quickReplies: ['No lo sé'] };
+    case 'questions':
+      return { question: '¿Qué quieres preguntar en la cita?', quickReplies: ['Resultados de exámenes', 'Si puede hacer ejercicio', 'Ninguna'] };
     case 'relation':
       return { question: '¿Qué es para tu familiar?', quickReplies: ['Hijo', 'Hija', 'Vecino', 'No sé'] };
     case 'steps':
@@ -261,28 +271,8 @@ export function questionFor(a: AssistantAction, field: FieldKey, ctx: AssistantC
 const SKIP = /^(no se|no lo se|omitir|despues|ninguna|ninguno|aun no la se|aun no se)$/;
 const LOOKS_LIKE_TIME = /\d:\d{2}|\b\d{1,2}\s*(am|pm|a m|p m)\b|\bde la (manana|tarde|noche)\b/;
 
-function addDays(base: Date, n: number) {
-  const d = new Date(base);
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-/** "mañana", "pasado mañana", "en una semana", "20 de diciembre", "20/12". */
-export function parseDateAnswer(answer: string, today = new Date()): string | null {
-  const t = clean(answer);
-  if (/^manana\b/.test(t) || t === 'para manana') return addDays(today, 1);
-  if (/pasado manana/.test(t)) return addDays(today, 2);
-  if (/^hoy\b/.test(t)) return addDays(today, 0);
-  if (/una semana/.test(t)) return addDays(today, 7);
-  const numeric = t.match(/\b(\d{1,2})\s*[/-]\s*(\d{1,2})(?:\s*[/-]\s*(\d{2,4}))?\b/);
-  const named = t.match(/\b(\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/);
-  const day = Number(numeric?.[1] ?? named?.[1]);
-  const month = numeric ? Number(numeric[2]) - 1 : named ? MONTHS.indexOf(named[2]) : -1;
-  if (!day || month < 0 || month > 11 || day > 31) return null;
-  let year = numeric?.[3] ? Number(numeric[3].length === 2 ? `20${numeric[3]}` : numeric[3]) : today.getFullYear();
-  if (!numeric?.[3] && new Date(year, month, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate())) year++;
-  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
+/** "mañana", "pasado mañana", "en una semana", "el jueves", "20 de diciembre", "20/12" (ver parseDate). */
+export const parseDateAnswer = (answer: string, today = new Date()) => parseDate(answer, today);
 
 const firstTime = (answer: string) => {
   const perDay = parseTimesPerDay(answer);
@@ -300,7 +290,9 @@ export function applyField(a: AssistantAction, field: FieldKey, answer: string):
       if (field === 'name') return { ...a, name: answer.trim().replace(/^./, (c) => c.toUpperCase()) };
       // Una hora ("8:00 p. m.") nunca se toma como dosis: BUDDY vuelve a preguntar.
       if (field === 'doseAmount' && LOOKS_LIKE_TIME.test(t)) return a;
-      if (field === 'doseAmount' || field === 'strength' || field === 'unitsPerPackage') return applyAnswer(a, field, answer);
+      // "1½ tabletas" → 1.5; "½ tableta" → 0.5 (la dosis la elige el cuidador; BUDDY solo la registra).
+      if (field === 'doseAmount') return applyAnswer(a, field, answer.replace(/(\d)\s*½/g, (_, d: string) => `${Number(d) + 0.5}`).replace('½', '0.5'));
+      if (field === 'strength' || field === 'unitsPerPackage') return applyAnswer(a, field, answer);
       if (field === 'time') {
         const times = firstTime(answer);
         return times.length ? { ...a, times, everyHours: null, from: null } : a;
@@ -356,6 +348,10 @@ export function applyField(a: AssistantAction, field: FieldKey, answer: string):
       if (field === 'date') return { ...a, date: parseDateAnswer(answer) ?? a.date };
       if (field === 'time') return { ...a, time: firstTime(answer)[0] ?? a.time };
       if (field === 'address') return { ...a, address: skip ? '' : answer.trim() };
+      if (field === 'institution') return { ...a, institution: skip ? undefined : answer.trim() };
+      if (field === 'doctor') return { ...a, doctor: skip ? undefined : answer.trim() };
+      if (field === 'phone') return skip ? { ...a, phone: undefined } : { ...a, phone: parsePhones(answer)[0]?.phone ?? a.phone };
+      if (field === 'questions') return { ...a, questions: skip ? undefined : [...(a.questions ?? []), answer.trim()] };
       return a;
     case 'add_note_for_elder':
       if (field === 'title') return { ...a, title: answer.trim() };
@@ -414,3 +410,81 @@ function doneRaw(a: AssistantAction): string {
 
 /** ¿El texto es una confirmación ("sí", "confirmar", "dale")? */
 export const isConfirmWord = (s: string) => /^(si|confirmar|confirmo|dale|listo|correcto|confirmar y agregar|agregar)$/.test(normalizeText(s).replace(/[.!¡]/g, '').trim());
+
+// ── Flujo guiado de la tarjeta activa ─────────────────────────
+
+/** Control con el que se responde cada dato (escribir siempre es opcional). */
+export type InputKind = 'time' | 'date' | 'count' | 'choice' | 'text';
+
+export function inputKind(a: AssistantAction, field: FieldKey): InputKind {
+  if (field === 'time') return 'time';
+  if (field === 'date') return 'date';
+  if (field === 'glasses' || field === 'units' || field === 'unitsOnHand' || field === 'unitsPerPackage' || field === 'steps') return 'count';
+  if (field === 'doseAmount' || field === 'days' || field === 'instructions' || field === 'match' || field === 'relation') return 'choice';
+  if (field === 'title' && (a.type === 'add_appointment' || a.type === 'add_activity_goal')) return 'choice';
+  return 'text';
+}
+
+/** Rango del contador (+/−) y su valor inicial. */
+export function countRange(field: FieldKey): { min: number; max: number; step: number; start: number } {
+  switch (field) {
+    case 'glasses':
+      return { min: 1, max: 14, step: 1, start: 8 };
+    case 'steps':
+      return { min: 500, max: 20000, step: 500, start: 3000 };
+    case 'unitsPerPackage':
+      return { min: 1, max: 500, step: 1, start: 30 };
+    default:
+      return { min: 1, max: 500, step: 1, start: 1 };
+  }
+}
+
+/** "Paso 2 de 3": posición del dato que se pregunta entre los obligatorios. */
+export function stepInfo(d: Draft): { current: number; total: number; done: number } {
+  const req = d.actions.flatMap((a, index) => draftFields(a).filter((f) => f.required).map((f) => ({ ...f, index })));
+  const at = d.asking ? req.findIndex((f) => f.index === d.asking!.index && f.key === d.asking!.field) : -1;
+  const done = req.filter((f) => f.value !== null).length;
+  return { current: at >= 0 ? at + 1 : Math.min(done + 1, req.length), total: req.length, done };
+}
+
+/** Dato obligatorio anterior al que se pregunta (para "Atrás"); null en el primero. */
+export function previousField(d: Draft): { index: number; field: FieldKey } | null {
+  if (!d.asking) return null;
+  const req = d.actions.flatMap((a, index) => draftFields(a).filter((f) => f.required).map((f) => ({ index, field: f.key })));
+  const at = req.findIndex((f) => f.index === d.asking!.index && f.field === d.asking!.field);
+  return at > 0 ? req[at - 1] : null;
+}
+
+/** ¿El dato que se pregunta es opcional? (se puede omitir). */
+export function isOptional(d: Draft): boolean {
+  if (!d.asking) return false;
+  const f = draftFields(d.actions[d.asking.index]).find((x) => x.key === d.asking!.field);
+  return !!f && !f.required;
+}
+
+/** Datos opcionales vacíos que el cuidador puede agregar con un toque ("Agregar detalle"). */
+export function optionalEmpty(d: Draft): { index: number; field: FieldKey; label: string }[] {
+  return d.actions.flatMap((a, index) => draftFields(a).filter((f) => !f.required && f.value === null).map((f) => ({ index, field: f.key, label: f.label })));
+}
+
+/** Las 8 acciones del menú de BUDDY. */
+export type MenuKey = 'medication' | 'water' | 'appointment' | 'contact' | 'meal' | 'activity' | 'medInfo' | 'day';
+export const MENU: MenuKey[] = ['medication', 'water', 'appointment', 'contact', 'meal', 'activity', 'medInfo', 'day'];
+
+/** Acción en blanco con la que arranca cada flujo guiado del menú (null = no crea borrador). */
+export function menuTemplate(key: MenuKey): AssistantAction | null {
+  switch (key) {
+    case 'medication':
+      return { type: 'add_medication', name: '', strength: null, doseAmount: null, doseUnit: 'unit', form: 'tablet', times: [], days: [], everyHours: null, from: null, unitsPerPackage: null, unitsOnHand: null, instructions: '', purpose: '' };
+    case 'water':
+      return { type: 'set_water_goal', glasses: 0, times: [] };
+    case 'appointment':
+      return { type: 'add_appointment', title: '', date: null, time: null, address: '' };
+    case 'contact':
+      return { type: 'add_emergency_contact', name: '', relation: '', phone: '' };
+    case 'activity':
+      return { type: 'add_activity_goal', kind: 'custom', title: '', time: null, minutes: null, days: [] };
+    default:
+      return null;
+  }
+}

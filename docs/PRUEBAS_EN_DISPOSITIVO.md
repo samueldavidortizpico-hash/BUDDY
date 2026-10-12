@@ -1,0 +1,36 @@
+# Pruebas en dispositivo (iOS y Android)
+
+Lista para una persona con un iPhone y un Android reales y Expo Go (SDK 57). El dueño arranca el servidor con `npx expo start --tunnel --clear` y abre el QR. Marca cada casilla al aprobar; si algo falla, anota modelo, versión del sistema y qué pasó.
+
+Lo que **no** se puede comprobar en web y por eso está aquí: teclado real, gestos, hápticos, notificaciones, permisos, efecto glass, splash nativo, lector de pantalla y rendimiento.
+
+## 1. Chat guiado y teclado (V2.4, Hito 1)
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 1.1 | Abre la pestaña BUDDY sin mensajes. | Se ven el título y las 8 acciones sin desplazar (en pantallas pequeñas puede requerir un leve desplazamiento). | ☐ | ☐ |
+| 1.2 | Escribe "agrega losartán" y envía. | Aparece la tarjeta "Medicamento en preparación", "Paso 2 de 3" y la pregunta de la dosis con botones ½ · 1 · 1½ · 2. | ☐ | ☐ |
+| 1.3 | Con el teclado abierto, toca "1 tableta". | El toque funciona a la primera (no solo cierra el teclado) y la tarjeta pasa a la hora. | ☐ | ☐ |
+| 1.4 | Toca "Otra hora", elige 7:30 p. m. en la rueda y confirma. | La tarjeta muestra el resumen y "Confirmar y agregar" activo; nada queda tapado por el teclado ni por la barra inferior. | ☐ | ☐ |
+| 1.5 | Toca el campo de texto para abrir el teclado otra vez. | La tarjeta y el compositor suben con el teclado, sin saltos ni espacios en blanco. En Android, la barra de pestañas se oculta mientras el teclado está abierto. | ☐ | ☐ |
+| 1.6 | Arrastra la lista hacia abajo. | El teclado se cierra (iOS: de forma interactiva, siguiendo el dedo). | ☐ | ☐ |
+| 1.7 | Confirma. | Aparece una sola línea "✓ Listo, agregué Losartán…" con Ver y Deshacer; Deshacer lo quita de Rutina. | ☐ | ☐ |
+| 1.8 | Botón "+" > Cita médica > Médico general > Elegir fecha. | Se abre la hoja con los próximos 90 días en filas grandes; al elegir uno la tarjeta pasa a la hora. | ☐ | ☐ |
+| 1.9 | Ajustes del sistema: texto en el tamaño más grande. Repite 1.2–1.4. | La tarjeta se puede desplazar por dentro y "Confirmar y agregar" y el compositor siguen visibles. | ☐ | ☐ |
+| 1.10 | VoiceOver / TalkBack activo. Repite 1.2–1.3. | Lee "Paso 2 de 3", la pregunta y cada respuesta como botón. | ☐ | ☐ |
+
+## 2. Notificaciones locales (V2.2)
+
+Ver también `docs/NOTIFICACIONES.md`.
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 2.1 | Ajustes > Notificaciones > "Enviar notificación de prueba al adulto mayor". | Pide el permiso en ese momento (no al abrir la app) y a los 5 s llega "Hola, [nombre]". | ☐ | ☐ |
+| 2.2 | Programa un medicamento para dentro de 3 minutos, entrega el teléfono y bloquéalo. | Llega "Hora de tu medicamento" sin mostrar el nombre en la pantalla bloqueada (salvo que el cuidador lo active). | ☐ | ☐ |
+| 2.3 | Crea una cita para mañana con aviso el día anterior en 2 minutos. | Llega "Mañana tienes cita a las…" con la dirección. | ☐ | ☐ |
+| 2.4 | Cierra BUDDY por completo y espera un aviso programado. | El aviso llega igual (es local, lo programa el propio teléfono). | ☐ | ☐ |
+| 2.5 | Activa No molestar y espera un aviso. | Se comporta según la configuración del sistema (anotar qué pasó). | ☐ | ☐ |
+
+## Pendiente de agregar en los hitos siguientes
+
+Existencias y burbujas del robot (Hitos 3 y 4), robot arrastrable (Hito 4), barra Liquid Glass y gestos entre pestañas (Hito 5), ubicación y mapa (Hito 6), splash nativo y portada de carga (Hito 7).

@@ -1,0 +1,55 @@
+Acierto del corpus: 60.9 % (84/138)
+✗ [cita] "Cita con el cardiólogo mañana a las 3 de la tarde" → specialty: esperaba "Cardiología", obtuvo null
+✗ [cita] "agenda una cita médica el jueves a las 10 de la mañana" → date: esperaba "2026-10-15", obtuvo null
+✗ [cita] "ponle cita con el odontólogo el 15 de noviembre a las 9 am" → specialty: esperaba "Odontología", obtuvo null
+✗ [cita] "cita de laboratorio pasado mañana a las 7 am" → specialty: esperaba "Laboratorio", obtuvo null; date: esperaba "2026-10-14", obtuvo "2026-10-13"
+✗ [cita] "tiene examen de sangre el viernes a las 6:30 am" → esperaba add_appointment; obtuvo nada
+✗ [cita] "Recuérdale que tiene cita con la optómetra el 3 de diciembre a las 2 pm" → specialty: esperaba "Optometría", obtuvo null
+✗ [cita] "cita con el doctor Pérez mañana a las 8" → doctor: esperaba "Dr. Pérez", obtuvo null
+✗ [cita] "cita con la doctora Gómez el lunes 20 de octubre a las 11" → doctor: esperaba "Dra. Gómez", obtuvo null
+✗ [cita] "cita de medicina general en la Clínica Imbanaco el miércoles a las 4 de la tarde" → specialty: esperaba "Medicina general", obtuvo null; institution: esperaba "Clínica Imbanaco", obtuvo null; date: esperaba "2026-10-14", obtuvo null
+✗ [cita] "cita con el cardiólogo en la calle 5 # 10-20 mañana a las 9 am" → specialty: esperaba "Cardiología", obtuvo null; address: esperaba "Calle 5 # 10-20", obtuvo "calle 5 # 10-20 mañana a las 9 am"
+✗ [cita] "programa cita de geriatría el 2 de noviembre a las 10:30 en el Hospital San Ignacio, carrera 7 # 40-62" → specialty: esperaba "Geriatría", obtuvo null; institution: esperaba "Hospital San Ignacio", obtuvo null; address: esperaba "Carrera 7 # 40-62", obtuvo ""
+✗ [cita] "cita con el dermatólogo en dos semanas a las 3 pm" → specialty: esperaba "Dermatología", obtuvo null; date: esperaba "2026-10-26", obtuvo null
+✗ [cita] "tiene control con el médico general el próximo viernes a las 8 de la mañana" → esperaba add_appointment; obtuvo nada
+✗ [cita] "cita odontologia mañana 10 am" → specialty: esperaba "Odontología", obtuvo null
+✗ [cita] "cita con el cardiologo el 15 de noviembre a las 3 de la tarde, telefono 6015551234" → esperaba add_appointment; obtuvo add_emergency_contact
+✗ [cita] "agrega una cita con fisioterapia el martes a las 5 pm" → specialty: esperaba "Fisioterapia", obtuvo null; date: esperaba "2026-10-13", obtuvo null
+✗ [cita] "cita con el oftalmólogo hoy a las 4 pm" → specialty: esperaba "Oftalmología", obtuvo null; date: esperaba "2026-10-12", obtuvo null
+✗ [cita] "cita con el psicólogo el sábado a las 10 am" → specialty: esperaba "Psicología", obtuvo null; date: esperaba "2026-10-17", obtuvo null
+✗ [cita] "cita con la nutricionista el 28 de octubre a las 2 de la tarde" → specialty: esperaba "Nutrición", obtuvo null
+✗ [cita] "cita con el neurólogo el 5 de enero a las 9 de la mañana" → specialty: esperaba "Neurología", obtuvo null
+✗ [cita] "cita con el endocrino mañana a las 7:30 am en la Clínica del Country" → specialty: esperaba "Endocrinología", obtuvo null; institution: esperaba "Clínica del Country", obtuvo null
+✗ [cita] "cita de ortopedia el jueves a las 3 y media de la tarde" → specialty: esperaba "Ortopedia", obtuvo null; date: esperaba "2026-10-15", obtuvo null
+✗ [cita] "cita con el urólogo el 30 de octubre a las 11 am, preguntar por los resultados del examen" → specialty: esperaba "Urología", obtuvo null; questions: esperaba ["Los resultados del examen"], obtuvo null
+✗ [cita] "agenda cita con el médico general el viernes a las 9 am y preguntarle si puede hacer ejercicio" → specialty: esperaba "Medicina general", obtuvo null; date: esperaba "2026-10-16", obtuvo null; questions: esperaba ["Si puede hacer ejercicio"], obtuvo null
+✗ [cita] "cita con el ginecólogo el 12 de noviembre a las 8 am" → specialty: esperaba "Ginecología", obtuvo null
+✗ [cita] "cita con el otorrino el miércoles a las 2 pm" → specialty: esperaba "Otorrinolaringología", obtuvo null; date: esperaba "2026-10-14", obtuvo null
+✗ [cita] "cita de radiografía mañana a las 6 am" → specialty: esperaba "Imágenes diagnósticas", obtuvo null
+✗ [cita] "cita con el neumólogo el próximo lunes a las 10 am" → specialty: esperaba "Neumología", obtuvo null; date: esperaba "2026-10-19", obtuvo null
+✗ [cita] "cita de medicina interna en la calle 50 # 8-24, Bogotá, el 18 de octubre a las 9:15 am" → specialty: esperaba "Medicina interna", obtuvo null; address: esperaba "Calle 50 # 8-24, Bogotá", obtuvo "calle 50 # 8-24, Bogotá, el 18 de octubre a las 9:15 am"
+✗ [cita] "pon una cita con el cardiólogo" → specialty: esperaba "Cardiología", obtuvo null
+✗ [cita] "ecografía el 22 de octubre a las 7 am" → esperaba add_appointment; obtuvo nada
+✗ [medicamento] "agraga dolex" → esperaba add_medication; obtuvo nada
+✗ [medicamento] "progama atorvastatina 20 mg a las 8 de la noche" → name: esperaba "Atorvastatina", obtuvo "Progama Atorvastatina"
+✗ [medicamento] "pon una y media pastilla de levotiroxina a las 6 am" → name: esperaba "Levotiroxina", obtuvo ""
+✗ [medicamento] "recuérdale tomar acetaminofén cada 8 horas" → esperaba add_medication; obtuvo add_note_for_elder
+✗ [medicamento] "anota que tome aspirina 100 mg con el almuerzo" → name: esperaba "Aspirina", obtuvo "Anota"
+✗ [medicamento] "agrega losartan de 50 mg" → name: esperaba "Losartán", obtuvo "Losartan"
+✗ [medicamento] "ponle losartn a las 8 am" → name: esperaba "Losartán", obtuvo "Losartn"
+✗ [medicamento] "agrega metformna 500 mg" → name: esperaba "Metformina", obtuvo "Metformna"
+✗ [medicamento] "ponlee atorvastatna a las 9 pm" → esperaba add_medication; obtuvo nada
+✗ [contacto] "contacto de emergencia: vecina Luz 3201112233" → relation: esperaba "Vecina", obtuvo ""
+✗ [contacto] "agrega un contacto de emergencia" → esperaba add_emergency_contact; obtuvo add_medication
+✗ [contacto] "añade contacto Elena vecina 3209998877" → relation: esperaba "Vecina", obtuvo ""
+✗ [comida] "desayuno a las 7 y almuerzo a la 1" → esperaba add_meal_reminder; obtuvo query_summary
+✗ [comida] "desayuno a las 8 am" → esperaba add_meal_reminder; obtuvo query_summary
+✗ [comida] "que almuerce a la 1 de la tarde" → esperaba add_meal_reminder; obtuvo nada
+✗ [consulta] "¿qué puedes hacer?" → esperaba show_menu; obtuvo nada
+✗ [consulta] "ayuda" → esperaba show_menu; obtuvo nada
+✗ [consulta] "¿para qué sirve el losartán?" → esperaba medication_info; obtuvo nada
+✗ [consulta] "¿qué es el dolex?" → esperaba medication_info; obtuvo nada
+✗ [edicion] "quitale el losartam" → match: esperaba "Losartán", obtuvo ""
+✗ [edicion] "elimina la metformna" → match: esperaba "Metformina", obtuvo ""
+✗ [mensaje] "recuérdale llamar a su nieta los domingos a las 5" → title: esperaba "Llamar a su nieta", obtuvo "Llamar a su nieta los domingos"
+✗ [mensaje] "recordatorio de pagar el recibo de la luz el viernes a las 10 am" → title: esperaba "Pagar el recibo de la luz", obtuvo "Pagar el recibo de la luz el viernes"

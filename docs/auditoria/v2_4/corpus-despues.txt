@@ -1,0 +1,4 @@
+Acierto del corpus: 100.0 % (138/138)
+Acierto del conjunto reservado: 95.8 % (23/24)
+✗ [cita] "tiene que ir al laboratorio en 3 días a las 6 am" → esperaba add_appointment; obtuvo nada
+Tests:       3 passed, 3 total

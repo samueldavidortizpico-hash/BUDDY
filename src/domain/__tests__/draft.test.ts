@@ -15,7 +15,7 @@ describe('frases que antes BUDDY no entendía (causa de "casi no agrega nada")',
     ['agrega metformina 850 mg en el desayuno y la cena', { type: 'add_medication', name: 'Metformina', strength: '850 mg', times: ['07:30', '18:30'], instructions: 'Con comida' }],
     ['quiero agregar un medicamento', { type: 'add_medication', name: '' }],
     ['ponle agua', { type: 'set_water_goal', glasses: 0 }],
-    ['ponle una cita mañana con el cardiólogo', { type: 'add_appointment', title: 'Cita con cardiólogo' }],
+    ['ponle una cita mañana con el cardiólogo', { type: 'add_appointment', title: 'Cita de cardiología', specialty: 'Cardiología' }],
     ['mándale un mensaje: te quiero mucho', { type: 'send_message', text: 'Te quiero mucho' }],
   ])('"%s"', (text, expected) => {
     expect(first(text)).toMatchObject(expected);
@@ -39,7 +39,7 @@ describe('borrador', () => {
   });
 
   it('pregunta solo lo obligatorio que falta y deja de preguntar al completarlo', () => {
-    expect(nextQuestion([med], ctx)).toMatchObject({ field: 'doseAmount', quickReplies: ['½ tableta', '1 tableta', '2 tabletas'] });
+    expect(nextQuestion([med], ctx)).toMatchObject({ field: 'doseAmount', quickReplies: ['½ tableta', '1 tableta', '1½ tabletas', '2 tabletas'] });
     const done = applyField(med, 'doseAmount', '½ tableta');
     expect(nextQuestion([done], ctx)).toBeNull();
     expect(draftComplete({ actions: [done] })).toBe(true);

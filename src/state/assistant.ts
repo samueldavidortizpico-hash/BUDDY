@@ -230,7 +230,12 @@ function run(a: AssistantAction): ExecResult {
       return { ok: true, summary: doneText(a), undo: () => ids.forEach((id) => routineActions.removeMeal(id)), refs: ids.map((id) => ({ coll: 'meals' as const, id })), segment: 'meals' };
     }
     case 'add_appointment': {
-      const ap = routineActions.addAppointment(a.title, a.date ?? toISODate(new Date()), a.time ?? '09:00', a.address ?? '', elderId);
+      const ap = routineActions.addAppointment(a.title, a.date ?? toISODate(new Date()), a.time ?? '09:00', a.address ?? '', elderId, {
+        doctor: a.doctor ?? a.specialty,
+        institution: a.institution,
+        phone: a.phone,
+        questions: a.questions,
+      });
       return { ok: true, summary: doneText(a), undo: () => routineActions.removeAppointment(ap.id), refs: [{ coll: 'appointments', id: ap.id }], segment: 'more' };
     }
     case 'add_note_for_elder': {

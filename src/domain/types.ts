@@ -207,6 +207,8 @@ export interface Appointment extends SyncMeta {
   place: string;
   /** Especialidad o médico. */
   doctor?: string;
+  /** Clínica, hospital o consultorio. */
+  institution?: string;
   city?: string;
   /** Punto de referencia ("frente al parque"). */
   reference?: string;
@@ -218,8 +220,8 @@ export interface Appointment extends SyncMeta {
 }
 
 /** "Calle 10 # 5-20, Bogotá (frente al parque)". */
-export function appointmentAddress(a: Pick<Appointment, 'place' | 'city' | 'reference'>): string {
-  const main = [a.place, a.city].map((x) => x?.trim()).filter(Boolean).join(', ');
+export function appointmentAddress(a: Pick<Appointment, 'place' | 'city' | 'reference'> & { institution?: string }): string {
+  const main = [a.institution, a.place, a.city].map((x) => x?.trim()).filter(Boolean).join(', ');
   return a.reference?.trim() ? `${main}${main ? ' ' : ''}(${a.reference.trim()})` : main;
 }
 

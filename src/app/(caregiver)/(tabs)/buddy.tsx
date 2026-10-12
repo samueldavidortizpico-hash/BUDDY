@@ -1,53 +1,37 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import Animated, { FadeInDown, LinearTransition, useReducedMotion, ZoomIn } from 'react-native-reanimated';
+import { FlatList, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { Chip } from '@/components/forms';
-import { Icon, type IconName } from '@/components/icon';
+import { BottomSheet } from '@/components/feedback';
+import { Icon } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
-import { draftComplete, draftFields, draftTitle, type Draft } from '@/domain/assistant/draft';
-import { EXAMPLES } from '@/domain/assistant/engine';
-import type { AssistantAction, FieldKey } from '@/domain/assistant/types';
+import type { MenuKey } from '@/domain/assistant/draft';
 import type { AssistantMessage } from '@/domain/types';
-import { FINAL, useBuddyChat } from '@/features/chat/use-chat';
+import { ActionMenu, TaskCard } from '@/features/chat/task-card';
+import { DONE, MENU, useBuddyChat } from '@/features/chat/use-chat';
 import { PreviewSheetButton } from '@/features/elder/phone-preview';
 import { savePhoto } from '@/infrastructure/local/media';
 import { strings } from '@/i18n';
-import { SUGGESTIONS, conversation } from '@/state/assistant';
+import { SUGGESTIONS, conversation, type RoutineSegment } from '@/state/assistant';
 import { routineActions } from '@/state/actions';
 import { useActiveElder, useRecords } from '@/state/data';
-import { radius, spacing, touch, type, type Domain } from '@/theme';
+import { radius, spacing, touch, type } from '@/theme';
 import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
 import { formatClock } from '@/utils/dates';
 
 const B = strings.buddy;
-
-const DOMAIN: Partial<Record<AssistantAction['type'], { d: Domain; icon: IconName }>> = {
-  add_medication: { d: 'medication', icon: 'meds' },
-  update_medication: { d: 'medication', icon: 'meds' },
-  remove_medication: { d: 'medication', icon: 'trash' },
-  update_stock: { d: 'followUp', icon: 'box' },
-  set_water_goal: { d: 'water', icon: 'drop' },
-  add_activity_goal: { d: 'activity', icon: 'walk' },
-  set_steps_goal: { d: 'activity', icon: 'walk' },
-  add_emergency_contact: { d: 'contact', icon: 'phone' },
-  update_emergency_contact: { d: 'contact', icon: 'phone' },
-  set_checkin_time: { d: 'mood', icon: 'smile' },
-  add_meal_reminder: { d: 'food', icon: 'food' },
-  add_appointment: { d: 'followUp', icon: 'calendar' },
-  add_note_for_elder: { d: 'contact', icon: 'bell' },
-  send_message: { d: 'contact', icon: 'chat' },
-};
-const metaOf = (a: AssistantAction) => DOMAIN[a.type] ?? { d: 'activity' as Domain, icon: 'sparkle' as IconName };
+/** Mensajes visibles antes de "Ver mensajes anteriores". */
+const VISIBLE = 10;
 
 /**
- * BUDDY: centro de mando conversacional del cuidador. Entiende, prepara un borrador, pregunta de a un dato y solo
- * cambia algo cuando confirmas. La tarjeta del borrador queda FIJA sobre el compositor: nunca se pierde arriba.
+ * BUDDY: centro de mando del cuidador (V2.4). Cuatro regiones: encabezado compacto, historial breve y plegable,
+ * tarjeta de tarea activa FIJA sobre el compositor (pregunta, respuestas tocables, confirmación) y compositor.
+ * Escribir es opcional: todo se puede hacer con el menú de 8 acciones y las respuestas predeterminadas.
  */
 export default function Buddy() {
   const router = useRouter();
@@ -55,30 +39,36 @@ export default function Buddy() {
   const s = useStyles();
   const scale = useTextScaleFactor();
   const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const elder = useActiveElder();
   const records = useRecords('messages');
   const messages = useMemo(() => [...records].sort((a, b) => a.createdAt.localeCompare(b.createdAt)), [records]);
-  const meds = useRecords('medications');
   const contacts = useRecords('contacts');
   const primary = contacts.find((c) => c.primary) ?? contacts[0];
   const [text, setText] = useState('');
   const [bump, setBump] = useState(0);
+  const [showAll, setShowAll] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [atEnd, setAtEnd] = useState(true);
+  const [listH, setListH] = useState(0);
   const list = useRef<FlatList<AssistantMessage>>(null);
 
+  const openRoutine = (seg: RoutineSegment) => router.push({ pathname: '/routine', params: { seg } } as unknown as Href);
   const chat = useBuddyChat({
     openScan: () => router.push('/medication/scan'),
-    openRoutine: (seg) => router.push({ pathname: '/routine', params: { seg } } as unknown as Href),
+    openRoutine,
     openPreview: () => router.push('/handoff' as Href),
     openFeed: () => router.push('/alerts' as Href),
     call: (phone) => Linking.openURL(`tel:${phone.replace(/\s/g, '')}`),
     primary: primary ? { name: primary.name, phone: primary.phone } : undefined,
   });
 
-  // Siempre al final: cada mensaje nuevo, la escritura de BUDDY y los cambios del borrador.
+  // Al final con cada mensaje nuevo (salvo que el cuidador esté leyendo arriba).
   useEffect(() => {
-    const id = setTimeout(() => list.current?.scrollToEnd({ animated: true }), 80);
+    if (!atEnd) return;
+    const id = setTimeout(() => list.current?.scrollToEnd({ animated: !reduce }), 80);
     return () => clearTimeout(id);
-  }, [messages.length, chat.typing, chat.draft?.asking?.field, chat.draft?.asking?.index]);
+  }, [messages.length, chat.typing, atEnd, reduce]);
 
   if (!elder?.setupDone) {
     return (
@@ -96,6 +86,7 @@ export default function Buddy() {
     if (!raw.trim()) return;
     setText('');
     setBump((b) => b + 1);
+    setAtEnd(true);
     chat.send(raw);
   };
 
@@ -107,17 +98,28 @@ export default function Buddy() {
     router.push({ pathname: '/medication/new', params: { photo: uri } });
   };
 
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    setAtEnd(contentSize.height - (contentOffset.y + layoutMeasurement.height) < 160);
+  };
+
+  const hidden = showAll ? 0 : Math.max(0, messages.length - VISIBLE);
+  const visible = hidden ? messages.slice(hidden) : messages;
   const last = messages.at(-1);
-  const lastQuick = last?.from === 'buddy' && !chat.typing ? last.quickReplies : [];
-  const chips = meds.length ? B.chipsFull : B.chipsEmpty;
+  const lastQuick = !chat.draft && last?.from === 'buddy' && !chat.typing ? (last.quickReplies ?? []) : [];
+  const pickMenu = (key: MenuKey) => {
+    setMenuOpen(false);
+    setAtEnd(true);
+    chat.menu(key);
+  };
 
   return (
     <View style={s.root}>
       <View style={[s.header, { paddingTop: insets.top + spacing.xs }]}>
         <BuddyRobot size={56} compact mood={chat.mood} bump={bump} shadow={false} flying={false} />
         <View style={s.flex}>
-          <AppText variant="h3">{strings.brand.name}</AppText>
-          <AppText variant="caption" color={t.c.muted}>{strings.summary.caring(elder.firstName)}</AppText>
+          <AppText variant="h3" maxScale={1.4} numberOfLines={1}>{strings.brand.name}</AppText>
+          <AppText variant="caption" color={t.c.muted} numberOfLines={1} maxScale={1.4}>{strings.summary.caring(elder.firstName)}</AppText>
         </View>
         <PreviewSheetButton compact />
         {messages.length ? (
@@ -127,57 +129,64 @@ export default function Buddy() {
         ) : null}
       </View>
 
-      <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <FlatList
-          ref={list}
-          testID="chat-list"
-          data={messages}
-          keyExtractor={(m) => m.id}
-          style={s.flex}
-          contentContainerStyle={s.list}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => list.current?.scrollToEnd({ animated: false })}
-          ListEmptyComponent={
-            <View style={s.emptyWrap}>
-              <BuddyRobot size={120} mood="wave" />
-              <AppText variant="h2" align="center">{B.emptyTitle(elder.firstName)}</AppText>
-              <AppText variant="secondary" color={t.c.muted} align="center">{B.emptyBody}</AppText>
-              {EXAMPLES.map((e) => (
-                <Pressable key={e} onPress={() => send(e)} accessibilityRole="button" accessibilityLabel={e} style={s.example}>
-                  <Icon name="sparkle" color={t.ink.mint} size={18} />
-                  <AppText variant="secondaryStrong" style={s.flex}>{`“${e}”`}</AppText>
-                </Pressable>
-              ))}
-            </View>
-          }
-          renderItem={({ item: m }) => (
-            <Message m={m} draft={chat.draft} onConfirm={chat.confirm} onCancel={chat.cancel} onEdit={() => chat.draft && chat.edit(0, firstEditable(chat.draft))} />
+      <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={s.flex}>
+          <FlatList
+            ref={list}
+            testID="chat-list"
+            data={visible}
+            keyExtractor={(m) => m.id}
+            style={s.flex}
+            contentContainerStyle={s.list}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            onScroll={onScroll}
+            onLayout={(e) => setListH(e.nativeEvent.layout.height)}
+            scrollEventThrottle={64}
+            ListHeaderComponent={hidden ? <Button label={B.olderMessages(hidden)} size="sm" variant="ghost" onPress={() => setShowAll(true)} style={s.older} /> : null}
+            ListEmptyComponent={
+              <View style={s.emptyWrap}>
+                {/* El robot ya está en el encabezado: aquí solo el título y las 8 acciones, que caben sin desplazar. */}
+                <AppText variant="h2" align="center">{B.emptyTitle(elder.firstName)}</AppText>
+                <ActionMenu onPick={pickMenu} />
+              </View>
+            }
+            renderItem={({ item: m }) => <Message m={m} onMenu={pickMenu} onSee={openRoutine} onUndo={chat.undo} />}
+            ListFooterComponent={
+              <>
+                {chat.typing ? <Typing /> : null}
+                {lastQuick.length ? (
+                  <Animated.View entering={reduce ? undefined : FadeInDown.duration(200)} style={s.quick}>
+                    {lastQuick.map((q) => (
+                      <Button key={q} label={q} size="sm" variant="tonal" tone="mint" onPress={() => chat.quick(q)} />
+                    ))}
+                  </Animated.View>
+                ) : null}
+              </>
+            }
+          />
+          {atEnd || listH < 140 ? null : (
+            <Animated.View entering={reduce ? undefined : FadeIn.duration(160)} style={s.toEnd}>
+              <Button
+                label={B.goToEnd}
+                icon="arrow"
+                size="sm"
+                variant="tonal"
+                onPress={() => {
+                  setAtEnd(true);
+                  list.current?.scrollToEnd({ animated: !reduce });
+                }}
+              />
+            </Animated.View>
           )}
-          ListFooterComponent={
-            <>
-              {chat.typing ? <Typing /> : null}
-              {lastQuick.length ? (
-                <Animated.View entering={FadeInDown.duration(200)} style={s.quick}>
-                  {lastQuick.map((q) => (
-                    <Chip key={q} label={q} onPress={() => chat.quick(q)} tone="mint" />
-                  ))}
-                </Animated.View>
-              ) : null}
-            </>
-          }
-        />
+        </View>
 
-        {chat.draft ? (
-          <DraftCard draft={chat.draft} onConfirm={chat.confirm} onCancel={chat.cancel} onEdit={chat.edit} />
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips} style={s.chipsBar} keyboardShouldPersistTaps="handled">
-            {chips.map((c) => (
-              <Chip key={c} label={c} onPress={() => (c === B.scanChip ? router.push('/medication/scan') : setText(c))} />
-            ))}
-          </ScrollView>
-        )}
+        {chat.draft ? <TaskCard draft={chat.draft} hint={chat.hint} onAnswer={chat.answer} onConfirm={chat.confirm} onCancel={chat.cancel} onEdit={chat.edit} /> : null}
 
         <View style={[s.composer, t.hairline]}>
+          <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel={B.openMenu} style={s.tool}>
+            <Icon name="plus" color={t.c.text} />
+          </Pressable>
           <Pressable onPress={() => router.push('/medication/scan')} accessibilityRole="button" accessibilityLabel={strings.scan.title} style={s.tool}>
             <Icon name="camera" color={t.c.text} />
           </Pressable>
@@ -190,144 +199,72 @@ export default function Buddy() {
             placeholder={B.placeholder}
             placeholderTextColor={t.dark ? '#7F99A0' : '#7A8797'}
             accessibilityLabel={B.placeholder}
-            style={[s.input, { fontSize: type.secondary.fontSize * scale, color: t.c.text }]}
+            // Tope ×1.5: con más, el texto no cabe en el compositor junto a sus botones.
+            style={[s.input, { fontSize: type.secondary.fontSize * Math.min(scale, 1.5), color: t.c.text }]}
             multiline
             onSubmitEditing={() => send(text)}
             returnKeyType="send"
-            blurOnSubmit
+            submitBehavior="blurAndSubmit"
           />
-          <Pressable onPress={() => send(text)} disabled={!text.trim()} accessibilityRole="button" accessibilityLabel={B.send} style={[s.send, !text.trim() && s.disabled]}>
+          <Pressable
+            onPress={() => send(text)}
+            disabled={!text.trim()}
+            accessibilityRole="button"
+            accessibilityLabel={B.send}
+            accessibilityState={{ disabled: !text.trim() }}
+            style={[s.send, !text.trim() && s.disabled]}
+          >
             <Icon name="send" color={t.hc ? t.c.bg : '#FFFFFF'} size={20} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      <BottomSheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={B.menuTitle}>
+        <ActionMenu onPick={pickMenu} />
+      </BottomSheet>
     </View>
   );
 }
 
-/** Primer dato que conviene editar: el primero vacío; si no hay, el primero. */
-function firstEditable(d: Draft): FieldKey {
-  const f = draftFields(d.actions[0]);
-  return (f.find((x) => x.value === null) ?? f[0]).key;
-}
-
-function Message({ m, draft, onConfirm, onCancel, onEdit }: { m: AssistantMessage; draft: Draft | null; onConfirm: () => void; onCancel: () => void; onEdit: () => void }) {
+function Message({ m, onMenu, onSee, onUndo }: { m: AssistantMessage; onMenu: (key: MenuKey) => void; onSee: (seg: RoutineSegment) => void; onUndo: (id: string) => void }) {
   const t = useTheme();
   const s = useStyles();
   const reduce = useReducedMotion();
   const mine = m.from === 'user';
-  const p = m.proposal ? (JSON.parse(m.proposal) as { kind?: string; draftId?: string; suggestions?: boolean }) : null;
-  const final = p?.kind === FINAL;
-  const live = final && m.proposalState === 'open' && draft?.id === p?.draftId;
+  const p = m.proposal ? (JSON.parse(m.proposal) as { kind?: string; segment?: RoutineSegment; suggestions?: boolean }) : null;
+
+  // Tarea terminada: una sola línea con Ver y Deshacer.
+  if (p?.kind === DONE) {
+    const undone = m.proposalState === 'cancelled';
+    return (
+      <Animated.View testID="task-done" entering={reduce ? undefined : FadeIn.duration(200)} style={[s.done, t.hairline]}>
+        <Icon name={undone ? 'close' : 'check'} color={undone ? t.c.muted : t.ink.mint} size={20} />
+        {/* Texto completo: puede incluir la revisión de BUDDY ("No encontré coincidencias…"), que no se recorta. */}
+        <AppText variant="captionStrong" style={s.flex} color={undone ? t.c.muted : t.c.text}>
+          {m.text}
+        </AppText>
+        <View style={s.doneActions}>
+          {undone ? (
+            <AppText variant="caption" color={t.c.muted}>{B.cancelled}</AppText>
+          ) : (
+            <>
+              <Button label={B.see} size="sm" variant="ghost" onPress={() => onSee(p.segment ?? 'meds')} />
+              <Button label={strings.common.undo} size="sm" variant="ghost" onPress={() => onUndo(m.id)} />
+            </>
+          )}
+        </View>
+      </Animated.View>
+    );
+  }
+
   return (
-    <Animated.View entering={reduce ? undefined : ZoomIn.duration(200)} style={[s.msgRow, mine && s.mineRow]}>
+    <Animated.View entering={reduce ? undefined : FadeIn.duration(180)} style={[s.msgRow, mine && s.mineRow]}>
       <View style={[s.bubble, mine ? s.mine : s.theirs]}>
         {m.imageUri ? <AppText variant="caption" color={mine ? t.c.onPrimary : t.c.muted}>{B.photoSent}</AppText> : null}
         <AppText variant="secondary" color={mine ? t.c.onPrimary : t.c.text}>{m.text}</AppText>
       </View>
-      {final ? (
-        <View testID={live ? 'chat-final-confirm' : undefined} style={s.finalCard}>
-          {live && draft ? (
-            <>
-              {draft.actions.map((a, i) => (
-                <ActionSummary key={i} a={a} />
-              ))}
-              <Button label={B.confirmAdd} icon="check" size="md" haptic onPress={onConfirm} />
-              <View style={s.actionsRow}>
-                <Button label={strings.common.edit} icon="pencil" size="sm" variant="ghost" onPress={onEdit} style={s.flex} />
-                <Button label={strings.common.cancel} size="sm" variant="ghost" onPress={onCancel} style={s.flex} />
-              </View>
-            </>
-          ) : (
-            <AppText variant="caption" color={m.proposalState === 'confirmed' ? t.ink.mint : t.c.muted}>
-              {m.proposalState === 'confirmed' ? B.confirmed : B.cancelled}
-            </AppText>
-          )}
-        </View>
-      ) : null}
+      {p?.kind === MENU ? <ActionMenu onPick={onMenu} /> : null}
       {p?.suggestions ? <Suggestions /> : null}
-    </Animated.View>
-  );
-}
-
-function ActionSummary({ a }: { a: AssistantAction }) {
-  const t = useTheme();
-  const s = useStyles();
-  const meta = metaOf(a);
-  const d = t.domains[meta.d];
-  const filled = draftFields(a).filter((f) => f.value !== null);
-  return (
-    <View style={[s.action, { backgroundColor: t.hc ? t.c.bg : d.gradient[0], borderColor: t.hc ? t.c.text : d.accent }]}>
-      <Icon name={meta.icon} color={t.hc ? t.c.text : d.accent} />
-      <View style={s.flex}>
-        <AppText variant="secondaryStrong" color={t.hc ? t.c.text : d.text}>{draftTitle(a)}</AppText>
-        <AppText variant="caption" color={t.hc ? t.c.text : d.muted}>{filled.map((f) => `${f.label}: ${f.value}`).join(' · ')}</AppText>
-      </View>
-    </View>
-  );
-}
-
-/** Tarjeta fija del borrador, justo encima del compositor. Se llena a medida que el cuidador responde. */
-function DraftCard({ draft, onConfirm, onCancel, onEdit }: { draft: Draft; onConfirm: () => void; onCancel: () => void; onEdit: (index: number, field: FieldKey) => void }) {
-  const t = useTheme();
-  const s = useStyles();
-  const reduce = useReducedMotion();
-  const [editing, setEditing] = useState(false);
-  const ready = draftComplete(draft);
-  const all = draft.actions.flatMap((a, index) => draftFields(a).map((f) => ({ ...f, index })));
-  const required = all.filter((f) => f.required);
-  const done = required.filter((f) => f.value !== null).length;
-  const first = draft.actions[0];
-  const meta = metaOf(first);
-  const d = t.domains[meta.d];
-  return (
-    <Animated.View testID="draft-pinned" layout={reduce ? undefined : LinearTransition.duration(180)} style={[s.pinned, t.hairline, t.shadow.soft]}>
-      <View style={s.pinnedHead}>
-        <View style={[s.pinnedIcon, { backgroundColor: t.hc ? t.c.bg : d.gradient[0] }]}>
-          <Icon name={meta.icon} color={t.hc ? t.c.text : d.accent} size={20} />
-        </View>
-        <View style={s.flex}>
-          <AppText variant="secondaryStrong" numberOfLines={2}>
-            {draft.actions.length > 1 ? `${draftTitle(first)} (+${draft.actions.length - 1})` : draftTitle(first)}
-          </AppText>
-          <AppText variant="caption" color={ready ? t.ink.mint : t.c.muted} accessibilityLiveRegion="polite">
-            {ready ? B.draftReady : B.draftProgress(done, required.length)}
-          </AppText>
-        </View>
-      </View>
-      <View style={s.fields}>
-        {all
-          .filter((f) => editing || f.required || f.value !== null)
-          .map((f) => {
-            const asking = draft.asking?.index === f.index && draft.asking.field === f.key;
-            const key = `${f.index}-${f.key}-${f.label}`;
-            const label = `${f.label}: ${f.value ?? (f.required ? B.pending : B.optional)}`;
-            const pill = (
-              <View style={[s.pill, f.value === null && s.pillEmpty, asking && { borderColor: t.hc ? t.c.text : t.c.mintStrong, borderWidth: 2 }]}>
-                <Icon name={f.value !== null ? 'check' : asking ? 'chat' : 'minus'} size={14} color={f.value !== null ? t.ink.mint : t.c.muted} />
-                <AppText variant="captionStrong" color={f.value !== null ? t.c.text : t.c.muted} numberOfLines={1} style={s.pillText}>
-                  {f.value !== null && f.key === 'name' ? f.value : label}
-                </AppText>
-              </View>
-            );
-            return editing ? (
-              <Pressable key={key} onPress={() => onEdit(f.index, f.key)} accessibilityRole="button" accessibilityLabel={label} style={s.pillHit}>
-                {pill}
-              </Pressable>
-            ) : (
-              <View key={key} accessible accessibilityLabel={label}>
-                {pill}
-              </View>
-            );
-          })}
-      </View>
-      {editing ? <AppText variant="caption" color={t.c.muted}>{B.editHint}</AppText> : null}
-      {first.type === 'add_medication' && !ready ? <AppText variant="caption" color={t.c.muted}>{B.doseRule}</AppText> : null}
-      <Button label={B.confirmAdd} icon="check" size="md" haptic disabled={!ready} onPress={onConfirm} />
-      <View style={s.actionsRow}>
-        <Button label={editing ? strings.common.done : strings.common.edit} icon="pencil" size="sm" variant="ghost" onPress={() => setEditing((e) => !e)} style={s.flex} />
-        <Button label={strings.common.cancel} size="sm" variant="ghost" onPress={onCancel} style={s.flex} />
-      </View>
     </Animated.View>
   );
 }
@@ -338,7 +275,7 @@ function Suggestions() {
   const s = useStyles();
   const [added, setAdded] = useState<string[]>([]);
   return (
-    <View style={s.finalCard}>
+    <View style={s.suggestions}>
       {SUGGESTIONS.map((sg) => (
         <View key={sg.title} style={[s.action, { backgroundColor: t.hc ? t.c.bg : t.domains.activity.gradient[0], borderColor: t.hc ? t.c.text : t.domains.activity.accent }]}>
           <View style={s.flex}>
@@ -370,7 +307,7 @@ function Typing() {
   return (
     <View style={s.msgRow} accessibilityLabel={B.typing}>
       <View style={[s.bubble, s.theirs, s.typing]}>
-        <BuddyRobot size={56} compact mood="think" shadow={false} flying={false} />
+        <BuddyRobot size={48} compact mood="think" shadow={false} flying={false} />
       </View>
     </View>
   );
@@ -379,37 +316,27 @@ function Typing() {
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    grow: { flexGrow: 1, flexBasis: 150 },
     root: { flex: 1, backgroundColor: t.c.bg },
     header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.screen, paddingBottom: spacing.xs, backgroundColor: t.c.glass, borderBottomWidth: t.borderWidth, borderBottomColor: t.c.border },
     headerBtn: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center' },
-    list: { padding: spacing.screen, paddingBottom: spacing.md, flexGrow: 1 },
-    emptyWrap: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.lg, paddingHorizontal: spacing.screen },
-    example: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'stretch', minHeight: touch.min, padding: spacing.md, borderRadius: radius.button, backgroundColor: t.c.surface, ...t.hairline },
-    msgRow: { gap: spacing.xs, alignItems: 'flex-start', marginBottom: spacing.sm },
+    list: { padding: spacing.screen, paddingBottom: spacing.md, flexGrow: 1, gap: spacing.sm },
+    older: { alignSelf: 'center' },
+    emptyWrap: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
+    msgRow: { gap: spacing.xs, alignItems: 'flex-start' },
     mineRow: { alignItems: 'flex-end' },
     bubble: { maxWidth: '88%', paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 20 },
     mine: { backgroundColor: t.hc ? t.c.text : t.c.primary, borderBottomRightRadius: 6 },
     theirs: { backgroundColor: t.c.surface, borderBottomLeftRadius: 6, ...t.hairline },
     typing: { paddingVertical: 2, paddingHorizontal: spacing.xs },
-    finalCard: { alignSelf: 'stretch', gap: spacing.xs, padding: spacing.sm, borderRadius: radius.card, backgroundColor: t.c.surface, ...t.hairline, ...t.shadow.soft },
+    done: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, backgroundColor: t.c.surface },
+    doneActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs, flexGrow: 1 },
+    suggestions: { alignSelf: 'stretch', gap: spacing.xs, padding: spacing.sm, borderRadius: radius.card, backgroundColor: t.c.surface, ...t.hairline },
     action: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, borderLeftWidth: 4, borderWidth: t.hc ? 2 : 0 },
-    row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
-    quick: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    chipsBar: { flexGrow: 0 },
-    chips: { paddingHorizontal: spacing.screen, gap: spacing.xs, paddingVertical: spacing.xs },
-    pinned: { marginHorizontal: spacing.md, marginBottom: spacing.xs, padding: spacing.sm, gap: spacing.xs, borderRadius: radius.card, backgroundColor: t.c.surface },
-    pinnedHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    pinnedIcon: { width: 40, height: 40, borderRadius: radius.icon, alignItems: 'center', justifyContent: 'center' },
-    fields: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    pill: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32, maxWidth: '100%', paddingHorizontal: spacing.xs, borderRadius: radius.pill, borderWidth: 1, borderColor: t.c.border, backgroundColor: t.c.surface2 },
-    pillEmpty: { backgroundColor: t.c.surface, borderStyle: 'dashed' },
-    pillText: { flexShrink: 1 },
-    pillHit: { minHeight: touch.min, justifyContent: 'center' },
-    actionsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs, marginHorizontal: spacing.md, marginBottom: spacing.xs, padding: spacing.xs, minHeight: touch.timeRow, borderRadius: 28, backgroundColor: t.c.surface },
-    tool: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center' },
-    input: { flex: 1, minHeight: touch.min, maxHeight: 120, paddingVertical: spacing.sm, fontFamily: 'Manrope_600SemiBold' },
+    quick: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
+    toEnd: { position: 'absolute', bottom: spacing.sm, alignSelf: 'center' },
+    composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, marginHorizontal: spacing.md, marginBottom: spacing.xs, padding: spacing.xs, minHeight: touch.timeRow, borderRadius: 28, backgroundColor: t.c.surface },
+    tool: { width: touch.min - 4, height: touch.min, alignItems: 'center', justifyContent: 'center' },
+    input: { flex: 1, minHeight: touch.min, maxHeight: 120, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, fontFamily: 'Manrope_600SemiBold' },
     send: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.hc ? t.c.text : t.c.primary },
     disabled: { opacity: 0.4 },
   }),

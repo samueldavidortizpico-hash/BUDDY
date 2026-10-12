@@ -142,7 +142,7 @@ export const routineActions = {
   removeReminder: (id: string) => db.remove('reminders', id),
   restoreReminder: (id: string) => db.restore('reminders', id),
   restoreAppointment: (id: string) => db.restore('appointments', id),
-  addAppointment(title: string, date: string, time: ClockTime, place: string, elderId?: string, extra: Partial<Pick<Appointment, 'doctor' | 'city' | 'reference' | 'phone' | 'notes' | 'questions'>> = {}) {
+  addAppointment(title: string, date: string, time: ClockTime, place: string, elderId?: string, extra: Partial<Pick<Appointment, 'doctor' | 'institution' | 'city' | 'reference' | 'phone' | 'notes' | 'questions'>> = {}) {
     return db.insert('appointments', { title, date, time, place, ...extra }, actor(requireElder(elderId)));
   },
   updateAppointment: (id: string, patch: Partial<Appointment>) => db.update('appointments', id, patch),

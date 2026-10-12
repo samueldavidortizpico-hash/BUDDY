@@ -1,7 +1,7 @@
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,6 +36,18 @@ export function BottomTabBar({
   const item = width / state.routes.length;
   const x = useSharedValue(0);
   const featuredActive = state.routes[state.index]?.name === featured;
+  // En Android (edge-to-edge) la barra quedaría flotando sobre el teclado y taparía el compositor del chat: se oculta
+  // mientras el teclado está abierto (como tabBarHideOnKeyboard). En iOS el teclado ya la cubre.
+  const [keyboard, setKeyboard] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboard(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const target = state.index * item + (item - PILL_W) / 2;
@@ -43,6 +55,7 @@ export function BottomTabBar({
   }, [state.index, item, reduceMotion, x]);
 
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  if (keyboard) return null;
 
   return (
     <View style={[s.outer, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>

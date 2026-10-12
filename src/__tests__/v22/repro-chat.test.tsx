@@ -38,8 +38,10 @@ it('pide un medicamento, completa lo obligatorio y lo agrega desde la tarjeta fi
   // La tarjeta fija está fuera de la lista de mensajes, siempre visible sobre el compositor.
   const pinned = screen.getByTestId('draft-pinned');
   expect(within(screen.getByTestId('chat-list')).queryByTestId('draft-pinned')).toBeNull();
-  // Con lo obligatorio completo BUDDY deja de preguntar y su último mensaje es la confirmación.
-  expect(screen.getByTestId('chat-final-confirm')).toBeTruthy();
+  // Con lo obligatorio completo BUDDY deja de preguntar: la tarjeta fija muestra el resumen y la confirmación activa
+  // (V2.4: la confirmación vive en la tarjeta, que nunca queda enterrada en el historial).
+  expect(within(pinned).queryByText(/¿Cuánto toma/)).toBeNull();
+  expect(within(pinned).getByRole('button', { name: 'Confirmar y agregar' }).props.accessibilityState?.disabled).toBeFalsy();
   fireEvent.press(within(pinned).getByRole('button', { name: 'Confirmar y agregar' }));
   await act(async () => { jest.advanceTimersByTime(1500); });
   const meds = db.list('medications', testUser.id, elderId);

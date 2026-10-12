@@ -7,8 +7,10 @@ import { spreadTimes } from '../time';
 import type { ActivityKind, MealKind, MedForm, Weekday } from '../types';
 import { normalizeText } from '../validation';
 
+import { APPOINTMENT_INTENT, parseAppointment } from './appointment';
 import {
   clean,
+  closest,
   defaultTimes,
   numberBefore,
   parseDays,
@@ -32,8 +34,12 @@ export const EXAMPLES = [
 
 const EMERGENCY = /\bdolor (de|en el) pecho\b|\bse (cayo|callo)\b|\bcaida\b|\bno respira\b|\bdesmay|\binconsciente\b|\bhacerse dano\b|\bquitarse la vida\b|\bsuicid|\bconvulsion|\bsangra mucho\b|\bse ahoga\b/;
 const MED_WORDS = /\b(pastillas?|tabletas?|capsulas?|medicamentos?|medicinas?|jarabe|gotas|grageas?|comprimidos?|pildoras?|inyeccion|crema|parche|\d+\s*(mg|mcg|ml|ui))\b/;
-const ADD_VERBS = /^(ponle|ponerle|pon|agrega|agregale|agregar|anade|anadele|dale|darle|programa|programale|registra|registrale|configura|configurale)\b/;
-const QUESTION = /^(como|cuanto|cuanta|cuantas|cuantos|que tal|tomo|comio|desayuno|almorzo|ceno|durmio|ya tomo|ya comio|resumen|dime|cual|camino|hizo)\b/;
+const ADD_VERBS = /^(ponle|ponerle|pon|agrega|agregale|agregar|anade|anadele|dale|darle|programa|programale|registra|registrale|configura|configurale|anota|anotale|agenda|agendale|crea|creale|apunta|apuntale)\b/;
+/** Verbos que se corrigen si vienen mal escritos ("agraga", "progama", "ponlee"). */
+const FIXABLE_VERBS = ['ponle', 'agrega', 'agregale', 'anade', 'anadele', 'programa', 'programale', 'registra', 'configura', 'configurale', 'recuerdale', 'agenda', 'anota'];
+/** "¿Qué puedes hacer?", "ayuda": se responde con el menú de acciones. */
+const HELP = /^(ayuda|ayudame|menu|opciones|que (puedes|sabes) hacer|que haces|como funciona(s)?|como te uso|para que sirves)\b/;
+const QUESTION = /^(como|cuanto|cuanta|cuantas|cuantos|que tal|tomo|comio|almorzo|ceno|durmio|ya tomo|ya comio|resumen|dime|cual|camino|hizo)\b/;
 
 /** Palabra original (con tildes) equivalente a un token normalizado, para conservar los nombres propios. */
 function original(text: string, token: string): string {
@@ -52,7 +58,13 @@ function findName(t: string, names: string[]): string | null {
       if (!best || nn.length > normalizeText(best).length) best = n;
     }
   }
-  return best;
+  if (best) return best;
+  // Mal escrito ("losartam", "metformna"): la palabra más parecida a un nombre conocido.
+  for (const w of words) {
+    const hit = closest(w, names);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 function medForm(t: string): { form: MedForm; unit: 'unit' | 'ml' | 'drops' | 'application' } {
@@ -71,9 +83,9 @@ const NAME_STOP = new Set([
 ]);
 
 /** Nombre del medicamento: lo que sigue al verbo, sin la dosis ni artículos, hasta una palabra de corte. */
-function medName(t: string, raw: string): string | null {
+function medName(t: string, raw: string, known?: string[]): string | null {
   let s = t.replace(ADD_VERBS, '').trim();
-  s = s.replace(/^(le |el |la |un |una |unos |unas )+/, '');
+  s = s.replace(/^(le |el |la |unos |unas |un (?!cuarto)|una (?!y media))+/, '');
   s = s.replace(/^(\d+([.,]\d+)?|media|medio|una y media|un cuarto|una|un|dos|tres|cuatro)\s+(pastillas?|tabletas?|capsulas?|grageas?|comprimidos?|gotas|ml|cucharadas?)?\s*(de\s+)?/, '');
   s = s.replace(/^(pastillas?|tabletas?|capsulas?|medicamento|medicina|jarabe|gotas|crema)\s+(de\s+|para\s+)?/, '');
   s = s.replace(/^(el |la |del )/, '');
@@ -91,7 +103,9 @@ function medName(t: string, raw: string): string | null {
     if (tokens.length === 3) break;
   }
   if (!tokens.length || tokens.every((tk) => GENERIC_MED.has(tk))) return null;
-  return tokens.map((tok) => (tok.length === 1 ? tok.toUpperCase() : original(raw, tok))).join(' ');
+  const name = tokens.map((tok) => (tok.length === 1 ? tok.toUpperCase() : original(raw, tok))).join(' ');
+  // "losartan" o "losartn" con Losartán ya registrado: se usa el nombre conocido.
+  return known ? (closest(name, known) ?? name) : name;
 }
 
 const ACTIVITY_WORDS: [RegExp, ActivityKind, string][] = [
@@ -103,30 +117,14 @@ const ACTIVITY_WORDS: [RegExp, ActivityKind, string][] = [
   [/\bleer\b|\blectura\b/, 'read', 'Leer un rato'],
 ];
 
+const RELATIONS = /\b(hijo|hija|hermano|hermana|nieto|nieta|vecino|vecina|esposo|esposa|sobrino|sobrina|amigo|amiga|yerno|nuera|cunado|cunada)\b/;
+
 const MEALS: [RegExp, MealKind][] = [
   [/\bdesayun\w*/, 'breakfast'],
-  [/\balmuerz\w*|\balmorzar\b/, 'lunch'],
+  [/\balmuerz\w*|\balmuerc\w*|\balmorzar\b/, 'lunch'],
   [/\bcena\b|\bcenar\b|\bcomida de la noche\b/, 'dinner'],
   [/\bmerienda\b|\bonces\b|\bmedia manana\b/, 'snack'],
 ];
-
-const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-
-function parseDate(t: string, today = new Date()): string | null {
-  const m = t.match(/\b(\d{1,2}) de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/);
-  if (m) {
-    const month = MONTHS.indexOf(m[2]);
-    let year = today.getFullYear();
-    if (new Date(year, month, Number(m[1])) < new Date(today.getFullYear(), today.getMonth(), today.getDate())) year++;
-    return `${year}-${String(month + 1).padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-  }
-  if (/\bmanana\b/.test(t) && !/\bde la manana\b|\ben la manana\b|\bpor la manana\b/.test(t)) {
-    const d = new Date(today);
-    d.setDate(d.getDate() + 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }
-  return null;
-}
 
 function queryTopic(t: string): QueryTopic | null {
   if (/recomendacion|sugerencia|novedad|alerta/.test(t)) return 'recommendations';
@@ -147,7 +145,7 @@ function queryTopic(t: string): QueryTopic | null {
  */
 export function intentPrefix(t: string): string {
   return t.replace(
-    /^(?:por favor\s+)?(?:quiero que (?:se )?tome|quiero agregar(?:le)?|quiero anadir(?:le)?|necesita (?:tomar|tomarse)|tiene que (?:tomar|tomarse)|debe (?:tomar|tomarse)|pon(?:le)? que (?:se )?tome|que (?:se )?tome|hay que darle|agregar)\b/,
+    /^(?:por favor\s+)?(?:recuerdale (?:tomar(?:se)?|que (?:se )?tome)(?! agua)|anota(?:le)? que (?:se )?tome|quiero que (?:se )?tome|quiero agregar(?:le)?|quiero anadir(?:le)?|necesita (?:tomar|tomarse)|tiene que (?:tomar|tomarse)|debe (?:tomar|tomarse)|pon(?:le)? que (?:se )?tome|que (?:se )?tome|hay que darle|agregar)\b/,
     'ponle',
   );
 }
@@ -157,8 +155,17 @@ const GENERIC_MED = new Set(['medicamento', 'medicamentos', 'medicina', 'medicin
 
 const MEAL_TIME: Record<MealKind, string> = { breakfast: '07:30', lunch: '12:30', dinner: '18:30', snack: '16:00' };
 
+/** Corrige el verbo inicial mal escrito ("agraga dolex" → "agrega dolex"). */
+function fixVerb(t: string): string {
+  const [first, ...rest] = t.split(' ');
+  if (!first || ADD_VERBS.test(first) || /^(recuerdale|quitale|cambiale)$/.test(first)) return t;
+  const fixed = closest(first, FIXABLE_VERBS);
+  return fixed ? [fixed, ...rest].join(' ') : t;
+}
+
 export function interpretText(raw: string, ctx: AssistantContext): Interpretation {
-  const t = intentPrefix(clean(raw));
+  const today = ctx.today ?? new Date();
+  const t = intentPrefix(fixVerb(clean(raw)));
   const actions: AssistantAction[] = [];
   const missing: MissingField[] = [];
   const isQuestion = raw.includes('?') || QUESTION.test(t);
@@ -167,6 +174,19 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
 
   // 1. Urgencias: siempre primero.
   if (EMERGENCY.test(t)) return { actions: [{ type: 'emergency' }], missing, reply: null, understood: true };
+
+  // 1b. Ayuda: el menú de acciones.
+  if (HELP.test(t)) return { actions: [{ type: 'show_menu' }], missing, reply: null, understood: true };
+
+  // 1c. "¿Para qué sirve el losartán?", "¿qué es el dolex?": información verificada (nunca de memoria).
+  const info = t.match(/\b(?:para que (?:sirve|es|se usa)|que es|que hace|informacion (?:de|del|sobre))\s+(?:el |la |los |las )?([a-z0-9]+(?: [a-z0-9]+)?)/);
+  if (info && !ADD_VERBS.test(t)) {
+    const name = findName(t, ctx.medicationNames) ?? original(raw, info[1].split(' ')[0]);
+    return { actions: [{ type: 'medication_info', name }], missing, reply: null, understood: true };
+  }
+
+  // 1d. Citas, controles y exámenes (antes que contactos: una cita puede traer el teléfono del consultorio).
+  if (APPOINTMENT_INTENT.test(t)) return { actions: [parseAppointment(raw, today)], missing, reply: null, understood: true };
 
   // 2. Cámara y sugerencias.
   if (/\bescane\w*|\bcamara\b|\bfoto (del|de la|de un|de una) (medicamento|caja|envase|remedio)\b/.test(t)) return { actions: [{ type: 'open_scan' }], missing, reply: null, understood: true };
@@ -228,7 +248,7 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
       const segment = raw.slice(start, p.index);
       start = p.index + p.phone.length + 3;
       const seg = clean(segment);
-      const relation = seg.match(/\bsu ([a-z]+)\b/)?.[1] ?? '';
+      const relation = seg.match(/\bsu ([a-z]+)\b/)?.[1] ?? seg.match(RELATIONS)?.[1] ?? '';
       // Nombre: palabra con mayúscula del segmento original (o la palabra tras "a ").
       const caps = segment.match(/\b([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)(?:\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+))?/g)?.filter((w) => !/^(Configúrale|Configurale|Ponle|Agrega|Agrégale|Pon|Su|Y|De|A|Emergencia)$/.test(w.split(' ')[0])) ?? [];
       const afterA = seg.match(/\ba ([a-z]+)\b/)?.[1];
@@ -236,6 +256,10 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
       actions.push({ type: 'add_emergency_contact', name, relation: relation ? relation.charAt(0).toUpperCase() + relation.slice(1) : '', phone: p.phone });
       if (!name) missing.push({ actionIndex: actions.length - 1, field: 'name', question: `¿Cómo se llama el contacto del número ${p.phone}?`, quickReplies: [], optional: false });
     }
+    return { actions, missing, reply: null, understood: true };
+  }
+  if (/\bcontacto\b|\bde emergencia\b/.test(t) && !phones.length && !isQuestion) {
+    actions.push({ type: 'add_emergency_contact', name: '', relation: '', phone: '' });
     return { actions, missing, reply: null, understood: true };
   }
 
@@ -253,7 +277,7 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
   // 8. Comidas: cada una con la hora que la sigue.
   const mealHits = MEALS.map(([re, kind]) => ({ kind, idx: t.search(re) })).filter((m) => m.idx >= 0).sort((a, b) => a.idx - b.idx);
   // "metformina en el desayuno y la cena": las comidas son la HORA del medicamento, no un recordatorio de comida.
-  const mealAsTime = mealHits.length > 0 && /\b(en|con|al|despues del|antes del|despues de|antes de) (el |la )?(desayuno|almuerzo|cena)\b/.test(t) && !!medName(t, raw);
+  const mealAsTime = mealHits.length > 0 && /\b(en|con|al|despues del|antes del|despues de|antes de) (el |la )?(desayuno|almuerzo|cena)\b/.test(t) && !!medName(t, raw, ctx.medicationNames);
   if (mealHits.length && !isQuestion && !mealAsTime) {
     const meals = mealHits.map((m, i) => {
       const segment = t.slice(m.idx, mealHits[i + 1]?.idx ?? t.length);
@@ -274,23 +298,15 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
     }
   }
 
-  // 10. Citas.
-  if (/\bcita\b/.test(t)) {
-    const who = t.match(/\bcon (?:el |la )?((?:doctora?|dr|dra) [a-z]+|[a-z]+(?: [a-z]+)?)/)?.[1]?.replace(/\s+\b(el|la|a|las|manana|para|de|en)\b.*$/, '').trim();
-    const kind = t.match(/\bcita (?:de|del) ([a-z]+)/)?.[1];
-    const accent = (w: string) => w.split(' ').map((x) => original(raw, x).toLowerCase()).join(' ');
-    const title = who ? `Cita con ${accent(who)}` : kind ? `Cita de ${accent(kind)}` : 'Cita médica';
-    const address = raw.match(/\b(?:en la|en el|direcci[oó]n:?)\s+((?:calle|carrera|cra|cl|avenida|av|diagonal|transversal)\b.*)$/i)?.[1]?.trim() ?? '';
-    actions.push({ type: 'add_appointment', title, date: parseDate(t), time: parseTimes(t)[0] ?? null, address });
-  }
-
   // 11. Recordatorios para el adulto mayor ("recuérdale llamar a su nieta los domingos").
   const isNote = /\b(recuerdale|recordarle|recordale|que no se le olvide|recordatorio)\b/.test(t);
   if (isNote && !actions.length) {
-    const title = t
-      .replace(/^.*?\b(recuerdale|recordarle|recordale|que no se le olvide|recordatorio de|recordatorio)\b\s*(que\s+)?/, '')
-      .replace(/\s*\b(todos los dias|(?:el|los) (?:lunes|martes|miercoles|jueves|viernes|sabados?|domingos?)|a las? .*|cada .*)$/, '')
-      .trim();
+    let title = t.replace(/^.*?\b(recuerdale|recordarle|recordale|que no se le olvide|recordatorio de|recordatorio)\b\s*(que\s+)?/, '');
+    // Se quitan del final, una por una, las partes de horario ("los domingos", "a las 5"…).
+    for (let prev = ''; prev !== title; ) {
+      prev = title;
+      title = title.replace(/\s*\b(todos los dias|(?:el|los) (?:lunes|martes|miercoles|jueves|viernes|sabados?|domingos?)|a las? .*|cada .*)$/, '').trim();
+    }
     // Conserva tildes y mayúsculas de los nombres propios ("Juan", "nieta").
     const restored = title.split(' ').map((w) => (raw.includes(original(raw, w)) && /[A-ZÁÉÍÓÚÑ]/.test(original(raw, w)[0]) && raw.split(/\s+/).includes(original(raw, w)) ? original(raw, w) : w)).join(' ');
     const pretty = restored ? restored.charAt(0).toUpperCase() + restored.slice(1) : 'Recordatorio';
@@ -312,7 +328,7 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
   const otherIntent = actions.length > 0;
   if ((!otherIntent && (ADD_VERBS.test(t) || MED_WORDS.test(t))) || (otherIntent && MED_WORDS.test(t) && !/\bagua\b/.test(t))) {
     // Sin nombre pero claramente un medicamento ("agregar medicamento"): se pregunta el nombre.
-    const name = medName(t, raw) ?? (/\b(medicamento|medicina|remedio|pastilla)\b/.test(t) && !otherIntent ? '' : null);
+    const name = medName(t, raw, ctx.medicationNames) ?? (/\b(medicamento|medicina|remedio|pastilla)\b/.test(t) && !otherIntent ? '' : null);
     if (name !== null) {
       const interval = parseInterval(t);
       const perDay = parseTimesPerDay(t);

@@ -35,12 +35,32 @@ export type AssistantAction =
   | { type: 'update_emergency_contact'; match: string; phone: string }
   | { type: 'set_checkin_time'; /** '' = aún sin hora. */ time: ClockTime }
   | { type: 'add_meal_reminder'; meals: { kind: MealKind; time: ClockTime }[] }
-  | { type: 'add_appointment'; title: string; date: string | null; time: ClockTime | null; /** Dirección, ciudad y referencia. */ address?: string }
+  | {
+      type: 'add_appointment';
+      title: string;
+      date: string | null;
+      time: ClockTime | null;
+      /** Dirección, ciudad y referencia. */
+      address?: string;
+      /** Especialidad normalizada ("Cardiología", "Laboratorio"…). */
+      specialty?: string;
+      /** "Dr. Pérez", "Dra. Gómez". */
+      doctor?: string;
+      /** Clínica u hospital. */
+      institution?: string;
+      phone?: string;
+      /** Preguntas para llevar a la cita. */
+      questions?: string[];
+    }
   | { type: 'add_note_for_elder'; title: string; time: ClockTime | null; days: Weekday[] }
   | { type: 'send_message'; text: string }
   | { type: 'query_summary'; topic: QueryTopic; match: string | null }
   | { type: 'suggest_routine' }
   | { type: 'open_scan' }
+  /** "¿Qué puedes hacer?", "ayuda": se responde con el menú de acciones. */
+  | { type: 'show_menu' }
+  /** "¿Para qué sirve el losartán?": información verificada con fuente (MedicationKnowledgeService). */
+  | { type: 'medication_info'; name: string }
   | { type: 'emergency' };
 
 export type ActionType = AssistantAction['type'];
@@ -64,7 +84,10 @@ export type FieldKey =
   | 'address'
   | 'phone'
   | 'relation'
-  | 'steps';
+  | 'steps'
+  | 'doctor'
+  | 'institution'
+  | 'questions';
 
 /** Campo que falta y cómo preguntarlo (con respuestas rápidas). */
 export interface MissingField {
@@ -88,6 +111,8 @@ export interface AssistantContext {
   elderName: string;
   medicationNames: string[];
   contactNames: string[];
+  /** Fecha de referencia para "mañana", "el jueves"… (pruebas); por defecto, hoy. */
+  today?: Date;
 }
 
 export interface AssistantEngine {
@@ -137,5 +162,7 @@ export const TOOL_SCHEMAS: Record<ActionType, { description: string; parameters:
   query_summary: { description: 'Responde SOLO con registros reales.', parameters: { type: 'object', required: ['topic'], properties: { topic: { enum: ['sleep', 'mood', 'medication', 'water', 'meals', 'activity', 'day', 'stock', 'recommendations'] }, match: { type: ['string', 'null'] } } } },
   suggest_routine: { description: 'Sugerencias generales de bienestar (sin consejos médicos).', parameters: { type: 'object', properties: {} } },
   open_scan: { description: 'Abre la cámara para fotografiar un envase.', parameters: { type: 'object', properties: {} } },
+  show_menu: { description: 'Muestra lo que BUDDY puede hacer.', parameters: { type: 'object', properties: {} } },
+  medication_info: { description: 'Información general verificada de un medicamento, con fuente. Nunca recomienda dosis.', parameters: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } } },
   emergency: { description: 'Urgencia: recomendar 123 y contacto principal.', parameters: { type: 'object', properties: {} } },
 };

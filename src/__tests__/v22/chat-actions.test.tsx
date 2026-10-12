@@ -77,7 +77,7 @@ describe('medicamentos', () => {
     expect(list('medications').map((m) => m.name)).toEqual(['Losartán']);
     expect(screen.getByText(/Listo, agregué Losartán a las 6:00 p\. m\./)).toBeTruthy();
     expect(screen.queryByText(/p\. m\.\./)).toBeNull(); // sin doble punto
-    expect(screen.getByText(B.seeRoutine)).toBeTruthy();
+    expect(within(screen.getByTestId('task-done')).getByRole('button', { name: B.see })).toBeTruthy();
     expect(screen.queryByTestId('draft-pinned')).toBeNull();
     c.unmount();
 
@@ -99,7 +99,9 @@ describe('medicamentos', () => {
     expect(within(screen.getByTestId('draft-pinned')).getAllByText(/Atorvastatina/).length).toBeGreaterThan(0);
     // BUDDY pregunta la dosis primero: si se responde con una hora, no la toma como dosis y vuelve a preguntar.
     await say('8:00 p. m.');
-    expect(screen.getByText(/No entendí ese dato\. ¿Cuánto toma de Atorvastatina/)).toBeTruthy();
+    const card = within(screen.getByTestId('draft-pinned'));
+    expect(card.getByText(B.notThatData)).toBeTruthy();
+    expect(card.getByText(/¿Cuánto toma de Atorvastatina/)).toBeTruthy();
     expect(draftActions.get()?.actions[0]).toMatchObject({ doseAmount: null });
     await say('½ tableta');
     await say('8:00 p. m.');
@@ -112,14 +114,15 @@ describe('medicamentos', () => {
     await say('quiero agregar un medicamento');
     expect(screen.getByText('¿Cómo se llama el medicamento?')).toBeTruthy();
     const pinned = screen.getByTestId('draft-pinned');
-    expect(within(pinned).getByRole('button', { name: B.confirmAdd }).props.accessibilityState?.disabled).toBe(true);
+    // V2.4: mientras falte lo obligatorio no hay botón de confirmar (solo la pregunta); aparece activo al completar.
+    expect(within(pinned).queryByRole('button', { name: B.confirmAdd })).toBeNull();
     await say('Metformina');
     await say('1 tableta');
     await say('8:00 a. m.');
-    expect(screen.getByTestId('chat-final-confirm')).toBeTruthy();
+    expect(within(screen.getByTestId('draft-pinned')).getByRole('button', { name: B.confirmAdd }).props.accessibilityState?.disabled).toBeFalsy();
     await confirmFromPinned();
     expect(list('medications')).toHaveLength(1);
-    fireEvent.press(screen.getByText(strings.common.undo));
+    fireEvent.press(within(screen.getByTestId('task-done')).getByRole('button', { name: strings.common.undo }));
     await wait();
     expect(list('medications')).toHaveLength(0);
   });
@@ -208,20 +211,19 @@ describe('rutina', () => {
     await say('ponle una cita mañana con el cardiólogo');
     expect(screen.getByText('¿A qué hora es la cita?')).toBeTruthy();
     await say('10:00 a. m.');
-    // La dirección es opcional: se agrega desde Editar.
-    fireEvent.press(within(screen.getByTestId('draft-pinned')).getByRole('button', { name: strings.common.edit }));
-    fireEvent.press(within(screen.getByTestId('draft-pinned')).getByRole('button', { name: /Dirección/ }));
+    // La dirección es opcional: se agrega desde "Agregar detalle".
+    fireEvent.press(within(screen.getByTestId('draft-pinned')).getByRole('button', { name: `${B.addDetail}: Dirección` }));
     await wait();
     await say('Calle 10 # 5-20, Bogotá, frente al parque');
     await confirmFromPinned();
     const [ap] = list('appointments');
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    expect(ap).toMatchObject({ title: 'Cita con cardiólogo', date: toISODate(tomorrow), time: '10:00', place: 'Calle 10 # 5-20, Bogotá, frente al parque' });
+    expect(ap).toMatchObject({ title: 'Cita de cardiología', date: toISODate(tomorrow), time: '10:00', place: 'Calle 10 # 5-20, Bogotá, frente al parque' });
     c.unmount();
     mockParams = { section: 'appointments' };
     render(<RenderProviders><RoutineSection /></RenderProviders>);
-    expect(screen.getByText(/Cita con cardiólogo/)).toBeTruthy();
+    expect(screen.getByText(/Cita de cardiología/)).toBeTruthy();
   });
 
   it('recordatorio para el adulto mayor: pregunta la hora', async () => {
