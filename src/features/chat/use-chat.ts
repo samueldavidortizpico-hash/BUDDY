@@ -48,6 +48,7 @@ export interface ChatHandlers {
   openPreview: () => void;
   openFeed: () => void;
   call: (phone: string) => void;
+  openFood?: () => void;
   /** Teléfono del contacto principal (para urgencias). */
   primary?: { name: string; phone: string };
 }
@@ -228,7 +229,7 @@ export function useBuddyChat(h: ChatHandlers) {
     (key: MenuKey) => {
       const tpl = menuTemplate(key);
       if (tpl) return startDraft([tpl]);
-      if (key === 'meal') return reply(B.whichMeal, { quickReplies: B.mealOptions.map((m) => `Programa ${m.toLowerCase()}`) });
+      if (key === 'meal') return reply(B.whichMeal, { quickReplies: [...B.mealOptions.map((m) => `Programa ${m.toLowerCase()}`), strings.food.open] });
       if (key === 'day') return reply(answerQuery('day', null));
       awaitingMed.current = true;
       reply(B.whichMed, { quickReplies: context().medicationNames.slice(0, 4) });
@@ -240,6 +241,7 @@ export function useBuddyChat(h: ChatHandlers) {
     (q: string) => {
       if (q === B.seeRoutine) return h.openRoutine('meds');
       if (q === B.seeFeed) return h.openFeed();
+      if (q === strings.food.open) return h.openFood?.();
       if (elder && q === B.seeElderScreen(elder.firstName)) return h.openPreview();
       if (q === B.call123) return h.call('123');
       if (h.primary && q === B.callContact(h.primary.name)) return h.call(h.primary.phone);

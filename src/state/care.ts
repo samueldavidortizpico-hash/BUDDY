@@ -60,6 +60,8 @@ export const medicationActions = {
     const id = elderOrActive(elderId);
     const med = db.insert('medications', input, actor(id));
     doseActions.sync(id, new Date());
+    // Si ya llega con pocas unidades, se avisa de una vez (antes esperaba a la primera toma confirmada).
+    checkStock(med);
     return { med, findings: runReview(med) };
   },
   update(id: string, patch: Partial<MedicationInput>): { med: Medication | undefined; findings: ReviewFinding[] } {
@@ -97,7 +99,9 @@ export const medicationActions = {
     db.list('alerts', med.ownerUserId, med.elderId)
       .filter((a) => (a.kind === 'stock_low' || a.kind === 'stock_out') && a.refId === id && a.status === 'pending')
       .forEach((a) => alertActions.attend(a.id));
-    return db.update('medications', id, { unitsOnHand });
+    const next = db.update('medications', id, { unitsOnHand });
+    if (next) checkStock(next);
+    return next;
   },
   /** Corrección manual de existencias. */
   setStock(id: string, unitsOnHand: number | null) {
@@ -107,11 +111,27 @@ export const medicationActions = {
   },
 };
 
+/**
+ * Un solo aviso por medicamento y nivel en cada ciclo: aunque el cuidador lo marque como atendido sin comprar, las
+ * tomas siguientes no repiten el aviso. El ciclo se reinicia cuando las existencias vuelven a nivel normal (compra o
+ * corrección). A 0 hay un aviso adicional ("agotado").
+ */
 function checkStock(med: Medication) {
   if (!med.elderId) return;
   const est = estimateStock(med, toISODate(new Date()));
-  if (est.level === 'out') alertActions.raise('stock_out', `${med.name}: no quedan unidades registradas.`, med.id, med.elderId);
-  else if (est.level === 'low') alertActions.raise('stock_low', `${med.name}: quedan unos ${est.daysLeft} días (estimado).`, med.id, med.elderId);
+  const done = med.stockAlerted ?? [];
+  if (est.level === 'ok' || est.level === 'none') {
+    if (done.length) db.update('medications', med.id, { stockAlerted: [] });
+    return;
+  }
+  const raise = (kind: 'stock_low' | 'stock_out', detail: string) => {
+    if (done.includes(kind)) return;
+    alertActions.raise(kind, detail, med.id, med.elderId!);
+    done.push(kind);
+  };
+  raise('stock_low', `${med.name}: quedan unos ${est.daysLeft} días (estimado).`);
+  if (est.level === 'out') raise('stock_out', `${med.name}: no quedan unidades registradas.`);
+  db.update('medications', med.id, { stockAlerted: [...done] });
 }
 
 // ── Tomas ────────────────────────────────────────────────────
@@ -126,10 +146,13 @@ export const doseActions = {
     for (const d of missingDoses(meds, doses, date)) db.insert('doses', d, { userId, elderId });
   },
   confirm(doseId: string, by: Role) {
+    const before = db.get('doses', doseId);
     const dose = db.update('doses', doseId, { status: 'taken', respondedAt: new Date().toISOString(), answeredBy: by });
     const med = dose ? db.get('medications', dose.medicationId) : undefined;
-    if (med && med.unitsOnHand !== null) {
+    // Idempotente: una toma ya descontada no vuelve a descontar (dos confirmaciones = una sola salida de existencias).
+    if (dose && med && med.unitsOnHand !== null && before?.stockApplied == null) {
       const next = db.update('medications', med.id, { unitsOnHand: afterDose(med.unitsOnHand, med.doseAmount) });
+      db.update('doses', doseId, { stockApplied: med.doseAmount });
       if (next) checkStock(next);
     }
     // Cierra el aviso de "sin confirmar" de esa toma, si lo había.
@@ -144,9 +167,17 @@ export const doseActions = {
   skip(doseId: string, by: Role) {
     return db.update('doses', doseId, { status: 'skipped', respondedAt: new Date().toISOString(), answeredBy: by });
   },
-  /** El cuidador corrige una respuesta (vuelve a pendiente). */
+  /** El cuidador corrige una respuesta (vuelve a pendiente). Si la toma había descontado, se devuelve (asiento auditable). */
   reset(doseId: string) {
-    return db.update('doses', doseId, { status: 'pending', respondedAt: null, snoozedTo: null, answeredBy: null });
+    const prev = db.get('doses', doseId);
+    const med = prev ? db.get('medications', prev.medicationId) : undefined;
+    if (prev?.stockApplied && med && med.unitsOnHand !== null) {
+      db.update('medications', med.id, { unitsOnHand: Math.round((med.unitsOnHand + prev.stockApplied) * 100) / 100 });
+      db.insert('stock', { medicationId: med.id, units: prev.stockApplied, note: 'Toma corregida' }, { userId: med.ownerUserId, elderId: med.elderId });
+      const next = db.get('medications', med.id);
+      if (next) checkStock(next);
+    }
+    return db.update('doses', doseId, { status: 'pending', respondedAt: null, snoozedTo: null, answeredBy: null, stockApplied: null });
   },
 };
 

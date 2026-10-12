@@ -156,7 +156,7 @@ function run(a: AssistantAction): ExecResult {
           description: '',
           unitsPerPackage: a.unitsPerPackage,
           unitsOnHand: a.unitsOnHand ?? a.unitsPerPackage,
-          refillAlertDays: 7,
+          refillAlertDays: 3,
           photoUri: null,
           paused: false,
         },

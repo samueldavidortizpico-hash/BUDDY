@@ -60,6 +60,7 @@ export default function Buddy() {
     openRoutine,
     openPreview: () => router.push('/handoff' as Href),
     openFeed: () => router.push('/alerts' as Href),
+    openFood: () => router.push('/food' as Href),
     call: (phone) => Linking.openURL(`tel:${phone.replace(/\s/g, '')}`),
     primary: primary ? { name: primary.name, phone: primary.phone } : undefined,
   });

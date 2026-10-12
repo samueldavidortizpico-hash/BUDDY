@@ -81,7 +81,7 @@ function fromMedication(m: Medication | null, photo: string | null): Draft {
     description: m?.description ?? '',
     perPackage: m?.unitsPerPackage != null ? String(m.unitsPerPackage) : '',
     onHand: m?.unitsOnHand != null ? String(m.unitsOnHand).replace('.', ',') : '',
-    alertDays: m?.refillAlertDays ?? 7,
+    alertDays: m?.refillAlertDays ?? 3,
   };
 }
 

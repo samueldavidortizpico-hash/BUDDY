@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -88,6 +88,7 @@ function Water() {
 // ── Comidas ──────────────────────────────────────────────────
 function Meals() {
   const s = useStyles();
+  const router = useRouter();
   const undo = useUndo();
   const meals = useRecords('meals').slice().sort((a, b) => a.time.localeCompare(b.time));
   const [adding, setAdding] = useState<MealKind | null>(null);
@@ -118,6 +119,8 @@ function Meals() {
           onChange={(time) => { routineActions.addMeal(adding, time); setAdding(null); }}
         />
       ) : null}
+      {/* Etiqueta nutricional de un producto envasado (V2.4): evaluador descriptivo con la norma colombiana. */}
+      <Button label={strings.food.open} icon="food" variant="tonal" onPress={() => router.push('/food' as Href)} />
     </View>
   );
 }

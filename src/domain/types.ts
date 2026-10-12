@@ -117,6 +117,8 @@ export interface Medication extends SyncMeta {
   /** Existencias actuales en unidades de dosis (tabletas, ml, gotas…). null = no se registran. */
   unitsOnHand: number | null;
   refillAlertDays: number;
+  /** Avisos de existencias ya dados en el ciclo actual (se limpia al volver a nivel normal, p. ej. tras una compra). */
+  stockAlerted?: ('stock_low' | 'stock_out')[];
   photoUri: string | null;
   paused: boolean;
 }
@@ -135,6 +137,8 @@ export interface DoseEvent extends SyncMeta {
   snoozedTo: ClockTime | null;
   snoozeCount: number;
   answeredBy: Role | null;
+  /** Unidades descontadas de las existencias al confirmar (idempotencia y compensación); null = no se descontó. */
+  stockApplied?: number | null;
 }
 
 export interface StockEntry extends SyncMeta {
