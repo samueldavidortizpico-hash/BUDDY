@@ -135,8 +135,9 @@ export const routineActions = {
   setCheckinTime(time: ClockTime | null, elderId?: string) {
     return db.update('elders', requireElder(elderId), { checkinTime: time });
   },
-  addReminder(title: string, time: ClockTime, days: Weekday[], elderId?: string) {
-    return db.insert('reminders', { title, time, days }, actor(requireElder(elderId)));
+  /** `date`: solo ese día (mensaje del cuidador); sin fecha se repite según `days`. */
+  addReminder(title: string, time: ClockTime, days: Weekday[], elderId?: string, date: string | null = null) {
+    return db.insert('reminders', { title, time, days, date }, actor(requireElder(elderId)));
   },
   removeReminder: (id: string) => db.remove('reminders', id),
   restoreReminder: (id: string) => db.restore('reminders', id),

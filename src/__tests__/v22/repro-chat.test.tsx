@@ -31,7 +31,7 @@ const send = async (text: string) => {
   await act(async () => { jest.advanceTimersByTime(1500); });
 };
 
-it.failing('pide un medicamento, completa lo obligatorio y lo agrega desde la tarjeta fija junto al compositor', async () => {
+it('pide un medicamento, completa lo obligatorio y lo agrega desde la tarjeta fija junto al compositor', async () => {
   render(<RenderProviders><Buddy /></RenderProviders>);
   await send('Ponle losartán a las 6 de la tarde');
   await send('1 tableta');

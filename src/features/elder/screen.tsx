@@ -14,7 +14,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { AdminAccessSheet } from '@/features/elder/admin-access';
-import { elderNow, type ElderItem } from '@/domain/now';
+import { elderNow, reminderSeenKey, type ElderItem } from '@/domain/now';
 import { dayDoses, doseText, effectiveTime } from '@/domain/schedule';
 import type { Answer3 } from '@/domain/types';
 import { db, useDb } from '@/infrastructure/local/db';
@@ -397,7 +397,7 @@ function ItemView({
       return (
         <View style={s.itemBody}>
           {title(item.reminder.title)}
-          <Button label={E.ok} size="elder" disabled={preview} onPress={() => !preview && onSeen(item.reminder.id)} />
+          <Button label={E.ok} size="elder" disabled={preview} onPress={() => !preview && onSeen(reminderSeenKey(item.reminder.id, toISODate(new Date())))} />
         </View>
       );
     default:

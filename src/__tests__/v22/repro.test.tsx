@@ -38,7 +38,7 @@ beforeEach(async () => {
 const ui = (node: React.ReactNode) => render(<RenderProviders>{node}</RenderProviders>);
 const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return toISODate(d); };
 
-it.failing('P2: lo que agrega BUDDY aparece en Rutina marcado "Nuevo"', () => {
+it('P2: lo que agrega BUDDY aparece en Rutina marcado "Nuevo"', () => {
   execute({ type: 'add_medication', name: 'Losartán', strength: null, doseAmount: 1, doseUnit: 'unit', form: 'tablet', times: ['18:00'], days: [], everyHours: null, from: null, unitsPerPackage: null, instructions: '' });
   ui(<Routine />);
   expect(screen.getByText('Losartán')).toBeTruthy();

@@ -90,7 +90,7 @@ function medName(t: string, raw: string): string | null {
     tokens.push(w);
     if (tokens.length === 3) break;
   }
-  if (!tokens.length) return null;
+  if (!tokens.length || tokens.every((tk) => GENERIC_MED.has(tk))) return null;
   return tokens.map((tok) => (tok.length === 1 ? tok.toUpperCase() : original(raw, tok))).join(' ');
 }
 
@@ -140,8 +140,24 @@ function queryTopic(t: string): QueryTopic | null {
   return null;
 }
 
+/**
+ * "quiero que tome X", "necesita tomar X", "pon que tome X", "quiero agregar…" significan lo mismo que una orden:
+ * se normalizan a "ponle …" para que el resto de reglas las entienda.
+ */
+export function intentPrefix(t: string): string {
+  return t.replace(
+    /^(?:por favor\s+)?(?:quiero que (?:se )?tome|quiero agregar(?:le)?|quiero anadir(?:le)?|necesita (?:tomar|tomarse)|tiene que (?:tomar|tomarse)|debe (?:tomar|tomarse)|pon(?:le)? que (?:se )?tome|que (?:se )?tome|hay que darle|agregar)\b/,
+    'ponle',
+  );
+}
+
+/** Palabras que no son el nombre de un medicamento ("agregar medicamento", "un remedio nuevo"). */
+const GENERIC_MED = new Set(['medicamento', 'medicamentos', 'medicina', 'medicinas', 'remedio', 'pastilla', 'nuevo', 'nueva', 'otro', 'otra', 'ponle']);
+
+const MEAL_TIME: Record<MealKind, string> = { breakfast: '07:30', lunch: '12:30', dinner: '18:30', snack: '16:00' };
+
 export function interpretText(raw: string, ctx: AssistantContext): Interpretation {
-  const t = clean(raw);
+  const t = intentPrefix(clean(raw));
   const actions: AssistantAction[] = [];
   const missing: MissingField[] = [];
   const isQuestion = raw.includes('?') || QUESTION.test(t);
@@ -161,6 +177,13 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
     if (topic) {
       return { actions: [{ type: 'query_summary', topic, match: findName(t, ctx.medicationNames) }], missing, reply: null, understood: true };
     }
+  }
+
+  // 3b. Mensajes para el adulto mayor: "mándale un mensaje: te quiero mucho", "dile que lo llamo a las 5".
+  const msg = raw.match(/^\s*(?:m[aá]ndale|env[ií]ale|escr[ií]bele|dile|d[ií]gale)\s+(?:un\s+)?(?:mensaje\s*)?(?:que\s+|:\s*|diciendo\s+)?(.+)$/i);
+  if (msg && msg[1].trim().length > 1) {
+    const text = msg[1].trim().replace(/^["“]|["”]$/g, '');
+    return { actions: [{ type: 'send_message', text: text.charAt(0).toUpperCase() + text.slice(1) }], missing, reply: null, understood: true };
   }
 
   // 4. Quitar o cambiar medicamentos y contactos existentes.
@@ -220,11 +243,17 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
   if (glasses !== null && /\bagua\b|\bvasos?\b/.test(t)) {
     const n = Math.min(14, Math.max(1, glasses));
     actions.push({ type: 'set_water_goal', glasses: n, times: spreadTimes(n) });
+  } else if (/\bagua\b/.test(t) && !isQuestion && !MED_WORDS.test(t)) {
+    // "ponle agua": falta cuántos vasos (0 = por preguntar).
+    actions.push({ type: 'set_water_goal', glasses: 0, times: [] });
+    missing.push({ actionIndex: actions.length - 1, field: 'glasses', question: '¿Cuántos vasos de agua al día?', quickReplies: ['6', '8', '10'], optional: false });
   }
 
   // 8. Comidas: cada una con la hora que la sigue.
   const mealHits = MEALS.map(([re, kind]) => ({ kind, idx: t.search(re) })).filter((m) => m.idx >= 0).sort((a, b) => a.idx - b.idx);
-  if (mealHits.length && !isQuestion) {
+  // "metformina en el desayuno y la cena": las comidas son la HORA del medicamento, no un recordatorio de comida.
+  const mealAsTime = mealHits.length > 0 && /\b(en|con|al|despues del|antes del|despues de|antes de) (el |la )?(desayuno|almuerzo|cena)\b/.test(t) && !!medName(t, raw);
+  if (mealHits.length && !isQuestion && !mealAsTime) {
     const meals = mealHits.map((m, i) => {
       const segment = t.slice(m.idx, mealHits[i + 1]?.idx ?? t.length);
       const time = parseTimes(segment)[0] ?? ({ breakfast: '07:30', lunch: '12:30', dinner: '18:30', snack: '16:00' } as const)[m.kind];
@@ -239,22 +268,31 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
     const time = parseTimes(t)[0];
     if (time) actions.push({ type: 'set_checkin_time', time });
     else {
-      actions.push({ type: 'set_checkin_time', time: '10:00' });
+      actions.push({ type: 'set_checkin_time', time: '' });
       missing.push({ actionIndex: actions.length - 1, field: 'time', question: '¿A qué hora quieres el chequeo?', quickReplies: ['9:00 a. m.', '10:00 a. m.', '4:00 p. m.'], optional: false });
     }
   }
 
   // 10. Citas.
   if (/\bcita\b/.test(t)) {
-    const title = (t.match(/\bcita\s+(?:con|de|del|en)?\s*(.+?)(?:\s+(?:el|a las|a la|manana|para)\b|$)/)?.[1] ?? 'médica').trim();
-    actions.push({ type: 'add_appointment', title: `Cita ${title}`.replace(/\s+/g, ' '), date: parseDate(t), time: parseTimes(t)[0] ?? null });
+    const who = t.match(/\bcon (?:el |la )?((?:doctora?|dr|dra) [a-z]+|[a-z]+(?: [a-z]+)?)/)?.[1]?.replace(/\s+\b(el|la|a|las|manana|para|de|en)\b.*$/, '').trim();
+    const kind = t.match(/\bcita (?:de|del) ([a-z]+)/)?.[1];
+    const accent = (w: string) => w.split(' ').map((x) => original(raw, x).toLowerCase()).join(' ');
+    const title = who ? `Cita con ${accent(who)}` : kind ? `Cita de ${accent(kind)}` : 'Cita médica';
+    const address = raw.match(/\b(?:en la|en el|direcci[oó]n:?)\s+((?:calle|carrera|cra|cl|avenida|av|diagonal|transversal)\b.*)$/i)?.[1]?.trim() ?? '';
+    actions.push({ type: 'add_appointment', title, date: parseDate(t), time: parseTimes(t)[0] ?? null, address });
   }
 
   // 11. Recordatorios para el adulto mayor ("recuérdale llamar a su nieta los domingos").
   const isNote = /\b(recuerdale|recordarle|recordale|que no se le olvide|recordatorio)\b/.test(t);
   if (isNote && !actions.length) {
-    const title = t.replace(/^.*?\b(recuerdale|recordarle|recordale|que no se le olvide|recordatorio de|recordatorio)\b\s*(que\s+)?/, '').replace(/\b(todos los dias|los (lunes|martes|miercoles|jueves|viernes|sabados|domingos)|a las? .*|cada .*)$/, '').trim();
-    const pretty = title ? title.charAt(0).toUpperCase() + title.slice(1) : 'Recordatorio';
+    const title = t
+      .replace(/^.*?\b(recuerdale|recordarle|recordale|que no se le olvide|recordatorio de|recordatorio)\b\s*(que\s+)?/, '')
+      .replace(/\s*\b(todos los dias|(?:el|los) (?:lunes|martes|miercoles|jueves|viernes|sabados?|domingos?)|a las? .*|cada .*)$/, '')
+      .trim();
+    // Conserva tildes y mayúsculas de los nombres propios ("Juan", "nieta").
+    const restored = title.split(' ').map((w) => (raw.includes(original(raw, w)) && /[A-ZÁÉÍÓÚÑ]/.test(original(raw, w)[0]) && raw.split(/\s+/).includes(original(raw, w)) ? original(raw, w) : w)).join(' ');
+    const pretty = restored ? restored.charAt(0).toUpperCase() + restored.slice(1) : 'Recordatorio';
     actions.push({ type: 'add_note_for_elder', title: pretty, time: parseTimes(t)[0] ?? null, days: parseDays(t) });
   }
 
@@ -272,12 +310,14 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
   // 13. Medicamento nuevo (si no se reconoció otra cosa, o si hay palabras de medicamento).
   const otherIntent = actions.length > 0;
   if ((!otherIntent && (ADD_VERBS.test(t) || MED_WORDS.test(t))) || (otherIntent && MED_WORDS.test(t) && !/\bagua\b/.test(t))) {
-    const name = medName(t, raw);
-    if (name) {
+    // Sin nombre pero claramente un medicamento ("agregar medicamento"): se pregunta el nombre.
+    const name = medName(t, raw) ?? (/\b(medicamento|medicina|remedio|pastilla)\b/.test(t) && !otherIntent ? '' : null);
+    if (name !== null) {
       const interval = parseInterval(t);
       const perDay = parseTimesPerDay(t);
       const explicit = parseTimes(t);
-      const times = interval ? [] : explicit.length ? explicit : perDay ? defaultTimes(perDay) : [];
+      const mealTimes = mealAsTime ? [...new Set(mealHits.map((m) => MEAL_TIME[m.kind]))].sort() : [];
+      const times = interval ? [] : explicit.length ? explicit : perDay ? defaultTimes(perDay) : mealTimes;
       const { form, unit } = medForm(t);
       const amount = unit === 'ml' ? numberBefore(t, /^ml$/) : unit === 'drops' ? numberBefore(t, /^gotas$/) : parseDoseAmount(t);
       const idx = actions.length;
@@ -293,8 +333,11 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
         everyHours: interval?.everyHours ?? null,
         from: interval?.from ?? null,
         unitsPerPackage: numberBefore(t, /^(pastillas|tabletas|capsulas|unidades)$/) && /\b(caja|frasco|trae|viene)\b/.test(t) ? numberBefore(t, /^(pastillas|tabletas|capsulas|unidades)$/) : null,
-        instructions: /\bcon (la )?comida\b/.test(t) ? 'Con comida' : /\ben ayunas\b/.test(t) ? 'En ayunas' : /\bantes de dormir\b/.test(t) ? 'Antes de dormir' : '',
+        unitsOnHand: null,
+        instructions: /\bcon (la )?comida\b/.test(t) || mealAsTime ? 'Con comida' : /\ben ayunas\b/.test(t) ? 'En ayunas' : /\bantes de dormir\b/.test(t) ? 'Antes de dormir' : '',
+        purpose: '',
       });
+      if (!name) missing.push({ actionIndex: idx, field: 'name', question: '¿Cómo se llama el medicamento?', quickReplies: [], optional: false });
       if (!times.length && !interval) missing.push({ actionIndex: idx, field: 'time', question: `¿A qué hora debe tomar ${name}?`, quickReplies: ['8:00 a. m.', '8:00 p. m.', 'Dos veces al día'], optional: false });
       if (amount === null)
         missing.push({

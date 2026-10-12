@@ -187,6 +187,8 @@ export interface Reminder extends SyncMeta {
   title: string;
   time: ClockTime;
   days: Weekday[];
+  /** Solo ese día (mensajes del cuidador). Sin valor = se repite según `days`. */
+  date?: ISODate | null;
 }
 
 export interface Appointment extends SyncMeta {

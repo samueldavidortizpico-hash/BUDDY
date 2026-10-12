@@ -19,7 +19,11 @@ export type AssistantAction =
       everyHours: number | null;
       from: ClockTime | null;
       unitsPerPackage: number | null;
+      /** Existencias actuales (unidades). null = no se registran. */
+      unitsOnHand?: number | null;
       instructions: string;
+      /** Para qué sirve, en palabras del cuidador. */
+      purpose?: string;
     }
   | { type: 'update_medication'; match: string; times: ClockTime[] | null; doseAmount: number | null }
   | { type: 'remove_medication'; match: string }
@@ -29,10 +33,11 @@ export type AssistantAction =
   | { type: 'set_steps_goal'; steps: number }
   | { type: 'add_emergency_contact'; name: string; relation: string; phone: string }
   | { type: 'update_emergency_contact'; match: string; phone: string }
-  | { type: 'set_checkin_time'; time: ClockTime }
+  | { type: 'set_checkin_time'; /** '' = aún sin hora. */ time: ClockTime }
   | { type: 'add_meal_reminder'; meals: { kind: MealKind; time: ClockTime }[] }
-  | { type: 'add_appointment'; title: string; date: string | null; time: ClockTime | null }
+  | { type: 'add_appointment'; title: string; date: string | null; time: ClockTime | null; /** Dirección, ciudad y referencia. */ address?: string }
   | { type: 'add_note_for_elder'; title: string; time: ClockTime | null; days: Weekday[] }
+  | { type: 'send_message'; text: string }
   | { type: 'query_summary'; topic: QueryTopic; match: string | null }
   | { type: 'suggest_routine' }
   | { type: 'open_scan' }
@@ -40,10 +45,31 @@ export type AssistantAction =
 
 export type ActionType = AssistantAction['type'];
 
+/** Datos que BUDDY puede preguntar para completar una acción. */
+export type FieldKey =
+  | 'name'
+  | 'doseAmount'
+  | 'time'
+  | 'days'
+  | 'strength'
+  | 'unitsPerPackage'
+  | 'unitsOnHand'
+  | 'instructions'
+  | 'purpose'
+  | 'match'
+  | 'units'
+  | 'glasses'
+  | 'title'
+  | 'date'
+  | 'address'
+  | 'phone'
+  | 'relation'
+  | 'steps';
+
 /** Campo que falta y cómo preguntarlo (con respuestas rápidas). */
 export interface MissingField {
   actionIndex: number;
-  field: 'strength' | 'doseAmount' | 'unitsPerPackage' | 'time' | 'phone' | 'name' | 'match';
+  field: FieldKey;
   question: string;
   quickReplies: string[];
   /** Si es opcional, se puede responder "No sé" u omitir. */
@@ -89,7 +115,9 @@ export const TOOL_SCHEMAS: Record<ActionType, { description: string; parameters:
         everyHours: { type: ['integer', 'null'] },
         from: { ...time, type: ['string', 'null'] },
         unitsPerPackage: { type: ['integer', 'null'] },
+        unitsOnHand: { type: ['integer', 'null'] },
         instructions: { type: 'string' },
+        purpose: { type: 'string', description: 'Para qué sirve, en palabras del cuidador (nunca inventado).' },
       },
     },
   },
@@ -103,8 +131,9 @@ export const TOOL_SCHEMAS: Record<ActionType, { description: string; parameters:
   update_emergency_contact: { description: 'Cambia el teléfono de un contacto.', parameters: { type: 'object', required: ['match', 'phone'], properties: { match: { type: 'string' }, phone: { type: 'string' } } } },
   set_checkin_time: { description: 'Hora del chequeo diario de 3 preguntas.', parameters: { type: 'object', required: ['time'], properties: { time } } },
   add_meal_reminder: { description: 'Horas de comidas.', parameters: { type: 'object', required: ['meals'], properties: { meals: { type: 'array', items: { type: 'object', properties: { kind: { enum: ['breakfast', 'lunch', 'dinner', 'snack'] }, time } } } } } },
-  add_appointment: { description: 'Cita médica u otra.', parameters: { type: 'object', required: ['title'], properties: { title: { type: 'string' }, date: { type: ['string', 'null'] }, time: { ...time, type: ['string', 'null'] } } } },
+  add_appointment: { description: 'Cita médica u otra, con dirección.', parameters: { type: 'object', required: ['title'], properties: { title: { type: 'string' }, date: { type: ['string', 'null'] }, time: { ...time, type: ['string', 'null'] }, address: { type: 'string' } } } },
   add_note_for_elder: { description: 'Recordatorio para el adulto mayor (llamar a alguien, una nota).', parameters: { type: 'object', required: ['title'], properties: { title: { type: 'string' }, time: { ...time, type: ['string', 'null'] }, days } } },
+  send_message: { description: 'Mensaje del cuidador que el adulto mayor verá hoy en su pantalla.', parameters: { type: 'object', required: ['text'], properties: { text: { type: 'string', maxLength: 200 } } } },
   query_summary: { description: 'Responde SOLO con registros reales.', parameters: { type: 'object', required: ['topic'], properties: { topic: { enum: ['sleep', 'mood', 'medication', 'water', 'meals', 'activity', 'day', 'stock'] }, match: { type: ['string', 'null'] } } } },
   suggest_routine: { description: 'Sugerencias generales de bienestar (sin consejos médicos).', parameters: { type: 'object', properties: {} } },
   open_scan: { description: 'Abre la cámara para fotografiar un envase.', parameters: { type: 'object', properties: {} } },

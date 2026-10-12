@@ -1,6 +1,7 @@
-import { useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeInRight, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -19,12 +20,14 @@ import { formatPhone } from '@/domain/validation';
 import { strings } from '@/i18n';
 import { useActiveElder, useRecords } from '@/state/data';
 import { handoffActions } from '@/state/handoff';
+import { useRecentAny } from '@/state/recent';
 import { radius, spacing, touch, type Domain } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 import { formatClock } from '@/utils/dates';
 
 const R = strings.routine;
 type Seg = 'meds' | 'water' | 'meals' | 'activities' | 'more';
+const SEGS: Seg[] = ['meds', 'water', 'meals', 'activities', 'more'];
 
 /** Rutina del adulto mayor: todo lo programado, la vista previa de su pantalla y la entrega del teléfono. */
 export default function Routine() {
@@ -32,7 +35,15 @@ export default function Routine() {
   const t = useTheme();
   const s = useStyles();
   const elder = useActiveElder();
-  const [seg, setSeg] = useState<Seg>('meds');
+  const params = useLocalSearchParams<{ seg?: string }>();
+  const asSeg = (v?: string): Seg => (v && SEGS.includes(v as Seg) ? (v as Seg) : 'meds');
+  const [seg, setSeg] = useState<Seg>(asSeg(params.seg));
+  // "Ver en Rutina" desde BUDDY abre la pestaña donde quedó lo nuevo (estado derivado del parámetro, sin efecto).
+  const [fromParam, setFromParam] = useState(params.seg);
+  if (params.seg !== fromParam) {
+    setFromParam(params.seg);
+    if (params.seg) setSeg(asSeg(params.seg));
+  }
   const [addSheet, setAddSheet] = useState(false);
   const [pinSheet, setPinSheet] = useState<null | 'set' | 'confirm'>(null);
   const [firstPin, setFirstPin] = useState('');
@@ -114,6 +125,7 @@ export default function Routine() {
             meds.map((m) => (
               <Row
                 key={m.id}
+                ids={[m.id]}
                 domain="medication"
                 icon="meds"
                 title={m.name}
@@ -126,31 +138,31 @@ export default function Routine() {
           )
         ) : null}
         {seg === 'water' ? (
-          <Row domain="water" icon="drop" title={water ? R.glasses(water.glasses) : R.sections.water} detail={water ? water.times.map(formatClock).join(' · ') : R.emptyGeneric} onPress={() => go('water')} />
+          <Row ids={water ? [water.id] : []} domain="water" icon="drop" title={water ? R.glasses(water.glasses) : R.sections.water} detail={water ? water.times.map(formatClock).join(' · ') : R.emptyGeneric} onPress={() => go('water')} />
         ) : null}
         {seg === 'meals' ? (
           meals.length ? (
             meals
               .slice()
               .sort((a, b) => a.time.localeCompare(b.time))
-              .map((m) => <Row key={m.id} domain="food" icon="food" title={strings.setup.food.mealNames[m.kind]} detail={formatClock(m.time)} onPress={() => go('meals')} />)
+              .map((m) => <Row key={m.id} ids={[m.id]} domain="food" icon="food" title={strings.setup.food.mealNames[m.kind]} detail={formatClock(m.time)} onPress={() => go('meals')} />)
           ) : (
             <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('meals') }} />
           )
         ) : null}
         {seg === 'activities' ? (
           activities.length ? (
-            activities.map((a) => <Row key={a.id} domain="activity" icon="walk" title={a.title} detail={`${formatClock(a.time)} · ${describeDays(a.days)}${a.minutes ? ` · ${a.minutes} min` : ''}`} onPress={() => go('activities')} />)
+            activities.map((a) => <Row key={a.id} ids={[a.id]} domain="activity" icon="walk" title={a.title} detail={`${formatClock(a.time)} · ${describeDays(a.days)}${a.minutes ? ` · ${a.minutes} min` : ''}`} onPress={() => go('activities')} />)
           ) : (
             <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('activities') }} />
           )
         ) : null}
         {seg === 'more' ? (
           <>
-            <Row domain="contact" icon="phone" title={R.sections.contacts} detail={contacts.length ? contacts.map((c) => `${c.name} (${formatPhone(c.phone)})`).join(', ') : R.emptyGeneric} onPress={() => go('contacts')} />
-            <Row domain="mood" icon="smile" title={R.sections.checkin} detail={elder.checkinTime ? formatClock(elder.checkinTime) : R.noCheckin} onPress={() => go('checkin')} />
-            <Row domain="followUp" icon="calendar" title={R.sections.appointments} detail={appointments.length ? `${appointments.length}` : R.emptyGeneric} onPress={() => go('appointments')} />
-            <Row domain="contact" icon="bell" title={R.sections.reminders} detail={reminders.length ? reminders.map((r) => r.title).join(', ') : R.emptyGeneric} onPress={() => go('reminders')} />
+            <Row ids={contacts.map((c) => c.id)} domain="contact" icon="phone" title={R.sections.contacts} detail={contacts.length ? contacts.map((c) => `${c.name} (${formatPhone(c.phone)})`).join(', ') : R.emptyGeneric} onPress={() => go('contacts')} />
+            <Row ids={[elder.id]} domain="mood" icon="smile" title={R.sections.checkin} detail={elder.checkinTime ? formatClock(elder.checkinTime) : R.noCheckin} onPress={() => go('checkin')} />
+            <Row ids={appointments.map((a) => a.id)} domain="followUp" icon="calendar" title={R.sections.appointments} detail={appointments.length ? `${appointments.length}` : R.emptyGeneric} onPress={() => go('appointments')} />
+            <Row ids={reminders.map((r) => r.id)} domain="contact" icon="bell" title={R.sections.reminders} detail={reminders.length ? reminders.map((r) => r.title).join(', ') : R.emptyGeneric} onPress={() => go('reminders')} />
           </>
         ) : null}
       </View>
@@ -211,11 +223,18 @@ export default function Routine() {
   );
 }
 
-function Row({ domain, icon, title, detail, onPress }: { domain: Domain; icon: IconName; title: string; detail: string; onPress: () => void }) {
+function Row({ ids, domain, icon, title, detail, onPress }: { ids: string[]; domain: Domain; icon: IconName; title: string; detail: string; onPress: () => void }) {
   const t = useTheme();
   const s = useStyles();
+  const recent = useRecentAny(ids);
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`} style={({ pressed }) => [s.rowItem, pressed && { opacity: 0.85 }]}>
+    <RecentFrame recent={recent}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. ${detail}${recent ? `. ${R.isNew}` : ''}`}
+      style={({ pressed }) => [s.rowItem, recent && { borderColor: t.hc ? t.c.text : t.c.mintStrong, borderWidth: 2 }, pressed && { opacity: 0.85 }]}
+    >
       <View style={[s.bar, { backgroundColor: t.domains[domain].accent }]} />
       <View style={[s.iconBox, { backgroundColor: t.tones[t.domains[domain].tone].bg }]}>
         <Icon name={icon} color={t.tones[t.domains[domain].tone].fg} />
@@ -226,9 +245,23 @@ function Row({ domain, icon, title, detail, onPress }: { domain: Domain; icon: I
           {detail}
         </AppText>
       </View>
+      {recent ? (
+        <View style={[s.newBadge, { backgroundColor: t.hc ? t.c.text : t.c.mintStrong }]}>
+          <AppText variant="meta" color={t.hc ? t.c.bg : '#FFFFFF'}>
+            {R.isNew}
+          </AppText>
+        </View>
+      ) : null}
       <Icon name="chevron" color={t.c.muted} />
     </Pressable>
+    </RecentFrame>
   );
+}
+
+/** Entrada animada (deslizar y aparecer) solo para lo recién agregado; solo transform y opacidad. */
+function RecentFrame({ recent, children }: { recent: boolean; children: React.ReactNode }) {
+  const reduce = useReducedMotion();
+  return recent && !reduce ? <Animated.View entering={FadeInRight.springify().damping(16)}>{children}</Animated.View> : <>{children}</>;
 }
 
 const useStyles = makeStyles((t) =>
@@ -254,6 +287,7 @@ const useStyles = makeStyles((t) =>
       ...t.hairline,
     },
     bar: { width: 5, alignSelf: 'stretch' },
+    newBadge: { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.pill },
     iconBox: { width: 44, height: 44, borderRadius: radius.icon, alignItems: 'center', justifyContent: 'center' },
     fabSpace: { height: 80 },
     fab: {

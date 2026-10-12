@@ -34,6 +34,14 @@ export interface ElderInput {
   seenReminders: string[];
 }
 
+/**
+ * Clave de "ya visto" de un recordatorio POR DÍA: un recordatorio diario debe volver a mostrarse mañana.
+ * (Antes se guardaba solo el id y un recordatorio diario visto una vez no volvía a aparecer nunca.)
+ */
+export const reminderSeenKey = (id: string, date: string) => `${id}@${date}`;
+
+const localDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 const SOON_MIN = 60;
 /** Ventana para preguntar por una comida o actividad después de su hora. */
 const ASK_WINDOW_MIN = 180;
@@ -66,7 +74,11 @@ export function elderNow(i: ElderInput): { now: ElderItem; later: { time: ClockT
     if (i.glassesToday < Math.min(shouldHave, i.water.glasses)) queue.push({ kind: 'water', glasses: i.glassesToday, goal: i.water.glasses });
   }
 
-  for (const r of i.reminders) if (onDay(r.days, i.now) && due(r.time, 120) && !i.seenReminders.includes(r.id)) queue.push({ kind: 'reminder', reminder: r });
+  const today = localDate(i.now);
+  for (const r of i.reminders) {
+    const applies = r.date ? r.date === today : onDay(r.days, i.now);
+    if (applies && due(r.time, 120) && !i.seenReminders.includes(reminderSeenKey(r.id, today))) queue.push({ kind: 'reminder', reminder: r });
+  }
 
   const later: { time: ClockTime; label: string; kind: ElderItem['kind'] }[] = [];
   for (const d of open) if (d !== dose && toMinutes(effectiveTime(d.dose)) > nowMin) later.push({ time: effectiveTime(d.dose), label: d.medication.name, kind: 'dose' });

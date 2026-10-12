@@ -13,6 +13,7 @@ const mockReplace = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => false, replace: mockReplace }),
   useIsFocused: () => true,
+  useLocalSearchParams: () => ({}),
 }));
 jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
 
