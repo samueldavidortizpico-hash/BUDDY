@@ -1,5 +1,5 @@
-import { Redirect, useIsFocused, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { Redirect, useFocusEffect, useIsFocused, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   Easing,
@@ -7,6 +7,7 @@ import Animated, {
   cancelAnimation,
   useAnimatedStyle,
   useReducedMotion,
+  withSpring,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -20,7 +21,7 @@ import { Appear } from '@/components/appear';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
 import { SoftEllipse } from '@/components/robot';
-import { RobotPerch, measure, useRobot } from '@/components/robot/stage';
+import { AuthRobot } from '@/components/robot/auth-robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { strings } from '@/i18n';
 import { useHomeHref } from '@/state/nav';
@@ -37,7 +38,6 @@ const NEXT_MODE: Record<AppearanceMode, AppearanceMode> = { auto: 'light', light
 /** Bienvenida: el robot llega volando; la idea central y las dos puertas de entrada (crear cuenta, iniciar sesión). */
 export default function Welcome() {
   const router = useRouter();
-  const robot = useRobot();
   const t = useTheme();
   const s = useStyles();
   const status = useSession((x) => x.status);
@@ -50,6 +50,24 @@ export default function Welcome() {
   const [skipped, setSkipped] = useState(false);
   const createRef = useRef<View>(null);
   const signInRef = useRef<View>(null);
+  const robotRef = useRef<View>(null);
+  const scrollY = useSharedValue(0);
+  const fx = useSharedValue(0);
+  const fy = useSharedValue(0);
+  const fs = useSharedValue(1);
+  const [landing, setLanding] = useState(false);
+
+  // Al volver a la bienvenida el robot regresa a su sitio (no depende de medidas antiguas).
+  useFocusEffect(
+    useCallback(() => {
+      [fx, fy, fs].forEach((v) => cancelAnimation(v));
+      fx.set(0);
+      fy.set(0);
+      fs.set(1);
+      setLanding(false);
+    }, [fx, fy, fs]),
+  );
+  const flight = useAnimatedStyle(() => ({ transform: [{ translateX: fx.value }, { translateY: fy.value }, { scale: fs.value }] }));
 
   useEffect(() => {
     playedThisSession = true;
@@ -58,18 +76,27 @@ export default function Welcome() {
   if (status === 'signedIn') return <Redirect href={home} />;
 
   const base = first && !skipped ? LANDED_AT : 0;
-  const size = Math.round(Math.min(330, Math.max(260, height * 0.36)));
+  const size = Math.round(Math.min(300, Math.max(200, height * 0.33)));
   const words = S.titleLines.flat();
 
-  // El robot vuela hacia el botón pulsado y después se ejecuta la acción.
+  // El robot vuela hacia el botón pulsado, aterriza encima y después se ejecuta la acción.
+  // Ambas posiciones se miden en el momento del toque, así que el scroll o el teclado no lo desubican.
   const go = async (ref: React.RefObject<View | null>, href: '/onboarding' | '/sign-in') => {
-    const rect = await measure(ref);
-    if (rect) await robot.flyTo(rect, { size: 110, side: 'right', mood: 'look', look: -1 });
-    router.push(href);
+    if (landing) return;
+    const [from, to] = await Promise.all([rectOf(robotRef), rectOf(ref)]);
+    if (reduce || !from || !to) return router.push(href);
+    setLanding(true);
+    const scale = 0.42;
+    const dx = to.x + to.width / 2 - (from.x + from.width / 2);
+    const dy = to.y - (from.y + from.height / 2) - (from.height * scale) / 2 + 8;
+    fx.set(withTiming(dx, { duration: 620, easing: Easing.out(Easing.cubic) }));
+    fy.set(withSequence(withTiming(dy - 60, { duration: 420, easing: Easing.out(Easing.quad) }), withSpring(dy, motion.spring)));
+    fs.set(withTiming(scale, { duration: 620, easing: Easing.inOut(Easing.cubic) }));
+    setTimeout(() => router.push(href), 760);
   };
 
   return (
-    <ScreenContainer gradient="welcome" contentStyle={s.content} background={<Orbs entrance={first} />}>
+    <ScreenContainer gradient="welcome" contentStyle={s.content} scrollY={scrollY} background={<Orbs entrance={first} />}>
       <View style={s.root} onTouchStart={first && !skipped ? () => setSkipped(true) : undefined}>
         <View style={s.topBar}>
           <Pressable
@@ -83,9 +110,9 @@ export default function Welcome() {
           </Pressable>
         </View>
 
-        <View style={[s.stage, { minHeight: size * 1.2 }]}>
-          <RobotPerch name="welcome" size={size} entrance={first ? 'fly' : 'fade'} sparkles tapFlip />
-        </View>
+        <Animated.View ref={robotRef} collapsable={false} style={[s.stage, flight]}>
+          <AuthRobot maxHeight={size} scrollY={scrollY} mood={landing ? 'look' : 'wave'} look={landing ? -1 : 0} sparkles={!landing} tapFlip />
+        </Animated.View>
 
         <View style={s.copy}>
           <Appear delay={base}>
@@ -175,6 +202,13 @@ function Orbs({ entrance }: { entrance: boolean }) {
 
 const styles = StyleSheet.create({ orb: { position: 'absolute' } });
 
+function rectOf(ref: React.RefObject<View | null>): Promise<{ x: number; y: number; width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    if (!ref.current) return resolve(null);
+    ref.current.measureInWindow((x, y, width, height) => resolve(width || height ? { x, y, width, height } : null));
+  });
+}
+
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
     content: { flexGrow: 1 },
@@ -189,7 +223,7 @@ const useStyles = makeStyles((t) =>
       backgroundColor: t.c.surface,
       ...t.hairline,
     },
-    stage: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', marginBottom: -spacing.xl },
+    stage: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
     copy: { gap: spacing.sm },
     titleRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: type.display.fontSize * 0.28 },
     actions: { gap: spacing.sm, marginTop: spacing.xs },

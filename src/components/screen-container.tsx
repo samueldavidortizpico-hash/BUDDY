@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { useAnimatedScrollHandler, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { gradients as legacyGradients, spacing, type GradientName } from '@/theme';
@@ -26,6 +27,8 @@ export interface ScreenContainerProps {
   contentStyle?: StyleProp<ViewStyle>;
   /** Capa decorativa fija detrás del contenido (orbes, arte). */
   background?: ReactNode;
+  /** Desplazamiento vertical en el hilo de UI (el robot de las pantallas de cuenta se achica con él). */
+  scrollY?: SharedValue<number>;
 }
 
 /** Contenedor de pantalla: fondo del tema (con degradado opcional), safe areas, scroll y teclado. */
@@ -40,6 +43,7 @@ export function ScreenContainer({
   insideTabs = false,
   contentStyle,
   background,
+  scrollY,
 }: ScreenContainerProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -47,8 +51,14 @@ export function ScreenContainer({
   const colors =
     gradientColors ?? (gradient === 'screen' || gradient === 'welcome' ? t.gradients[gradient] : legacyGradients[gradient]);
 
+  const onScroll = useAnimatedScrollHandler((e) => {
+    if (scrollY) scrollY.set(e.contentOffset.y);
+  });
+
   const body = scroll ? (
-    <ScrollView
+    <Animated.ScrollView
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       style={styles.flex}
       contentContainerStyle={[styles.content, { paddingBottom: footer ? spacing.md : bottomPad }, contentStyle]}
       keyboardShouldPersistTaps="handled"
@@ -56,7 +66,7 @@ export function ScreenContainer({
       showsVerticalScrollIndicator={false}
     >
       {children}
-    </ScrollView>
+    </Animated.ScrollView>
   ) : (
     <View style={[styles.flex, styles.content, contentStyle]}>{children}</View>
   );

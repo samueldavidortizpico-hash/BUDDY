@@ -10,7 +10,7 @@ const { default: processTransformOrigin } = jest.requireActual<{
   default: (origin: unknown) => unknown;
 }>('react-native/Libraries/StyleSheet/processTransformOrigin');
 
-const moods: RobotMood[] = ['idle', 'wave', 'think', 'talk', 'celebrate', 'worry', 'look', 'cover', 'sleep'];
+const moods: RobotMood[] = ['idle', 'happy', 'wave', 'think', 'talk', 'celebrate', 'worry', 'look', 'cover', 'sleep', 'love', 'surprised', 'wink'];
 // Draw-order coordinates: right arm, heart, head, eyes, mouth, left arm.
 const points = [[682, 678], [586, 716], [500, 620], [490, 410], [490, 492], [372, 682]];
 

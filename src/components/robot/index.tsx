@@ -4,12 +4,12 @@
  *
  * Arte: si existe un PNG nítido (≥ 1000 px, exportado a 4x desde Figma) se registra en `HIGH_RES_PNG` y se usa;
  * si no, se usa el robot vectorial por capas (vector.tsx), que es nítido a cualquier tamaño y anima ojos y brazos.
- * El vuelo entre pantallas lo hace RobotStage (stage.tsx), que reutiliza este componente.
+ * Ya no hay robot en capa global: cada pantalla dibuja el suyo dentro de su contenido (ver auth-robot.tsx).
  */
 import { Image } from 'expo-image';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useId } from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, type GestureResponderEvent, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -28,7 +28,7 @@ import Svg, { Defs, Ellipse, Path, RadialGradient, Stop } from 'react-native-svg
 
 import { motion } from '@/theme';
 import { useTheme } from '@/theme/provider';
-import { successHaptic, tapHaptic } from '@/utils/haptics';
+import { softHaptic, successHaptic, tapHaptic } from '@/utils/haptics';
 
 import { BuddyRobotVector, VECTOR_RATIO, type RobotMood } from './vector';
 
@@ -67,6 +67,8 @@ export interface BuddyRobotProps {
   compact?: boolean;
   /** Pulso de reacción externo: al cambiar, el robot da un saltito (p. ej., al enviar en el chat). */
   bump?: number;
+  /** Bolita roja con el número de novedades sin leer (lanzador). */
+  badge?: number;
   onPress?: () => void;
   /** Etiqueta cuando el robot comunica algo. Sin ella es decorativo y se oculta al lector. */
   accessibilityLabel?: string;
@@ -124,6 +126,7 @@ function RobotBody({
   tapFlip = false,
   compact = false,
   bump,
+  badge,
   onPress,
   accessibilityLabel,
   style,
@@ -133,6 +136,13 @@ function RobotBody({
   const reduce = useReducedMotion();
   const h = compact ? size : Math.max(size, ROBOT_MIN);
   const w = h * ROBOT_RATIO;
+  const [reaction, setReaction] = useState<RobotMood | null>(null);
+  const [asleep, setAsleep] = useState(false);
+  const [petting, setPetting] = useState(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const touch = useRef({ x: 0, y: 0, moved: 0, lastTap: 0 });
+  const petHaptic = useRef<ReturnType<typeof setInterval> | null>(null);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const bob = useSharedValue(0);
   const drift = useSharedValue(0);
@@ -140,7 +150,10 @@ function RobotBody({
   const hop = useSharedValue(0);
   const spin = useSharedValue(0);
   const burst = useSharedValue(0);
+  const wiggle = useSharedValue(0);
   const fade = useSharedValue(reduce ? 0 : 1);
+  const gazeX = useSharedValue(0);
+  const gazeY = useSharedValue(0);
   const t0 = useSharedValue(0);
   const t1 = useSharedValue(0);
   const t2 = useSharedValue(0);
@@ -149,12 +162,51 @@ function RobotBody({
   const t5 = useSharedValue(0);
   const twinkles = [t0, t1, t2, t3, t4, t5];
 
+  const later = useCallback((fn: () => void, ms: number) => {
+    timers.current.push(setTimeout(fn, ms));
+  }, []);
+  const clearTimers = useCallback(() => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+  }, []);
+
+  // Reposo: tras 20 s sin tocarlo bosteza (sorprendido) y se duerme; despierta al tocarlo o al cambiar de estado.
+  const scheduleIdle = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    if (reduce || !focused || mood !== 'idle') return;
+    idleTimer.current = setTimeout(() => {
+      setReaction('surprised');
+      idleTimer.current = setTimeout(() => {
+        setReaction(null);
+        setAsleep(true);
+      }, 1200);
+    }, IDLE_SLEEP_MS);
+  }, [reduce, focused, mood]);
   useEffect(() => {
-    const loops = [bob, drift, tilt, hop, spin, burst, fade, ...twinkles];
+    scheduleIdle();
+    return () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+    };
+  }, [scheduleIdle]);
+  const armIdle = () => {
+    setAsleep(false);
+    scheduleIdle();
+  };
+
+  useEffect(
+    () => () => {
+      clearTimers();
+      if (petHaptic.current) clearInterval(petHaptic.current);
+    },
+    [clearTimers],
+  );
+
+  useEffect(() => {
+    const loops = [bob, drift, tilt, hop, spin, burst, wiggle, fade, ...twinkles];
     const stopAll = () => loops.forEach((v) => cancelAnimation(v));
     if (reduce) {
       stopAll();
-      [bob, drift, tilt, hop, spin, burst, ...twinkles].forEach((v) => v.set(0));
+      [bob, drift, tilt, hop, spin, burst, wiggle, ...twinkles].forEach((v) => v.set(0));
       fade.set(withTiming(1, { duration: 320 }));
       return stopAll;
     }
@@ -162,15 +214,15 @@ function RobotBody({
       stopAll();
       return;
     }
-    const slow = mood === 'worry' || mood === 'sleep' ? 1.6 : 1;
+    const slow = mood === 'worry' || mood === 'sleep' || asleep ? 1.6 : 1;
     if (flying) {
       pingPong(bob, -1, 1, 2800 * slow);
       pingPong(drift, -1, 1, 5000 * slow);
       pingPong(tilt, -2.5, 2.5, 4200 * slow, 700);
     }
     if (sparkles) twinkles.forEach((v, i) => pingPong(v, 0, 1, SPARKLES[i].d, i * 260));
-    // Saludo cada 7 s: −10°, 8°, −6°, 0° en 900 ms con un saltito.
-    if (flying && (mood === 'idle' || mood === 'wave')) {
+    // Saludo cada 7 s: −10°, 8°, −6°, 0° en 900 ms.
+    if (flying && !asleep && (mood === 'idle' || mood === 'wave')) {
       const wave = withSequence(
         withTiming(-10, { duration: 220 }),
         withTiming(8, { duration: 240 }),
@@ -183,7 +235,7 @@ function RobotBody({
     return stopAll;
     // Los shared values son estables; solo se reinicia por foco, movimiento reducido o cambio de estado.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focused, reduce, mood, flying, sparkles]);
+  }, [focused, reduce, mood, flying, sparkles, asleep]);
 
   // Celebración: salto, voltereta de 360° en 700 ms y estallido de destellos.
   useEffect(() => {
@@ -202,13 +254,79 @@ function RobotBody({
     burst.set(withSequence(withTiming(1, { duration: 140 }), withTiming(0, { duration: 500 })));
   }, [bump, reduce, h, hop, burst]);
 
-  const react = () => {
+  const react = (next: RobotMood, ms: number) => {
+    clearTimers();
+    setReaction(next);
+    later(() => setReaction(null), ms);
+  };
+
+  /** Toque: saltito con ojos felices; doble toque: voltereta con guiño. */
+  const onTap = () => {
+    armIdle();
     tapHaptic();
+    const now = Date.now();
+    const double = now - touch.current.lastTap < 320;
+    touch.current.lastTap = double ? 0 : now;
+    if (double) {
+      react('wink', 1300);
+      if (!reduce) spin.set(withSequence(withTiming(360, { duration: 650, easing: Easing.inOut(Easing.cubic) }), withTiming(0, { duration: 0 })));
+    } else {
+      react('happy', 1100);
+      if (!reduce) {
+        burst.set(withSequence(withTiming(1, { duration: 160 }), withTiming(0, { duration: 600 })));
+        hop.set(withSequence(withTiming(-h * (tapFlip ? 0.18 : 0.12), { duration: 180, easing: Easing.out(Easing.quad) }), withSpring(0, motion.spring)));
+        if (tapFlip) spin.set(withSequence(withTiming(360, { duration: 700, easing: Easing.inOut(Easing.cubic) }), withTiming(0, { duration: 0 })));
+      }
+    }
     onPress?.();
-    if (reduce) return;
-    burst.set(withSequence(withTiming(1, { duration: 160 }), withTiming(0, { duration: 600 })));
-    hop.set(withSequence(withTiming(-h * (tapFlip ? 0.18 : 0.12), { duration: 180, easing: Easing.out(Easing.quad) }), withSpring(0, motion.spring)));
-    if (tapFlip) spin.set(withSequence(withTiming(360, { duration: 700, easing: Easing.inOut(Easing.cubic) }), withTiming(0, { duration: 0 })));
+  };
+
+  /** Caricia (arrastrar sobre el robot o mantener 600 ms): ojos de corazón, meneo, corazones y vibración suave. */
+  const startPet = () => {
+    if (petting) return;
+    clearTimers();
+    armIdle();
+    setPetting(true);
+    setReaction('love');
+    if (!reduce) wiggle.set(withRepeat(withSequence(withTiming(-6, { duration: 160 }), withTiming(6, { duration: 160 })), -1, true));
+    softHaptic();
+    if (petHaptic.current) clearInterval(petHaptic.current);
+    petHaptic.current = setInterval(softHaptic, 450);
+  };
+  const endPet = () => {
+    if (petHaptic.current) clearInterval(petHaptic.current);
+    petHaptic.current = null;
+    gazeX.set(withSpring(0, motion.spring));
+    gazeY.set(withSpring(0, motion.spring));
+    later(() => {
+      setPetting(false);
+      setReaction(null);
+      cancelAnimation(wiggle);
+      wiggle.set(withSpring(0, motion.spring));
+    }, PET_LINGER_MS);
+  };
+
+  const touchHandlers = {
+    onTouchStart: (e: GestureResponderEvent) => {
+      touch.current = { ...touch.current, x: e.nativeEvent.pageX, y: e.nativeEvent.pageY, moved: 0 };
+      if (asleep) setAsleep(false);
+    },
+    onTouchMove: (e: GestureResponderEvent) => {
+      const dx = e.nativeEvent.pageX - touch.current.x;
+      const dy = e.nativeEvent.pageY - touch.current.y;
+      touch.current.moved = Math.max(touch.current.moved, Math.hypot(dx, dy));
+      // Los ojos siguen al dedo.
+      gazeX.set(Math.max(-1, Math.min(1, dx / (w * 0.5))));
+      gazeY.set(Math.max(-1, Math.min(1, dy / (h * 0.5))));
+      if (touch.current.moved > 24) startPet();
+    },
+    onTouchEnd: () => {
+      if (petting || touch.current.moved > 24) endPet();
+      else {
+        gazeX.set(withSpring(0, motion.spring));
+        gazeY.set(withSpring(0, motion.spring));
+      }
+    },
   };
 
   const body = useAnimatedStyle(() => ({
@@ -216,7 +334,7 @@ function RobotBody({
     transform: [
       { translateX: drift.value * h * 0.06 },
       { translateY: bob.value * h * 0.045 + hop.value },
-      { rotate: `${tilt.value + spin.value}deg` },
+      { rotate: `${tilt.value + spin.value + wiggle.value}deg` },
     ],
   }));
   const ground = useAnimatedStyle(() => ({
@@ -228,6 +346,7 @@ function RobotBody({
     transform: [{ translateX: drift.value * h * 0.06 }, { translateY: bob.value * h * 0.045 + hop.value }, { scaleY: interpolate(bob.value, [-1, 1], [1.15, 0.9]) }],
   }));
 
+  const shown: RobotMood = reaction ?? (asleep && mood === 'idle' ? 'sleep' : mood);
   const decorative = !accessibilityLabel && !onPress;
   const boxW = w * 1.5;
   const left = (boxW - w) / 2;
@@ -256,27 +375,85 @@ function RobotBody({
         </>
       ) : null}
 
-      <Animated.View style={[styles.abs, { top: 0, left, width: w, height: h }, body]}>
+      <Animated.View style={[styles.abs, { top: 0, left, width: w, height: h }, body]} {...touchHandlers}>
         {showGlow ? (
           <View style={[styles.abs, { width: h * 1.3, height: h * 1.3, left: (w - h * 1.3) / 2, top: -h * 0.15 }]}>
             <SoftEllipse color="#5ED9B5" opacity={t.dark ? 0.38 : 0.4} />
           </View>
         ) : null}
         <Pressable
-          onPress={react}
+          onPress={onTap}
+          onLongPress={startPet}
+          onPressOut={() => {
+            if (petting) endPet();
+          }}
+          delayLongPress={600}
           accessibilityRole={onPress ? 'button' : undefined}
           accessibilityLabel={onPress ? (accessibilityLabel ?? 'BUDDY') : undefined}
           style={StyleSheet.absoluteFill}
         >
-          <RobotArt size={h} mood={mood} look={look} animated={focused} />
+          <BuddyRobotVector size={h} mood={shown} look={look} animated={focused} gazeX={gazeX} gazeY={gazeY} />
         </Pressable>
-        {mood === 'think' ? <ThinkingDots size={h} /> : null}
+        {shown === 'think' ? <ThinkingDots size={h} /> : null}
       </Animated.View>
 
-      {sparkles || mood === 'celebrate' || bump ? (
+      {petting && !reduce ? HEARTS.map((spec, i) => <FloatingHeart key={i} spec={spec} w={w} size={h} left={left} />) : null}
+
+      {sparkles || mood === 'celebrate' || bump || reaction === 'happy' ? (
         SPARKLES.map((s, i) => <Sparkle key={i} spec={s} twinkle={twinkles[i]} burst={burst} w={w} size={h} left={left} />)
       ) : null}
+
+      {badge ? <Badge count={badge} size={h} right={left - w * 0.05} /> : null}
     </View>
+  );
+}
+
+const IDLE_SLEEP_MS = 20_000;
+const PET_LINGER_MS = 2000;
+const HEARTS = [
+  { x: 0.1, d: 1400, delay: 0 },
+  { x: 0.82, d: 1600, delay: 350 },
+  { x: 0.48, d: 1500, delay: 700 },
+];
+
+/** Corazón que sube y se desvanece mientras lo acarician (máx. 3, solo transform y opacidad). */
+function FloatingHeart({ spec, w, size, left }: { spec: (typeof HEARTS)[number]; w: number; size: number; left: number }) {
+  const v = useSharedValue(0);
+  useEffect(() => {
+    v.set(withDelay(spec.delay, withRepeat(withTiming(1, { duration: spec.d, easing: Easing.out(Easing.quad) }), -1)));
+    return () => cancelAnimation(v);
+  }, [v, spec]);
+  const px = size * 0.16;
+  const style = useAnimatedStyle(() => ({
+    opacity: interpolate(v.value, [0, 0.15, 0.75, 1], [0, 1, 1, 0]),
+    transform: [{ translateY: -v.value * size * 0.45 }, { scale: 0.6 + v.value * 0.5 }],
+  }));
+  return (
+    <Animated.View pointerEvents="none" style={[styles.abs, { left: left + spec.x * w - px / 2, top: size * 0.15, width: px, height: px }, style]}>
+      <Svg width={px} height={px} viewBox="0 0 24 24">
+        <Path d="M12 21 C 5 16 2 12.5 2 8.5 C 2 5.5 4.3 3.5 7 3.5 C 9 3.5 11 4.8 12 6.6 C 13 4.8 15 3.5 17 3.5 C 19.7 3.5 22 5.5 22 8.5 C 22 12.5 19 16 12 21 Z" fill="#FF8FA3" />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+/** Bolita roja con el número de novedades sin leer; late suavemente. */
+function Badge({ count, size, right }: { count: number; size: number; right: number }) {
+  const reduce = useReducedMotion();
+  const v = useSharedValue(1);
+  useEffect(() => {
+    if (reduce) return;
+    pingPong(v, 1, 1.18, 1200);
+    return () => cancelAnimation(v);
+  }, [reduce, v]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: v.value }] }));
+  const d = Math.max(22, size * 0.3);
+  return (
+    <Animated.View pointerEvents="none" style={[styles.abs, styles.badge, { top: size * 0.02, right, minWidth: d, height: d, borderRadius: d / 2 }, style]}>
+      <Text style={[styles.badgeText, { fontSize: d * 0.55 }]} allowFontScaling={false}>
+        {count > 9 ? '9+' : String(count)}
+      </Text>
+    </Animated.View>
   );
 }
 
@@ -370,4 +547,6 @@ function Dot({ v, d, color }: { v: SharedValue<number>; d: number; color: string
 const styles = StyleSheet.create({
   abs: { position: 'absolute' },
   row: { position: 'absolute', flexDirection: 'row', alignItems: 'center' },
+  badge: { backgroundColor: '#D93B3B', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, borderWidth: 2, borderColor: '#FFFFFF' },
+  badgeText: { color: '#FFFFFF', fontFamily: 'Manrope_800ExtraBold' },
 });

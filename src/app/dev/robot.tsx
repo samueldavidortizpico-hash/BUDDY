@@ -9,7 +9,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { spacing } from '@/theme';
 
-const MOODS: RobotMood[] = ['idle', 'wave', 'think', 'talk', 'celebrate', 'worry', 'look', 'cover', 'sleep'];
+const MOODS: RobotMood[] = ['idle', 'happy', 'wave', 'think', 'talk', 'celebrate', 'worry', 'look', 'cover', 'sleep', 'love', 'surprised', 'wink'];
 
 export default function RobotLab() {
   const { still } = useLocalSearchParams<{ still?: string }>();

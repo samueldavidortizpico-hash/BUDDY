@@ -15,7 +15,6 @@ import NewMedication from '@/app/(caregiver)/medication/new';
 import RoutineSection from '@/app/(caregiver)/routine/[section]';
 import SettingsSection from '@/app/(caregiver)/settings/[section]';
 import Setup from '@/app/(caregiver)/setup';
-import { RobotStageProvider } from '@/components/robot/stage';
 import { useSession } from '@/state/session';
 import { RenderProviders, seedMedication, seedRenderData } from '@/testing/render-fixtures';
 import { useAppearanceStore } from '@/theme/provider';
@@ -26,6 +25,7 @@ const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn(), canGoBack: () => false, replace: jest.fn() }),
   useIsFocused: () => true,
+  useFocusEffect: () => undefined,
   useLocalSearchParams: () => mockParams,
   Redirect: () => null,
 }));
@@ -59,7 +59,7 @@ describe.each(['light', 'dark', 'hcLight', 'hcDark'] as const)('render in %s the
     useAppearanceStore.setState({ mode: theme.endsWith('Dark') || theme === 'dark' ? 'dark' : 'light', highContrast: theme.startsWith('hc') });
     if (signedOut) useSession.setState({ status: 'signedOut', user: null });
     mockParams = { mode: 'manual' };
-    const ui = () => <RenderProviders><RobotStageProvider><Screen /></RobotStageProvider></RenderProviders>;
+    const ui = () => <RenderProviders><Screen /></RenderProviders>;
     const screen = render(ui());
     expect(screen.toJSON()).not.toBeNull();
     screen.rerender(ui());

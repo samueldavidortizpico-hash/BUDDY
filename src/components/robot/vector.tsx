@@ -24,7 +24,11 @@ import Svg, { Defs, Ellipse, G, LinearGradient, Line, Path, RadialGradient, Rect
 
 import { motion } from '@/theme';
 
-export type RobotMood = 'idle' | 'wave' | 'think' | 'talk' | 'celebrate' | 'worry' | 'look' | 'cover' | 'sleep';
+/**
+ * Estados: normal con brillo (idle/look/talk), feliz en arcos (happy/wave/celebrate), corazones (love), dormido con Zz
+ * (sleep), sorprendido, preocupado (worry), guiño (wink), pensando (think) y ojos tapados (cover, contraseñas).
+ */
+export type RobotMood = 'idle' | 'happy' | 'wave' | 'think' | 'talk' | 'celebrate' | 'worry' | 'look' | 'cover' | 'sleep' | 'love' | 'surprised' | 'wink';
 
 /** Marco de dibujo: x 110–930, y 40–980. */
 const VB = { x: 110, y: 30, w: 820, h: 920 };
@@ -88,51 +92,120 @@ function Defs_() {
 const HEART = 'M600 785 C 560 755 546 735 546 711 C 546 691 562 678 579 678 C 590 678 597 685 600 694 C 603 685 610 678 621 678 C 638 678 654 691 654 711 C 654 735 640 755 600 785 Z';
 const BODY = 'M505 612 C 642 612 704 690 700 786 C 696 874 626 930 505 930 C 384 930 316 874 312 786 C 308 690 368 612 505 612 Z';
 
+/** Corazón centrado en (cx, cy) con ancho `w` (ojos de corazón). */
+function heartAt(cx: number, cy: number, w: number) {
+  const k = w / 108;
+  const p = (x: number, y: number) => `${(cx + (x - 600) * k).toFixed(1)} ${(cy + (y - 730) * k).toFixed(1)}`;
+  return `M${p(600, 785)} C ${p(560, 755)} ${p(546, 735)} ${p(546, 711)} C ${p(546, 691)} ${p(562, 678)} ${p(579, 678)} C ${p(590, 678)} ${p(597, 685)} ${p(600, 694)} C ${p(603, 685)} ${p(610, 678)} ${p(621, 678)} C ${p(638, 678)} ${p(654, 691)} ${p(654, 711)} C ${p(654, 735)} ${p(640, 755)} ${p(600, 785)} Z`;
+}
+
+/** Ojos abiertos con brillo (estado normal). */
+function OpenEyes() {
+  return (
+    <>
+      <Rect x="370" y="360" width="56" height="86" rx="28" fill="#FFFFFF" />
+      <Rect x="560" y="360" width="56" height="86" rx="28" fill="#FFFFFF" />
+      <Ellipse cx="388" cy="380" rx="10" ry="12" fill="#BDEFE2" />
+      <Ellipse cx="578" cy="380" rx="10" ry="12" fill="#BDEFE2" />
+    </>
+  );
+}
+
 /** Ojos por expresión (en el marco de la cabeza, antes de inclinarla). */
 function Eyes({ mood }: { mood: RobotMood }) {
   const stroke = { stroke: '#FFFFFF', strokeWidth: 28, strokeLinecap: 'round' as const, fill: 'none' };
-  if (mood === 'worry') {
-    return (
-      <G transform={HEAD_TILT}>
-        <Ellipse cx="398" cy="420" rx="26" ry="30" fill="#FFFFFF" />
-        <Ellipse cx="584" cy="420" rx="26" ry="30" fill="#FFFFFF" />
-        <Line x1="350" y1="362" x2="430" y2="340" {...stroke} strokeWidth={18} />
-        <Line x1="632" y1="362" x2="552" y2="340" {...stroke} strokeWidth={18} />
-      </G>
-    );
+  switch (mood) {
+    case 'worry':
+      return (
+        <G transform={HEAD_TILT}>
+          <Ellipse cx="398" cy="420" rx="26" ry="30" fill="#FFFFFF" />
+          <Ellipse cx="584" cy="420" rx="26" ry="30" fill="#FFFFFF" />
+          <Line x1="350" y1="362" x2="430" y2="340" {...stroke} strokeWidth={18} />
+          <Line x1="632" y1="362" x2="552" y2="340" {...stroke} strokeWidth={18} />
+        </G>
+      );
+    case 'think':
+      return (
+        <G transform={HEAD_TILT}>
+          <Path d="M355 420 Q400 368 445 420" {...stroke} />
+          <Line x1="545" y1="405" x2="630" y2="405" {...stroke} />
+        </G>
+      );
+    case 'idle':
+    case 'look':
+    case 'talk':
+      return (
+        <G transform={HEAD_TILT}>
+          <OpenEyes />
+        </G>
+      );
+    case 'sleep':
+      return (
+        <G transform={HEAD_TILT}>
+          <Path d="M345 410 Q395 450 445 410" {...stroke} />
+          <Path d="M535 410 Q585 450 635 410" {...stroke} />
+        </G>
+      );
+    case 'love':
+      return (
+        <G transform={HEAD_TILT}>
+          <Path d={heartAt(398, 404, 118)} fill="#FF8FA3" />
+          <Path d={heartAt(588, 404, 118)} fill="#FF8FA3" />
+          <Ellipse cx="376" cy="384" rx="11" ry="8" fill="#FFFFFF" opacity="0.8" />
+          <Ellipse cx="566" cy="384" rx="11" ry="8" fill="#FFFFFF" opacity="0.8" />
+        </G>
+      );
+    case 'surprised':
+      return (
+        <G transform={HEAD_TILT}>
+          <Ellipse cx="398" cy="404" rx="44" ry="50" fill="#FFFFFF" />
+          <Ellipse cx="588" cy="404" rx="44" ry="50" fill="#FFFFFF" />
+          <Ellipse cx="398" cy="410" rx="18" ry="22" fill="#0D3946" />
+          <Ellipse cx="588" cy="410" rx="18" ry="22" fill="#0D3946" />
+          <Ellipse cx="384" cy="388" rx="9" ry="10" fill="#FFFFFF" />
+          <Ellipse cx="574" cy="388" rx="9" ry="10" fill="#FFFFFF" />
+        </G>
+      );
+    case 'wink':
+      return (
+        <G transform={HEAD_TILT}>
+          <Rect x="370" y="360" width="56" height="86" rx="28" fill="#FFFFFF" />
+          <Ellipse cx="388" cy="380" rx="10" ry="12" fill="#BDEFE2" />
+          <Path d="M540 420 Q585 380 630 420" {...stroke} />
+        </G>
+      );
+    default:
+      // happy, wave, celebrate, cover: ojos felices en arco, como en la marca
+      return (
+        <G transform={HEAD_TILT}>
+          <Path d="M340 432 Q395 352 450 432" {...stroke} />
+          <Path d="M530 432 Q585 352 640 432" {...stroke} />
+        </G>
+      );
   }
-  if (mood === 'think') {
-    return (
-      <G transform={HEAD_TILT}>
-        <Path d="M355 420 Q400 368 445 420" {...stroke} />
-        <Line x1="545" y1="405" x2="630" y2="405" {...stroke} />
-      </G>
-    );
-  }
-  if (mood === 'look' || mood === 'talk') {
-    return (
-      <G transform={HEAD_TILT}>
-        <Rect x="370" y="360" width="56" height="86" rx="28" fill="#FFFFFF" />
-        <Rect x="560" y="360" width="56" height="86" rx="28" fill="#FFFFFF" />
-        <Ellipse cx="388" cy="380" rx="10" ry="12" fill="#BDEFE2" />
-        <Ellipse cx="578" cy="380" rx="10" ry="12" fill="#BDEFE2" />
-      </G>
-    );
-  }
-  if (mood === 'sleep') {
-    return (
-      <G transform={HEAD_TILT}>
-        <Path d="M345 410 Q395 450 445 410" {...stroke} />
-        <Path d="M535 410 Q585 450 635 410" {...stroke} />
-      </G>
-    );
-  }
-  // idle, wave, celebrate, cover: ojos felices en arco, como en la marca
+}
+
+/** "Zz" que flotan cuando duerme. */
+function Zz({ size, live }: { size: number; live: boolean }) {
+  const v = useSharedValue(0);
+  useEffect(() => {
+    if (!live) {
+      cancelAnimation(v);
+      v.set(0.5);
+      return;
+    }
+    v.set(withRepeat(withTiming(1, { duration: 2200, easing: Easing.out(Easing.quad) }), -1));
+    return () => cancelAnimation(v);
+  }, [live, v]);
+  const style = useAnimatedStyle(() => ({ opacity: interpolate(v.value, [0, 0.2, 0.8, 1], [0, 1, 1, 0]), transform: [{ translateY: -v.value * size * 0.12 }, { translateX: v.value * size * 0.06 }] }));
+  const z = size * 0.1;
   return (
-    <G transform={HEAD_TILT}>
-      <Path d="M340 432 Q395 352 450 432" {...stroke} />
-      <Path d="M530 432 Q585 352 640 432" {...stroke} />
-    </G>
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', right: size * 0.02, top: size * 0.02, width: z * 2, height: z * 2 }, style]}>
+      <Svg width={z * 2} height={z * 2} viewBox="0 0 40 40">
+        <Path d="M4 6 H18 L4 20 H18" stroke="#5ED9B5" strokeWidth={3.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <Path d="M22 22 H34 L22 34 H34" stroke="#5ED9B5" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </Svg>
+    </Animated.View>
   );
 }
 
@@ -144,6 +217,9 @@ interface Props {
   look?: number;
   /** Animaciones propias (parpadeo, brazos, boca). Apagado en copias estáticas. */
   animated?: boolean;
+  /** Mirada que sigue el dedo (−1…1), actualizada desde el gesto sin pasar por React. */
+  gazeX?: SharedValue<number>;
+  gazeY?: SharedValue<number>;
 }
 
 function loop(v: SharedValue<number>, from: number, to: number, ms: number, delay = 0) {
@@ -162,7 +238,7 @@ function loop(v: SharedValue<number>, from: number, to: number, ms: number, dela
   );
 }
 
-export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = true }: Props) {
+export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = true, gazeX, gazeY }: Props) {
   const reduce = useReducedMotion();
   const live = animated && !reduce;
   const blink = useSharedValue(1);
@@ -173,10 +249,12 @@ export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = tru
   const cover = useSharedValue(mood === 'cover' ? 1 : 0);
   const eyesX = useSharedValue(look);
   const heart = useSharedValue(0);
+  const glance = useSharedValue(0);
+  const pulse = useSharedValue(1);
 
   // Parpadeo cada 3–5 s (no con los ojos tapados ni dormido).
   useEffect(() => {
-    if (!live || mood === 'cover' || mood === 'sleep') {
+    if (!live || mood === 'cover' || mood === 'sleep' || mood === 'wink') {
       cancelAnimation(blink);
       blink.set(1);
       return;
@@ -223,6 +301,20 @@ export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = tru
       case 'sleep':
         head.set(withTiming(8, { duration: 900 }));
         break;
+      case 'love':
+        loop(head, -5, 5, 900);
+        loop(rightArm, -14, 10, 700);
+        loop(leftArm, -6, 6, 800, 200);
+        break;
+      case 'surprised':
+        head.set(withSpring(-3, motion.spring));
+        leftArm.set(withSpring(40, motion.spring));
+        rightArm.set(withSpring(-26, motion.spring));
+        break;
+      case 'wink':
+        head.set(withSequence(withTiming(-7, { duration: 180 }), withSpring(0, motion.spring)));
+        rightArm.set(withSequence(withTiming(-20, { duration: 200 }), withSpring(0, motion.spring)));
+        break;
       default:
         loop(rightArm, -6, 8, 3000);
         loop(leftArm, -3, 3, 3600, 400);
@@ -233,6 +325,33 @@ export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = tru
   useEffect(() => {
     eyesX.set(live ? withSpring(look, motion.spring) : look);
   }, [look, live, eyesX]);
+
+  // En reposo mira a los lados cada ~8 s.
+  useEffect(() => {
+    cancelAnimation(glance);
+    glance.set(0);
+    if (!live || mood !== 'idle') return;
+    glance.set(
+      withRepeat(
+        withSequence(
+          withDelay(7400, withTiming(-0.7, { duration: 260 })),
+          withDelay(700, withTiming(0.6, { duration: 300 })),
+          withDelay(600, withTiming(0, { duration: 260 })),
+        ),
+        -1,
+      ),
+    );
+    return () => cancelAnimation(glance);
+  }, [live, mood, glance]);
+
+  // Los ojos de corazón laten.
+  useEffect(() => {
+    cancelAnimation(pulse);
+    pulse.set(1);
+    if (!live || mood !== 'love') return;
+    loop(pulse, 1, 1.16, 700);
+    return () => cancelAnimation(pulse);
+  }, [live, mood, pulse]);
 
   useEffect(() => {
     if (!animated || reduce) {
@@ -248,10 +367,14 @@ export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = tru
   const unit = size / VB.h; // dp por unidad del dibujo
 
   const headStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${head.value + eyesX.value * 4}deg` }] }));
-  const eyesStyle = useAnimatedStyle(() => ({
-    opacity: 1 - cover.value,
-    transform: [{ translateX: eyesX.value * 26 * unit }, { scaleY: blink.value }],
-  }));
+  const eyesStyle = useAnimatedStyle(() => {
+    const gx = Math.max(-1, Math.min(1, eyesX.value + glance.value + (gazeX ? gazeX.value : 0)));
+    const gy = gazeY ? Math.max(-1, Math.min(1, gazeY.value)) : 0;
+    return {
+      opacity: 1 - cover.value,
+      transform: [{ translateX: gx * 30 * unit }, { translateY: gy * 18 * unit }, { scaleY: blink.value * pulse.value }, { scaleX: pulse.value }],
+    };
+  });
   const leftStyle = useAnimatedStyle(() => ({ opacity: 1 - cover.value * 0.9, transform: [{ rotate: `${leftArm.value}deg` }] }));
   const rightStyle = useAnimatedStyle(() => ({ opacity: 1 - cover.value * 0.9, transform: [{ rotate: `${rightArm.value}deg` }] }));
   const coverStyle = useAnimatedStyle(() => ({
@@ -273,7 +396,7 @@ export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = tru
   );
 
   return (
-    <View style={{ width: w, height: size }} pointerEvents="none">
+    <View testID="robot-art" style={{ width: w, height: size }} pointerEvents="none">
       {/* Brazo derecho (saluda) detrás de la cabeza */}
       <Animated.View style={[layer, { transformOrigin: PIVOT.rightArm }, rightStyle]}>
         {svg(
@@ -331,6 +454,8 @@ export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = tru
       <Animated.View style={[layer, { transformOrigin: PIVOT.leftArm }, leftStyle]}>
         {svg(<Ellipse cx="334" cy="752" rx="64" ry="106" transform="rotate(26 334 752)" fill="url(#mint)" />, true)}
       </Animated.View>
+
+      {mood === 'sleep' ? <Zz size={size} live={live} /> : null}
 
       {/* Manos que tapan los ojos (al escribir la contraseña) */}
       <Animated.View style={[layer, coverStyle]}>

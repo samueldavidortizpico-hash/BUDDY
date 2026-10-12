@@ -10,3 +10,5 @@ const safe = (fn: () => Promise<void>) => {
 export const tapHaptic = () => safe(() => Haptics.selectionAsync());
 export const successHaptic = () => safe(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
 export const warningHaptic = () => safe(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning));
+/** Vibración muy suave y repetible (caricias al robot). */
+export const softHaptic = () => safe(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft));

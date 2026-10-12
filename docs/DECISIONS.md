@@ -55,3 +55,17 @@ Fuentes, en orden: `docs/CONTEXTO_BUDDY.md` (no estaba en el repositorio ni en e
 | 36 | Recursos con rutas relativas (`../../assets/...`) | El alias `@/assets` no resuelve en Jest. |
 | 37 | Identificadores `co.buddy.app` (Android e iOS) | Provisionales: confirmar antes de publicar. |
 | 38 | `eslint.config.js` no se modificó (lo protege un hook) | `expo lint` igual termina sin errores. |
+
+## Ronda v2.2 (11-10-2026)
+
+Este prompt prevalece sobre los anteriores donde se contradicen.
+
+| # | Decisión | Motivo |
+|---|---|---|
+| 39 | Se elimina `RobotStage` (robot único en capa global, `src/components/robot/stage.tsx`). Cada pantalla de cuenta dibuja `AuthRobot` dentro de su contenido. | Causa raíz del problema 9: el ancla se medía una vez con `measureInWindow`; al desplazarse o abrir el teclado el robot quedaba fijo encima de textos y campos. |
+| 40 | `AuthRobot` se achica y desvanece con el scroll usando solo `transform: scale` y `opacity` (escala 1 → 72/alto). Con teclado reserva 96 dp con transición de layout corta. | Regla de `fixing-motion-performance`: animar solo propiedades de composición; el único cambio de layout es puntual (teclado), no continuo. |
+| 41 | El vuelo de la bienvenida mide robot y botón **en el momento del toque** y se reinicia con `useFocusEffect`. | No depender de coordenadas medidas una sola vez. |
+| 42 | Gestos del robot con `Pressable` + eventos táctiles (`onTouchMove`) en vez de Gesture Handler. | Conserva el botón accesible (lector de pantalla y pruebas con `getByRole`) y funciona igual en web y nativo. |
+| 43 | Ojos "normales" (abiertos con brillo) pasan a ser el estado `idle`; los arcos felices quedan para `happy`, `wave` y `celebrate`. | Pedido del dueño (6.2): normal con brillo, feliz en arcos, corazones, dormido con Zz, sorprendido, preocupado y guiño. |
+| 44 | Las reproducciones de los 15 problemas se escriben como `it.failing` antes de corregir; al corregir pasan a `it`. | Método de la ronda: la suite queda verde y cada prueba demuestra el antes y el después. |
+| 45 | `baseline-ui` exige Tailwind y `motion/react` (web). En React Native se aplican sus principios equivalentes (solo transform/opacity, ≤ 200 ms en respuestas al toque, reducir movimiento, estados vacíos con una acción) sin cambiar de librería. | La skill es para web; migrar librerías está prohibido por `fixing-motion-performance`. |

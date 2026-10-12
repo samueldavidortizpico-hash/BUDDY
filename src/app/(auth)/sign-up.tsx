@@ -1,11 +1,13 @@
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Checkbox, Field } from '@/components/forms';
-import { RobotPerch, useRobotFieldFocus } from '@/components/robot/stage';
+import { useSharedValue } from 'react-native-reanimated';
+
+import { AuthRobot, useFormRobot } from '@/components/robot/auth-robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
@@ -23,7 +25,8 @@ export default function SignUp() {
   const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const { focus, blur, robot } = useRobotFieldFocus();
+  const robot = useFormRobot('wave');
+  const scrollY = useSharedValue(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,10 +34,6 @@ export default function SignUp() {
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
-  const nameRef = useRef<View>(null);
-  const emailRef = useRef<View>(null);
-  const passRef = useRef<View>(null);
-  const confirmRef = useRef<View>(null);
 
   const strength = passwordStrength(password);
 
@@ -48,18 +47,18 @@ export default function SignUp() {
     setErrors(next);
     if (Object.keys(next).length) {
       warningHaptic();
-      robot.shake();
+      robot.error();
       return;
     }
     setBusy(true);
     try {
       await sessionActions.signUp({ name, email, password });
       successHaptic();
-      await robot.celebrateAndLeave();
+      robot.success();
       router.replace('/setup');
     } catch (e) {
       warningHaptic();
-      robot.shake();
+      robot.error();
       setErrors({ form: e instanceof AuthError ? e.message : A.errors.unknown });
     } finally {
       setBusy(false);
@@ -67,31 +66,31 @@ export default function SignUp() {
   };
 
   return (
-    <ScreenContainer keyboard header={<ScreenHeader title={A.signUpTitle} fallback="/" />}>
+    <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={A.signUpTitle} fallback="/" />}>
       <View style={s.hero}>
-        <RobotPerch name="sign-up" size={112} mood="wave" />
+        <AuthRobot maxHeight={150} scrollY={scrollY} mood={robot.mood} look={robot.mood === 'look' ? -0.6 : 0} />
         <AppText variant="secondary" color={t.c.muted} align="center">
           {A.signUpSubtitle}
         </AppText>
       </View>
 
       <View style={s.form}>
-        <View ref={nameRef} collapsable={false}>
+        <View>
           <Field label={A.name} value={name} onChangeText={setName} placeholder={A.namePlaceholder} autoComplete="name" textContentType="name" icon="user"
-            error={errors.name} onFocus={() => focus(nameRef)} onBlur={blur} returnKeyType="next" />
+            error={errors.name} onFocus={() => robot.focus()} onBlur={robot.blur} returnKeyType="next" />
         </View>
-        <View ref={emailRef} collapsable={false}>
+        <View>
           <Field label={A.email} value={email} onChangeText={setEmail} placeholder={A.emailPlaceholder} keyboardType="email-address" autoCapitalize="none"
-            autoComplete="email" textContentType="emailAddress" icon="mail" error={errors.email} onFocus={() => focus(emailRef)} onBlur={blur} />
+            autoComplete="email" textContentType="emailAddress" icon="mail" error={errors.email} onFocus={() => robot.focus()} onBlur={robot.blur} />
         </View>
-        <View ref={passRef} collapsable={false}>
+        <View>
           <Field label={A.password} value={password} onChangeText={setPassword} secure autoCapitalize="none" autoComplete="new-password" textContentType="newPassword"
-            icon="lock" hint={A.passwordHint} error={errors.password} onFocus={() => focus(passRef, 'password')} onBlur={blur} />
+            icon="lock" hint={A.passwordHint} error={errors.password} onFocus={() => robot.focus('password')} onBlur={robot.blur} />
           {password ? <StrengthMeter value={strength} /> : null}
         </View>
-        <View ref={confirmRef} collapsable={false}>
+        <View>
           <Field label={A.confirm} value={confirm} onChangeText={setConfirm} secure autoCapitalize="none" autoComplete="new-password" textContentType="newPassword"
-            icon="lock" error={errors.confirm} onFocus={() => focus(confirmRef, 'password')} onBlur={blur} />
+            icon="lock" error={errors.confirm} onFocus={() => robot.focus('password')} onBlur={robot.blur} />
         </View>
         <Checkbox checked={terms} onChange={setTerms} label={A.terms} error={errors.terms} />
         <View style={s.links}>

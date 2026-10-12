@@ -13,7 +13,6 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ToastProvider } from '@/components/feedback';
-import { RobotStageProvider } from '@/components/robot/stage';
 import { ErrorState } from '@/components/states';
 import { db } from '@/infrastructure/local/db';
 import { startSession, useSession } from '@/state/session';
@@ -63,9 +62,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <ToastProvider>
-          <RobotStageProvider>
-            <ThemedStack />
-          </RobotStageProvider>
+          <ThemedStack />
         </ToastProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

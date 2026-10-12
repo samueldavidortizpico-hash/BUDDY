@@ -1,12 +1,14 @@
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Field } from '@/components/forms';
 import { Icon } from '@/components/icon';
-import { RobotPerch, useRobotFieldFocus } from '@/components/robot/stage';
+import { useSharedValue } from 'react-native-reanimated';
+
+import { AuthRobot, useFormRobot } from '@/components/robot/auth-robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { isValidEmail } from '@/domain/validation';
@@ -21,12 +23,12 @@ export default function ForgotPassword() {
   const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const { focus, blur } = useRobotFieldFocus();
+  const robot = useFormRobot('idle');
+  const scrollY = useSharedValue(0);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ sent: boolean; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
-  const ref = useRef<View>(null);
 
   const send = async () => {
     if (!isValidEmail(email)) return setError(strings.auth.errors.email);
@@ -42,17 +44,17 @@ export default function ForgotPassword() {
   };
 
   return (
-    <ScreenContainer keyboard header={<ScreenHeader title={F.title} fallback="/sign-in" />}>
+    <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={F.title} fallback="/sign-in" />}>
       <View style={s.hero}>
-        <RobotPerch name="forgot" size={112} mood={result ? (result.sent ? 'celebrate' : 'think') : 'idle'} />
+        <AuthRobot maxHeight={140} scrollY={scrollY} mood={result ? (result.sent ? 'celebrate' : 'think') : robot.mood} />
         <AppText variant="secondary" color={t.c.muted} align="center">
           {F.body}
         </AppText>
       </View>
       <View style={s.form}>
-        <View ref={ref} collapsable={false}>
+        <View>
           <Field label={strings.auth.email} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" icon="mail"
-            placeholder={strings.auth.emailPlaceholder} error={error} onFocus={() => focus(ref)} onBlur={blur} />
+            placeholder={strings.auth.emailPlaceholder} error={error} onFocus={() => robot.focus()} onBlur={robot.blur} />
         </View>
         {result ? (
           <View style={s.note} accessibilityLiveRegion="polite">

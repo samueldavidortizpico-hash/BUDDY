@@ -8,7 +8,7 @@ import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
 import { Button } from '@/components/button';
 import { Icon, type IconName } from '@/components/icon';
-import { RobotPerch } from '@/components/robot/stage';
+import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { strings } from '@/i18n';
@@ -65,7 +65,7 @@ export default function Onboarding() {
           </View>
         </Appear>
         <View style={[s.perchRow, { justifyContent: art.align }]}>
-          <RobotPerch key={i} name={`onboarding-${i}`} size={120} mood={i === 1 ? 'wave' : i === 2 ? 'look' : 'idle'} />
+          <BuddyRobot key={i} size={120} mood={i === 1 ? 'wave' : i === 2 ? 'look' : 'idle'} />
         </View>
       </View>
 

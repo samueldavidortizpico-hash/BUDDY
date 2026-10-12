@@ -1,11 +1,13 @@
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Field } from '@/components/forms';
-import { RobotPerch, useRobotFieldFocus } from '@/components/robot/stage';
+import { useSharedValue } from 'react-native-reanimated';
+
+import { AuthRobot, useFormRobot } from '@/components/robot/auth-robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
@@ -24,14 +26,13 @@ export default function SignIn() {
   const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const { focus, blur, robot } = useRobotFieldFocus();
+  const robot = useFormRobot('wave');
+  const scrollY = useSharedValue(0);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [busy, setBusy] = useState(false);
-  const emailRef = useRef<View>(null);
-  const passRef = useRef<View>(null);
 
   const submit = async () => {
     const fe = { email: isValidEmail(email) ? undefined : A.errors.email, password: password ? undefined : A.errors.required };
@@ -39,19 +40,19 @@ export default function SignIn() {
     setError(null);
     if (fe.email || fe.password) {
       warningHaptic();
-      robot.shake();
+      robot.error();
       return;
     }
     setBusy(true);
     try {
       const user = await sessionActions.signIn({ email, password });
       successHaptic();
-      await robot.celebrateAndLeave();
+      robot.success();
       const hasElder = db.list('elders', user.id).some((e) => e.setupDone);
       router.replace(homeHrefFor(user.id, hasElder, false));
     } catch (e) {
       warningHaptic();
-      robot.shake();
+      robot.error();
       setError(e instanceof AuthError ? e.message : A.errors.unknown);
     } finally {
       setBusy(false);
@@ -59,21 +60,21 @@ export default function SignIn() {
   };
 
   return (
-    <ScreenContainer keyboard header={<ScreenHeader title={A.signInTitle} fallback="/" />}>
+    <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={A.signInTitle} fallback="/" />}>
       <View style={s.hero}>
-        <RobotPerch name="sign-in" size={120} mood="wave" />
+        <AuthRobot maxHeight={160} scrollY={scrollY} mood={robot.mood} look={robot.mood === 'look' ? -0.6 : 0} />
         <AppText variant="secondary" color={t.c.muted} align="center">
           {A.signInSubtitle}
         </AppText>
       </View>
       <View style={s.form}>
-        <View ref={emailRef} collapsable={false}>
+        <View>
           <Field label={A.email} value={email} onChangeText={setEmail} placeholder={A.emailPlaceholder} keyboardType="email-address" autoCapitalize="none"
-            autoComplete="email" textContentType="username" icon="mail" error={fieldErrors.email} onFocus={() => focus(emailRef)} onBlur={blur} />
+            autoComplete="email" textContentType="username" icon="mail" error={fieldErrors.email} onFocus={() => robot.focus()} onBlur={robot.blur} />
         </View>
-        <View ref={passRef} collapsable={false}>
+        <View>
           <Field label={A.password} value={password} onChangeText={setPassword} secure autoCapitalize="none" autoComplete="current-password"
-            textContentType="password" icon="lock" error={fieldErrors.password} onFocus={() => focus(passRef, 'password')} onBlur={blur}
+            textContentType="password" icon="lock" error={fieldErrors.password} onFocus={() => robot.focus('password')} onBlur={robot.blur}
             returnKeyType="go" onSubmitEditing={submit} />
         </View>
         {error ? (

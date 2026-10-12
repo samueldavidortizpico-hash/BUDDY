@@ -49,3 +49,7 @@ graphify-out/
 # Playwright MCP
 .playwright-mcp/
 .env
+
+# Exportaciones web para capturas
+dist-*/
+.playwright-cli/
