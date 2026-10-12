@@ -59,3 +59,8 @@ jest.mock('expo-notifications', () => {
     }),
   };
 });
+
+// Sin red real en las pruebas (buddy-testing): fetch falla salvo que una prueba lo simule con respuestas fijas.
+globalThis.fetch = jest.fn(async () => {
+  throw new Error('Sin red en las pruebas');
+}) as unknown as typeof fetch;

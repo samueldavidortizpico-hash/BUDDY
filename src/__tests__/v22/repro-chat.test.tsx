@@ -34,6 +34,7 @@ const send = async (text: string) => {
 it('pide un medicamento, completa lo obligatorio y lo agrega desde la tarjeta fija junto al compositor', async () => {
   render(<RenderProviders><Buddy /></RenderProviders>);
   await send('Ponle losartán a las 6 de la tarde');
+  await send('No está en la lista'); // V2.4: paso Presentación → registrar a mano
   await send('1 tableta');
   // La tarjeta fija está fuera de la lista de mensajes, siempre visible sobre el compositor.
   const pinned = screen.getByTestId('draft-pinned');

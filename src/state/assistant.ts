@@ -141,7 +141,9 @@ function run(a: AssistantAction): ExecResult {
       const { med, findings } = medicationActions.add(
         {
           name: a.name,
-          activeIngredient: '',
+          activeIngredient: a.activeIngredient ?? '',
+          atc: a.atc,
+          verifiedSource: a.verified ?? null,
           strength: a.strength ?? '',
           form: a.form,
           doseAmount: a.doseAmount,
@@ -281,6 +283,14 @@ export const draftActions = {
     if (!d) return null;
     const asking = d.asking;
     const actions = asking ? d.actions.map((a, i) => (i === asking.index ? applyField(a, asking.field, text) : a)) : d.actions;
+    const q = nextQuestion(actions, context());
+    return draftActions.save({ ...d, actions, asking: q ? { index: q.index, field: q.field } : null });
+  },
+  /** Reemplaza una acción del borrador (p. ej. al elegir "¿Quisiste decir…?") y vuelve a preguntar lo que falte. */
+  replace(index: number, action: AssistantAction): Draft | null {
+    const d = draftActions.get();
+    if (!d) return null;
+    const actions = d.actions.map((a, i) => (i === index ? action : a));
     const q = nextQuestion(actions, context());
     return draftActions.save({ ...d, actions, asking: q ? { index: q.index, field: q.field } : null });
   },

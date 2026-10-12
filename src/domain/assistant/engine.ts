@@ -104,8 +104,9 @@ function medName(t: string, raw: string, known?: string[]): string | null {
   }
   if (!tokens.length || tokens.every((tk) => GENERIC_MED.has(tk))) return null;
   const name = tokens.map((tok) => (tok.length === 1 ? tok.toUpperCase() : original(raw, tok))).join(' ');
-  // "losartan" o "losartn" con Losartán ya registrado: se usa el nombre conocido.
-  return known ? (closest(name, known) ?? name) : name;
+  // "losartan" con Losartán ya registrado: mismo nombre sin tildes → se usa el registrado. Un error de ortografía
+  // ("losartn") NO se corrige solo (buddy-medical-safety): el registro del INVIMA ofrecerá sugerencias para elegir.
+  return known?.find((k) => normalizeText(k) === normalizeText(name)) ?? name;
 }
 
 const ACTIVITY_WORDS: [RegExp, ActivityKind, string][] = [

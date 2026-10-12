@@ -109,6 +109,10 @@ export interface Medication extends SyncMeta {
   purpose: string;
   /** Descripción: la escribe el cuidador o el servicio farmacológico futuro. Nunca la inventa BUDDY. */
   description: string;
+  /** Código ATC del registro elegido (si se eligió una presentación del INVIMA). */
+  atc?: string;
+  /** De dónde salieron nombre, principio activo y concentración (trazabilidad); ausente = escrito a mano. */
+  verifiedSource?: { source: string; id?: string; date: string } | null;
   unitsPerPackage: number | null;
   /** Existencias actuales en unidades de dosis (tabletas, ml, gotas…). null = no se registran. */
   unitsOnHand: number | null;
@@ -243,6 +247,7 @@ export type AlertKind =
   | 'stock_out'
   | 'allergy_match'
   | 'duplicate_ingredient'
+  | 'same_class'
   | 'schedule_overlap'
   | 'help_requested'
   | 'checkin_unwell';
@@ -285,6 +290,7 @@ export const ALERT_KINDS: AlertKind[] = [
   'stock_out',
   'allergy_match',
   'duplicate_ingredient',
+  'same_class',
   'schedule_overlap',
   'help_requested',
   'checkin_unwell',

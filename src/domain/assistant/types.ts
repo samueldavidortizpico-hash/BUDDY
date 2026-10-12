@@ -24,6 +24,17 @@ export type AssistantAction =
       instructions: string;
       /** Para qué sirve, en palabras del cuidador. */
       purpose?: string;
+      /** Principio(s) activo(s) según el registro elegido ("Acetaminofen + Cafeina"). */
+      activeIngredient?: string;
+      atc?: string;
+      /** Presentaciones del registro del INVIMA para que el cuidador elija la de su caja. */
+      candidates?: ProductChoice[];
+      /** Nombres parecidos cuando lo escrito no está en el registro (nunca se aplican solos). */
+      suggestions?: string[];
+      /** El cuidador ya eligió presentación o decidió registrarlo a mano. */
+      productDecided?: boolean;
+      /** Fuente de los datos que se completaron desde el registro (trazabilidad). */
+      verified?: { source: string; id?: string; date: string } | null;
     }
   | { type: 'update_medication'; match: string; times: ClockTime[] | null; doseAmount: number | null }
   | { type: 'remove_medication'; match: string }
@@ -65,6 +76,17 @@ export type AssistantAction =
 
 export type ActionType = AssistantAction['type'];
 
+/** Presentación del registro del INVIMA ofrecida como opción (sin dosis: la dosis siempre la dice el cuidador). */
+export interface ProductChoice {
+  label: string;
+  name: string;
+  strength: string;
+  form: MedForm;
+  activeIngredient: string;
+  atc: string;
+  source: { source: string; id?: string; date: string };
+}
+
 /** Datos que BUDDY puede preguntar para completar una acción. */
 export type FieldKey =
   | 'name'
@@ -87,7 +109,8 @@ export type FieldKey =
   | 'steps'
   | 'doctor'
   | 'institution'
-  | 'questions';
+  | 'questions'
+  | 'product';
 
 /** Campo que falta y cómo preguntarlo (con respuestas rápidas). */
 export interface MissingField {

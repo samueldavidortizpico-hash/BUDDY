@@ -55,11 +55,13 @@ it('el chat vacío muestra el menú de 8 acciones', () => {
 it('agrega un medicamento solo con respuestas predeterminadas, sin burbujas por cada respuesta', async () => {
   chat();
   await say('agrega losartán');
-  expect(within(card()).getByText(/¿Cuánto toma de Losartán cada vez\?/)).toBeTruthy();
-  expect(within(card()).getByText(B.step(2, 3))).toBeTruthy();
+  // V2.4 Hito 2: primero la presentación del registro del INVIMA, elegida con un toque.
+  expect(within(card()).getByText(B.step(2, 4))).toBeTruthy();
   const before = userBubbles();
+  await tap(/^Losartán Potásico · 50 mg/);
+  expect(within(card()).getByText(/¿Cuánto toma de Losartán Potásico cada vez\?/)).toBeTruthy();
   await tap('1 tableta');
-  expect(within(card()).getByText(/¿A qué hora debe tomar Losartán\?/)).toBeTruthy();
+  expect(within(card()).getByText(/¿A qué hora debe tomar Losartán Potásico\?/)).toBeTruthy();
   await tap('8:00 a. m.');
   expect(userBubbles()).toBe(before); // las respuestas por botón no llenan el historial
   // Completo: la tarjeta deja de preguntar y muestra el resumen con la confirmación activa.
@@ -67,7 +69,8 @@ it('agrega un medicamento solo con respuestas predeterminadas, sin burbujas por 
   expect(confirm.props.accessibilityState?.disabled).toBeFalsy();
   fireEvent.press(confirm);
   await wait();
-  expect(list('medications')[0]).toMatchObject({ name: 'Losartán', doseAmount: 1, schedule: { kind: 'times', times: ['08:00'] } });
+  expect(list('medications')[0]).toMatchObject({ name: 'Losartán Potásico', strength: '50 mg', doseAmount: 1, schedule: { kind: 'times', times: ['08:00'] } });
+  expect(list('medications')[0].verifiedSource).toMatchObject({ source: expect.stringContaining('INVIMA') });
   // Tarea terminada colapsada a una línea con Ver y Deshacer.
   expect(screen.queryByTestId('draft-pinned')).toBeNull();
   const done = screen.getByTestId('task-done');
@@ -80,6 +83,7 @@ it('agrega un medicamento solo con respuestas predeterminadas, sin burbujas por 
 it('Atrás vuelve a preguntar el dato anterior y Omitir salta un dato opcional', async () => {
   chat();
   await say('agrega metformina');
+  await tap('No está en la lista');
   await tap('½ tableta');
   await tap(B.back);
   expect(within(card()).getByText(/¿Cuánto toma de Metformina cada vez\?/)).toBeTruthy();

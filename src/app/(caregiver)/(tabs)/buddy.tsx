@@ -13,6 +13,7 @@ import { BuddyRobot } from '@/components/robot';
 import type { MenuKey } from '@/domain/assistant/draft';
 import type { AssistantMessage } from '@/domain/types';
 import { ActionMenu, TaskCard } from '@/features/chat/task-card';
+import { MedInfoCard, type MedInfoPayload } from '@/features/chat/med-info';
 import { DONE, MENU, useBuddyChat } from '@/features/chat/use-chat';
 import { PreviewSheetButton } from '@/features/elder/phone-preview';
 import { savePhoto } from '@/infrastructure/local/media';
@@ -232,6 +233,7 @@ function Message({ m, onMenu, onSee, onUndo }: { m: AssistantMessage; onMenu: (k
   const reduce = useReducedMotion();
   const mine = m.from === 'user';
   const p = m.proposal ? (JSON.parse(m.proposal) as { kind?: string; segment?: RoutineSegment; suggestions?: boolean }) : null;
+  if (p?.kind === 'medinfo') return <MedInfoCard p={p as unknown as MedInfoPayload} />;
 
   // Tarea terminada: una sola línea con Ver y Deshacer.
   if (p?.kind === DONE) {

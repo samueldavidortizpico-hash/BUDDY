@@ -207,9 +207,9 @@ export function editDistance(a: string, b: string): number {
  * Candidato más parecido a una palabra mal escrita ("losartn" → "Losartán"). Solo palabras de 5+ letras y como máximo
  * 1 error (2 si tiene 8+ letras): más tolerancia confundiría palabras distintas. Compara sin tildes ni mayúsculas.
  */
-export function closest(word: string, candidates: string[]): string | null {
+export function closest(word: string, candidates: string[], minLen = 5): string | null {
   const w = normalizeText(word);
-  if (w.length < 5) return null;
+  if (w.length < minLen) return null;
   const max = w.length >= 8 ? 2 : 1;
   let best: { c: string; d: number } | null = null;
   for (const c of candidates) {

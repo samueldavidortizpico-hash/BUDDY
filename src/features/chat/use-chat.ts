@@ -8,6 +8,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { menuTemplate, type Draft, type MenuKey } from '@/domain/assistant/draft';
+import { ingredientsText, strengthText, type ProductMatch } from '@/domain/knowledge';
+import { enrichMedication } from '@/features/chat/knowledge';
+import type { MedInfoPayload } from '@/features/chat/med-info';
+import { medicationKnowledge } from '@/infrastructure/knowledge';
 import { EXAMPLES } from '@/domain/assistant/engine';
 import type { FieldKey } from '@/domain/assistant/types';
 import { normalizeText } from '@/domain/validation';
@@ -19,6 +23,20 @@ import { computeFeed } from '@/state/feed';
 import { successHaptic } from '@/utils/haptics';
 
 const B = strings.buddy;
+const K = strings.knowledge;
+
+/** Mensaje con la tarjeta de información verificada de un producto del registro. */
+function medInfoMessage(m: ProductMatch, by: 'brand' | 'ingredient') {
+  const payload: MedInfoPayload = {
+    kind: 'medinfo',
+    name: m.name,
+    what: by === 'brand' ? `${ingredientsText(m).toLowerCase()} (${strengthText(m)})` : ingredientsText(m).toLowerCase(),
+    atc: m.atc,
+    ingredients: m.ingredients.map((i) => i.name),
+    registry: { id: m.source.id, date: m.source.date },
+  };
+  conversation.add('buddy', m.name, { proposal: JSON.stringify(payload), proposalState: null });
+}
 /** Pausa breve y honesta: se muestra que BUDDY responde (no simula un análisis). */
 export const REPLY_MS = 350;
 
@@ -74,8 +92,17 @@ export function useBuddyChat(h: ChatHandlers) {
   const startDraft = useCallback(
     (actions: Parameters<typeof draftActions.start>[0]) => {
       setHint(null);
-      draftActions.start(actions);
-      reply(B.taskStarted);
+      // Medicamentos: se buscan en el registro del INVIMA para elegir la presentación (nunca se elige sola).
+      let note: string = B.taskStarted;
+      const enriched = actions.map((a) => {
+        if (a.type !== 'add_medication') return a;
+        const r = enrichMedication(a);
+        if (r.notFound) note = K.notInRegistry(a.name);
+        else if (r.matches.length) note = K.matchesIntro(a.name);
+        return r.action;
+      });
+      draftActions.start(enriched);
+      reply(note);
     },
     [reply],
   );
@@ -85,10 +112,33 @@ export function useBuddyChat(h: ChatHandlers) {
     const current = draftActions.get();
     if (!current?.asking) return;
     const { index, field } = current.asking;
-    const before = JSON.stringify(current.actions[index]);
+    const a = current.actions[index];
+    // "¿Quisiste decir…?": el cuidador eligió un nombre del registro; se busca de nuevo con ese nombre.
+    if (field === 'product' && a.type === 'add_medication' && a.suggestions?.includes(value)) {
+      const r = enrichMedication({ ...a, name: value, suggestions: undefined });
+      draftActions.replace(index, r.action);
+      setHint(null);
+      if (r.notFound) conversation.add('buddy', K.notInRegistry(value));
+      return;
+    }
+    const before = JSON.stringify(a);
     const next = draftActions.answer(value);
     const unchanged = next?.asking?.index === index && next.asking.field === field && JSON.stringify(next.actions[index]) === before;
     setHint(unchanged ? B.notThatData : null);
+    // Nombre escrito en la tarjeta (flujo del menú): se busca en el registro igual que al pedirlo por chat.
+    const named = next?.actions[index];
+    if (field === 'name' && named?.type === 'add_medication' && named.name) {
+      const r = enrichMedication(named);
+      if (r.action !== named) draftActions.replace(index, r.action);
+      if (r.notFound) conversation.add('buddy', K.notInRegistry(named.name));
+    }
+    // Presentación elegida: tarjeta con lo que dice el registro y "Para qué se usa" (con fuente).
+    const chosen = next?.actions[index];
+    if (field === 'product' && chosen?.type === 'add_medication' && chosen.verified) {
+      const r = medicationKnowledge.lookup(chosen.name);
+      const m = r.status === 'found' ? (r.matches.find((x) => x.source.id === chosen.verified?.id) ?? r.matches[0]) : null;
+      if (m) medInfoMessage(m, 'brand');
+    }
   }, []);
 
   const confirm = useCallback(() => {
@@ -127,10 +177,13 @@ export function useBuddyChat(h: ChatHandlers) {
 
   const medInfo = useCallback(
     (name: string) => {
-      // Hasta el Hito 2 (MedicationKnowledgeService) BUDDY solo repite lo que registró el cuidador; nunca inventa.
+      // Primero el registro del INVIMA; si no está, lo que escribió el cuidador; si tampoco, se dice. Nunca de memoria.
+      const r = medicationKnowledge.lookup(name);
+      if (r.status === 'found') return medInfoMessage(r.matches[0], r.by);
+      if (r.status === 'suggest') return reply(K.didYouMean(name), { quickReplies: r.suggestions.map(K.askAbout) });
       const known = elder && userId ? db.list('medications', userId, elder.id).find((m) => normalizeText(m.name) === normalizeText(name)) : undefined;
       const own = known?.purpose || known?.description;
-      reply(own ? `${known!.name}: ${own} (según lo que registraste).` : `No encontré información verificada de ${name}. Puedes registrarlo a mano.`);
+      reply(own ? `${known!.name}: ${own} (según lo que registraste).` : K.none(name));
     },
     [reply, elder, userId],
   );

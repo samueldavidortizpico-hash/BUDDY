@@ -342,6 +342,7 @@ function Legal() {
     <View style={s.stack}>
       <Button label={strings.legal.terms.title} variant="ghost" size="md" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })} />
       <Button label={strings.legal.privacy.title} variant="ghost" size="md" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacy' } })} />
+      <Button label={strings.legal.sources.title} variant="ghost" size="md" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'sources' } })} />
       <AppText variant="h3">{S.permissions}</AppText>
       <Row label={S.camera} value={account.permissions.camera} onChange={(v) => perm('camera', v)} />
       <Row label={S.notifications} hint={S.notificationsSoon} value={account.permissions.notifications} onChange={(v) => perm('notifications', v)} />
@@ -427,6 +428,12 @@ function About() {
       <Card style={s.stack}>
         <AppText variant="h3">{S.howAssistant}</AppText>
         <AppText variant="secondary">{S.howAssistantBody}</AppText>
+      </Card>
+      <Card style={s.stack}>
+        <AppText variant="h3">{strings.legal.sources.title}</AppText>
+        {strings.legal.sources.body.slice(0, 3).map((p) => (
+          <AppText key={p} variant="caption" color={t.c.muted}>{p}</AppText>
+        ))}
       </Card>
       <Card style={s.stack}>
         <AppText variant="h3">{S.support}</AppText>

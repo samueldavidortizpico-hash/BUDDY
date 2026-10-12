@@ -7,11 +7,11 @@ import { ScreenHeader } from '@/components/screen-header';
 import { strings } from '@/i18n';
 import { spacing } from '@/theme';
 
-/** Términos de uso y política de privacidad (texto en src/i18n). */
+/** Términos de uso, política de privacidad y fuentes y atribuciones (texto en src/i18n). */
 export default function Legal() {
   const router = useRouter();
   const { doc } = useLocalSearchParams<{ doc: string }>();
-  const content = doc === 'privacy' ? strings.legal.privacy : strings.legal.terms;
+  const content = doc === 'privacy' ? strings.legal.privacy : doc === 'sources' ? strings.legal.sources : strings.legal.terms;
   return (
     <ScreenContainer header={<ScreenHeader title={content.title} onClose={() => router.back()} />}>
       <View style={styles.body}>

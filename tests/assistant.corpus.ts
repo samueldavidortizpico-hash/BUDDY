@@ -88,9 +88,12 @@ export const CORPUS: CorpusCase[] = [
   med('agrega advil a las 3 pm', { name: 'Advil', times: ['15:00'] }),
   med('pon 2 tabletas de calcio a las 12', { name: 'Calcio', doseAmount: 2, times: ['12:00'] }),
   med('agrega un medicamento', { name: '' }),
-  med('ponle losartn a las 8 am', { name: 'Losartán', times: ['08:00'] }),
-  med('agrega metformna 500 mg', { name: 'Metformina', strength: '500 mg' }),
-  med('ponlee atorvastatna a las 9 pm', { name: 'Atorvastatina', times: ['21:00'] }),
+  // Decisión 71 (buddy-medical-safety): un nombre mal escrito NO se corrige solo; se conserva lo escrito y el registro
+  // del INVIMA ofrece "¿Quisiste decir…?" en la tarjeta (prueba en src/__tests__/v24/knowledge-chat.test.tsx).
+  // Expectativa original de V2.4 Hito 1: 'Losartán', 'Metformina', 'Atorvastatina'.
+  med('ponle losartn a las 8 am', { name: 'Losartn', times: ['08:00'] }),
+  med('agrega metformna 500 mg', { name: 'Metformna', strength: '500 mg' }),
+  med('ponlee atorvastatna a las 9 pm', { name: 'Atorvastatna', times: ['21:00'] }),
   med('añadele tramadol 50 mg cada 8 horas desde las 6 am', { name: 'Tramadol', strength: '50 mg', everyHours: 8, from: '06:00' }),
   med('pon furosemida 40 mg de lunes a viernes a las 7 am', { name: 'Furosemida', days: [1, 2, 3, 4, 5], times: ['07:00'] }),
   med('agrega crema de diclofenaco a las 9 pm', { name: 'Diclofenaco', form: 'cream', times: ['21:00'] }),
@@ -202,7 +205,8 @@ export const HELDOUT: CorpusCase[] = [
   med('ponle losartán de 100 mg a las 7 de la mañana', { name: 'Losartán', strength: '100 mg', times: ['07:00'] }),
   med('agrega acetaminofen 500 mg cada 6 horas', { name: 'Acetaminofen', strength: '500 mg', everyHours: 6 }),
   med('programale media pastilla de bisoprolol en la mañana', { name: 'Bisoprolol', doseAmount: 0.5, times: ['08:00'] }),
-  med('agregar metformna con el almuerzo', { name: 'Metformina', times: ['12:30'] }),
+  // Medida antes de la decisión 71 con 'Metformina'; se conserva lo escrito (ver arriba).
+  med('agregar metformna con el almuerzo', { name: 'Metformna', times: ['12:30'] }),
   med('registra 2 capsulas de omega 3 en el desayuno', { name: 'Omega', doseAmount: 2, times: ['07:30'] }),
   med('anade losartán a las 9 pm de lunes a viernes', { name: 'Losartán', times: ['21:00'], days: [1, 2, 3, 4, 5] }),
   c('agua', 'ponle meta de 9 vasos de agua', { type: 'set_water_goal', glasses: 9 }),

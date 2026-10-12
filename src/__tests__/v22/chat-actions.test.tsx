@@ -71,6 +71,7 @@ describe('medicamentos', () => {
   it('agrega, se ve en Rutina como "Nuevo" y en la pantalla del paciente', async () => {
     const c = chat();
     await say('Ponle losartán a las 6 de la tarde');
+    await say('No está en la lista'); // V2.4: paso Presentación (registro del INVIMA) → registrar a mano
     expect(screen.getByText(/¿Cuánto toma de Losartán cada vez\?/)).toBeTruthy();
     await say('1 tableta');
     await confirmFromPinned();
@@ -93,6 +94,7 @@ describe('medicamentos', () => {
   it('el borrador sobrevive a salir del chat (cambiar de pestaña) y se retoma donde iba', async () => {
     const c = chat();
     await say('Agrega atorvastatina');
+    await say('No está en la lista'); // V2.4: paso Presentación (registro del INVIMA) → registrar a mano
     c.unmount();
     expect(draftActions.get()?.actions[0]).toMatchObject({ type: 'add_medication', name: 'Atorvastatina' });
     chat();
@@ -117,6 +119,7 @@ describe('medicamentos', () => {
     // V2.4: mientras falte lo obligatorio no hay botón de confirmar (solo la pregunta); aparece activo al completar.
     expect(within(pinned).queryByRole('button', { name: B.confirmAdd })).toBeNull();
     await say('Metformina');
+    await say('No está en la lista'); // V2.4: paso Presentación (registro del INVIMA) → registrar a mano
     await say('1 tableta');
     await say('8:00 a. m.');
     expect(within(screen.getByTestId('draft-pinned')).getByRole('button', { name: B.confirmAdd }).props.accessibilityState?.disabled).toBeFalsy();
@@ -250,6 +253,7 @@ describe('reglas de seguridad del chat', () => {
   it('nunca propone una dosis: si falta, la pregunta y repite la del cuidador', async () => {
     chat();
     await say('Ponle losartán a las 8');
+    await say('No está en la lista'); // V2.4: paso Presentación (registro del INVIMA) → registrar a mano
     expect(draftActions.get()?.actions[0]).toMatchObject({ doseAmount: null });
     await say('2 tabletas');
     expect(within(screen.getByTestId('draft-pinned')).getByText('Dosis por toma: 2 tabletas')).toBeTruthy();

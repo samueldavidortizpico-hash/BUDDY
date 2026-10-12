@@ -106,8 +106,12 @@ export function draftFields(a: AssistantAction): DraftField[] {
   switch (a.type) {
     case 'add_medication': {
       const when = a.everyHours ? `Cada ${a.everyHours} h desde ${clock(a.from ?? '08:00')}` : a.times.length ? a.times.map(clock).join(', ') : null;
+      const choosing = !!(a.candidates?.length || a.suggestions?.length);
       return [
         { key: 'name', label: 'Nombre', value: text(a.name), required: true },
+        ...(choosing || a.verified
+          ? [{ key: 'product' as FieldKey, label: 'Presentación', value: a.productDecided ? (a.verified ? `${a.strength ?? ''} · registro INVIMA`.replace(/^ · /, '') : 'Registrada a mano') : null, required: choosing }]
+          : []),
         { key: 'doseAmount', label: 'Dosis por toma', value: a.doseAmount ? doseText({ doseAmount: a.doseAmount, doseUnit: a.doseUnit, form: a.form }) : null, required: true },
         { key: 'time', label: 'Hora', value: when, required: true },
         { key: 'days', label: 'Días', value: describeDays(a.days), required: false },
@@ -203,6 +207,11 @@ export function nextQuestion(actions: AssistantAction[], ctx: AssistantContext):
   return null;
 }
 
+/** Respuestas fijas del paso "Presentación". */
+export const NOT_LISTED = 'No está en la lista';
+export const KEEP_TYPED = (name: string) => `Dejar "${name}"`;
+const UNIT_OF: Record<string, 'unit' | 'ml' | 'drops' | 'application'> = { syrup: 'ml', drops: 'drops', cream: 'application' };
+
 const TIMES = ['8:00 a. m.', '12:00 p. m.', '6:00 p. m.', '8:00 p. m.'];
 
 /** Pregunta y respuestas rápidas para un dato. */
@@ -211,6 +220,13 @@ export function questionFor(a: AssistantAction, field: FieldKey, ctx: AssistantC
   switch (field) {
     case 'name':
       return a.type === 'add_emergency_contact' ? { question: '¿Cómo se llama el contacto?', quickReplies: [] } : { question: '¿Cómo se llama el medicamento?', quickReplies: [] };
+    case 'product':
+      if (a.type === 'add_medication' && a.suggestions?.length)
+        return { question: `No encontré "${a.name}" en el registro del INVIMA. ¿Quisiste decir…?`, quickReplies: [...a.suggestions, KEEP_TYPED(a.name)] };
+      return {
+        question: `¿Cuál es la presentación de ${medName}? Elígela tal como dice la caja.`,
+        quickReplies: a.type === 'add_medication' ? [...(a.candidates ?? []).map((c) => c.label), NOT_LISTED] : [],
+      };
     case 'doseAmount': {
       const unit = a.type === 'add_medication' ? a.doseUnit : 'unit';
       return {
@@ -288,6 +304,14 @@ export function applyField(a: AssistantAction, field: FieldKey, answer: string):
   switch (a.type) {
     case 'add_medication':
       if (field === 'name') return { ...a, name: answer.trim().replace(/^./, (c) => c.toUpperCase()) };
+      if (field === 'product') {
+        if (answer === NOT_LISTED || answer === KEEP_TYPED(a.name)) return { ...a, productDecided: true, verified: null, suggestions: undefined };
+        const c = a.candidates?.find((x) => x.label === answer);
+        // Los datos del registro se copian tal cual; la dosis NO (la dice el cuidador después).
+        return c
+          ? { ...a, name: c.name, strength: c.strength, form: c.form, doseUnit: UNIT_OF[c.form] ?? 'unit', activeIngredient: c.activeIngredient, atc: c.atc, verified: c.source, productDecided: true }
+          : a;
+      }
       // Una hora ("8:00 p. m.") nunca se toma como dosis: BUDDY vuelve a preguntar.
       if (field === 'doseAmount' && LOOKS_LIKE_TIME.test(t)) return a;
       // "1½ tabletas" → 1.5; "½ tableta" → 0.5 (la dosis la elige el cuidador; BUDDY solo la registra).
