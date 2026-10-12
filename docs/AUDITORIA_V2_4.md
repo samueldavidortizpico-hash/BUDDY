@@ -97,3 +97,27 @@ Teclado en iOS y Android (que la tarjeta y "Confirmar" queden visibles, sin salt
 
 - La prueba encontró que la barra no se anunciaba como barra de progreso al lector de pantalla (faltaba `accessible`); corregido.
 - En Expo Go se ve el splash de Expo; el de BUDDY solo en la build instalable, y necesita un PNG transparente de alta resolución.
+
+## Hito 8: pulido y verificación completa
+
+- Corregido: el selector de Rutina partía "Medicamentos" y "Comidas" a mitad de palabra (anchos iguales); ahora es una fila desplazable donde cada opción mide lo que su texto.
+- `npx expo install --fix`: 6 paquetes con versiones de parche de SDK 57 (`@expo/ui`, `expo`, `expo-crypto`, `expo-router`, `expo-splash-screen`, `jest-expo`).
+
+### Resultados reales de la verificación
+
+| Verificación | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 errores |
+| `npx expo lint` | 0 errores, 0 avisos |
+| `npx jest` | 615/615 pruebas en 39 suites |
+| Corpus del asistente | 100 % (138/138); conjunto reservado 95,8 % (23/24) |
+| Cobertura del índice INVIMA (100 medicamentos) | 97/100 |
+| `npm run check:headers` | OK, 27 rutas con "Volver" |
+| `scripts/check-overflow.mjs` | OK, 11 pantallas × 390/360 × texto normal y 200 % × claro/oscuro/alto contraste |
+| `npx expo-doctor` | 21/21 sin problemas |
+| `npx expo export --platform android` | OK (2152 módulos) |
+| Recorridos web (Playwright) | Chat guiado, "agrega dolex" con NLM real, robot (arrastre, imán, persistencia), barra (arrastre y toque), ubicación (consentimiento y mapa), portada |
+
+### No comprobado (requiere dispositivo)
+
+Teclado real en iOS y Android, Liquid Glass nativo en iOS 26 (en Expo Go), mapa nativo y permiso de ubicación, hápticos, deslizar para descartar burbujas con el dedo, splash nativo, notificaciones locales, lector de pantalla y 60 fps. Lista en `docs/PRUEBAS_EN_DISPOSITIVO.md`.

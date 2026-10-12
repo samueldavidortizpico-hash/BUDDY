@@ -80,3 +80,18 @@ Estado real al 2026-10-10. "Verificado" significa:
 
 ## Pendiente o "próximamente" (no presentado como real)
 Notificaciones del teléfono, inicio de sesión real y cuentas, voz, foto del envase (y extracción), revisión farmacológica, GPS y mapa real, llamadas y mensajes reales, compartir reportes, editar y eliminar medicamentos, cambiar foto, invitar contactos y editar datos personales.
+
+
+## V2.4 (2026-10-12)
+
+| Pantalla o pieza | Estado | Verificado en |
+|---|---|---|
+| Chat de BUDDY (tarjeta fija, menú de 8 acciones, respuestas tocables) | Hecho | Jest + capturas web 390/360, claro, oscuro, alto contraste, 200 % |
+| "Agrega dolex" con presentaciones del INVIMA y tarjeta de información | Hecho | Jest (red simulada) + web con consulta real a NLM |
+| Analizar un alimento (`/food`) | Hecho | Jest + detector de desbordes |
+| Existencias (descuento exacto, avisos a 3 días, "Registrar compra") | Hecho | Jest con reloj simulado |
+| Robot lanzador arrastrable y burbujas | Hecho | Jest + Playwright (arrastre, imán, persistencia) |
+| Barra de pestañas flotante con vidrio y gesto | Hecho en web; vidrio nativo pendiente de iOS 26 | Playwright (arrastre y toque) |
+| Dónde está [nombre] (`/location`) y consentimiento del adulto mayor | Hecho en web; mapa nativo pendiente de dispositivo | Jest + Playwright con geolocalización simulada |
+| Portada de carga | Hecho | Jest + capturas web |
+| Selector de Rutina (palabras largas) | Corregido (fila desplazable) | Captura web |

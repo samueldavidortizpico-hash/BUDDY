@@ -1,6 +1,6 @@
 /** Controles de formulario: Field, Checkbox, Chip, ChipList (texto libre + sugerencias), Segmented, Stepper. */
 import { useEffect, useState, type ReactNode, type Ref } from 'react';
-import { Pressable, StyleSheet, TextInput, View, type KeyboardTypeOptions, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { strings } from '@/i18n';
@@ -246,12 +246,53 @@ export function Segmented<T extends string>({
   value,
   onChange,
   label,
+  scroll,
 }: {
   options: { key: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
   label: string;
+  /** Opciones del ancho de su texto en una fila desplazable (para 5+ opciones o palabras largas). */
+  scroll?: boolean;
 }) {
+  if (scroll) return <ScrollSegmented options={options} value={value} onChange={onChange} label={label} />;
+  return <EqualSegmented options={options} value={value} onChange={onChange} label={label} />;
+}
+
+/**
+ * Variante desplazable: cada opción mide lo que su texto, así una palabra larga ("Medicamentos") nunca se parte por
+ * letras como pasaba con anchos iguales.
+ */
+function ScrollSegmented<T extends string>({ options, value, onChange, label }: { options: { key: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityRole="tablist" accessibilityLabel={label} contentContainerStyle={s.scrollSegment}>
+      {options.map((o) => {
+        const on = o.key === value;
+        return (
+          <Pressable
+            key={o.key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={o.label}
+            onPress={() => {
+              tapHaptic();
+              onChange(o.key);
+            }}
+            style={[s.scrollItem, on && s.scrollItemOn]}
+          >
+            <AppText variant="captionStrong" color={on ? (t.hc ? t.c.bg : t.c.text) : t.c.muted} numberOfLines={1} maxScale={1.5}>
+              {o.label}
+            </AppText>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+function EqualSegmented<T extends string>({ options, value, onChange, label }: { options: { key: T; label: string }[]; value: T; onChange: (v: T) => void; label: string }) {
   const t = useTheme();
   const s = useStyles();
   const reduce = useReducedMotion();
@@ -390,6 +431,9 @@ const useStyles = makeStyles((t) =>
       backgroundColor: t.hc ? t.c.text : t.c.surface,
       ...t.shadow.soft,
     },
+    scrollSegment: { gap: spacing.xs, padding: 4, borderRadius: radius.pill, backgroundColor: t.c.surface2 },
+    scrollItem: { minHeight: touch.chip, justifyContent: 'center', paddingHorizontal: spacing.md, borderRadius: radius.pill },
+    scrollItemOn: { backgroundColor: t.hc ? t.c.text : t.c.mintPale, borderWidth: t.hc ? 2 : 0, borderColor: t.c.text },
     segmentItem: { flex: 1, minHeight: touch.chip, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xs },
     stepper: {
       flexDirection: 'row',

@@ -8,9 +8,14 @@ Estado real al 2026-10-12 (ronda V2.4 en curso). "Hecho" significa implementado 
 - **V2.4 Hito 1:** chat guiado (tarjeta fija, respuestas tocables, menú de 8 acciones), comprensión del español medida con corpus (100 %) y conjunto reservado (95,8 %).
 - **V2.4 Hito 2:** índice sin conexión del INVIMA, "agrega dolex" con presentaciones y fuente, "Para qué se usa" desde MedlinePlus en español, revisión por perfil con fuente (nivel 2 detrás de un indicador).
 
-## En curso (V2.4)
+## V2.4 completada (2026-10-12)
 
-Hito 3 alimentos y existencias · Hito 4 robot arrastrable y burbujas · Hito 5 barra Liquid Glass · Hito 6 ubicación y mapa · Hito 7 portada de carga · Hito 8 pulido y verificación.
+Hitos 3 a 8: existencias exactas e idempotentes con avisos a 3 días, evaluador de alimentos con la norma vigente, robot arrastrable con burbujas, barra Liquid Glass con gesto, ubicación con consentimiento y mapa, portada de carga. Todo verificado en web y con Jest; lo nativo (teclado, vidrio de iOS 26, mapa, permisos, hápticos, splash) está en `docs/PRUEBAS_EN_DISPOSITIVO.md`.
+
+## Pendiente antes de la Fase 2
+
+- Ronda V2.3 (no ejecutada): persistencia cifrada, cola de sincronización visible, configuración nativa segura, minimización de datos.
+- Splash nativo de marca: falta un PNG transparente de alta resolución.
 
 ## Fases siguientes
 

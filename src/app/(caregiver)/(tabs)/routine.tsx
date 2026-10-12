@@ -96,6 +96,7 @@ export default function Routine() {
         label={R.title}
         value={seg}
         onChange={setSeg}
+        scroll
         options={[
           { key: 'meds', label: R.sections.medications },
           { key: 'water', label: R.sections.water },
