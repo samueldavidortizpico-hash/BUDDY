@@ -9,12 +9,13 @@ import {
 import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ToastProvider } from '@/components/feedback';
 import { ErrorState } from '@/components/states';
-import { db } from '@/infrastructure/local/db';
+import { BootScreen } from '@/features/boot/boot-screen';
+import { db, useDb } from '@/infrastructure/local/db';
 import { startSession, useSession } from '@/state/session';
 import { ThemeProvider, useAppearanceStore, useTheme } from '@/theme/provider';
 
@@ -49,20 +50,30 @@ export default function RootLayout() {
     if (dbReady) startSession();
   }, [dbReady]);
 
-  // Si la fuente falla, seguimos con la del sistema en lugar de bloquear la app.
-  const ready = (fontsLoaded || !!fontError) && dbReady && appearanceReady && session !== 'loading';
+  // Tareas REALES del arranque (la portada muestra su avance). Si la fuente falla, se sigue con la del sistema.
+  const done = { appearance: appearanceReady, fonts: fontsLoaded || !!fontError, data: dbReady, session: session !== 'loading' };
+  const ready = done.appearance && done.fonts && done.data && done.session;
+  const [booting, setBooting] = useState(true);
+  const finishBoot = useCallback(() => setBooting(false), []);
+  const retryBoot = useCallback(() => {
+    useDb.persist.rehydrate();
+    useAppearanceStore.persist.rehydrate();
+  }, []);
 
+  // El splash nativo se quita en cuanto la portada puede dibujarse con el tema correcto.
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync();
-  }, [ready]);
+    if (appearanceReady) SplashScreen.hideAsync();
+  }, [appearanceReady]);
 
-  if (!ready) return null;
+  if (!appearanceReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <ToastProvider>
-          <ThemedStack />
+          {/* La app se monta detrás en cuanto está lista; la portada se desvanece encima y luego desaparece. */}
+          {ready ? <ThemedStack /> : null}
+          {booting ? <BootScreen done={done} onDone={finishBoot} onRetry={retryBoot} /> : null}
         </ToastProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

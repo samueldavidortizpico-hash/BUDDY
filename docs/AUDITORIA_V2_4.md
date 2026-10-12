@@ -23,7 +23,7 @@ Método: cada problema se reproduce con una prueba que falla (jest) o una captur
 | 8 | El robot no se puede mover | Inspección: posición fija abajo a la derecha | No existía gesto de arrastre | Arrastre con Gesture Handler, límites, imán, posición recordada, oculto con teclado, Ajustes > Apariencia > Robot BUDDY (imán, restablecer, ocultar por hoy) (decisiones 80 y 81) | `scripts/capture/v24-robot.mjs` en web: arrastre, imán al borde (x = 7,75), misma posición tras recargar | **Corregido en web**; dispositivo pendiente |
 | 9 | Falta Ubicación con mapa | `src/__tests__/v22/repro.test.tsx` P6 ("el Resumen da acceso a la ubicación") estaba marcado `it.failing` | La función se había retirado en v2.1 y nunca se reconstruyó | Pantalla "Dónde está [nombre]" con mapa real, hora, precisión, aviso de desactualizada, historial y atribución; consentimiento del adulto mayor; tarjeta en el Resumen; "¿dónde está?" en el chat (decisiones 89 y 90) | P6 pasa; `location.test.tsx` 5/5; `scripts/capture/v24-location.mjs` en web: solicitar → aceptar en "Probar como" → mapa de OpenStreetMap con marcador (coordenadas ficticias de Playwright) | **Corregido en web**; mapa nativo y permiso: dispositivo |
 | 10 | Barra inferior Liquid Glass y gestos | Inspección: barra con color translúcido sin desenfoque, sobre un fondo liso (no flotaba sobre el contenido), sin gesto | La barra se dibujaba debajo de las pantallas y el comentario decía "vidrio sin blur" | Barra flotante con vidrio nativo (iOS 26+), desenfoque (iOS anterior y web) o translúcida (Android); gota que se estira; deslizar sobre la barra para cambiar de pestaña con haptic (decisiones 84–87) | `scripts/capture/v24-tabbar.mjs`: barra sobre el contenido, arrastre de Resumen a Salud, toque a Rutina, en claro y oscuro (`docs/capturas/v24/barra/`) | **Corregido en web**; Liquid Glass nativo: pendiente de iPhone con iOS 26 |
-| 11 | Portada de carga propia | — | — | Hito 7 | — | Pendiente |
+| 11 | Portada de carga propia | Inspección de `src/app/_layout.tsx`: devolvía `null` hasta tener todo listo (solo el splash nativo, sin experiencia propia) | No existía portada | Portada con BUDDY dormido que respira, "Zz", halo, orbes, BUDDY y "Siempre contigo", barra de progreso real con el mensaje de la tarea, despertar y revelado; aviso si tarda y reintento si falla (decisiones 91 y 92) | `boot-screen.test.tsx` y `stages.test.ts` 6/6; capturas `docs/capturas/v24/portada/` (≈1,1 s en web) | **Corregido en web**; splash nativo de marca: falta un PNG transparente |
 
 ## Hito 1: chat guiado, teclado y comprensión
 
@@ -90,3 +90,10 @@ Teclado en iOS y Android (que la tarjeta y "Confirmar" queden visibles, sin salt
 
 - Dependencias instaladas con `npx expo install`: `expo-location ~57.0.21` y `react-native-maps 1.27.2`; plugin de ubicación solo en primer plano (la configuración resuelta pide solo ACCESS_COARSE_LOCATION y ACCESS_FINE_LOCATION).
 - Las pruebas encontraron y corrigieron: ubicación duplicada al aceptar y un campo de más (`ok`) guardado con las coordenadas. Las capturas encontraron y corrigieron: el robot de la tarjeta "Ahora" tapaba "No ahora" y el mapa en web quedaba en blanco mientras cargaba.
+
+## Hito 7: portada de carga y splash
+
+**Skills aplicadas:** `fixing-motion-performance` (respiración, Zz, orbes y despertar solo con transform y opacidad; sin desenfoques animados), `fixing-accessibility` (barra como `progressbar` accesible con su valor y mensaje anunciado; reducir movimiento = desvanecido corto).
+
+- La prueba encontró que la barra no se anunciaba como barra de progreso al lector de pantalla (faltaba `accessible`); corregido.
+- En Expo Go se ve el splash de Expo; el de BUDDY solo en la build instalable, y necesita un PNG transparente de alta resolución.

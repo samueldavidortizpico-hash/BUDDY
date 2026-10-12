@@ -68,6 +68,14 @@ Ver también `docs/NOTIFICACIONES.md`.
 | 5.5 | En la pantalla del adulto mayor, "Dejar de compartir". | El administrador ve "dejó de compartir su ubicación" y no queda historial. | ☐ | ☐ |
 | 5.6 | Cerrar BUDDY 40 minutos y volver a "Dónde está". | Aviso de ubicación desactualizada (no hay seguimiento en segundo plano). | ☐ | ☐ |
 
+## 6. Portada de carga (V2.4, Hito 7)
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 6.1 | Cierra BUDDY por completo y ábrelo. | Tras el splash, la portada petróleo con BUDDY dormido que respira y "Zz"; la barra avanza con mensajes reales; BUDDY despierta y aparece la app (normalmente en menos de 3 s). | ☐ | ☐ |
+| 6.2 | Activa "Reducir movimiento". | Sin respiración ni vuelo: solo un desvanecido corto. | ☐ | ☐ |
+| 6.3 | Modo avión y teléfono lento. | Si tarda más de 4 s aparece "Está tardando un poco más de lo normal…". | ☐ | ☐ |
+
 ## Pendiente de agregar en los hitos siguientes
 
-Splash nativo y portada de carga (Hito 7).
+Verificación completa (Hito 8).
