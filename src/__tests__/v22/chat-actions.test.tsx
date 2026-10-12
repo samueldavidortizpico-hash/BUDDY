@@ -76,6 +76,7 @@ describe('medicamentos', () => {
     await confirmFromPinned();
     expect(list('medications').map((m) => m.name)).toEqual(['Losartán']);
     expect(screen.getByText(/Listo, agregué Losartán a las 6:00 p\. m\./)).toBeTruthy();
+    expect(screen.queryByText(/p\. m\.\./)).toBeNull(); // sin doble punto
     expect(screen.getByText(B.seeRoutine)).toBeTruthy();
     expect(screen.queryByTestId('draft-pinned')).toBeNull();
     c.unmount();

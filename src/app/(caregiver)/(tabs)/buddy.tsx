@@ -69,6 +69,7 @@ export default function Buddy() {
     openScan: () => router.push('/medication/scan'),
     openRoutine: (seg) => router.push({ pathname: '/routine', params: { seg } } as unknown as Href),
     openPreview: () => router.push('/handoff' as Href),
+    openFeed: () => router.push('/alerts' as Href),
     call: (phone) => Linking.openURL(`tel:${phone.replace(/\s/g, '')}`),
     primary: primary ? { name: primary.name, phone: primary.phone } : undefined,
   });

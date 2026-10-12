@@ -31,7 +31,7 @@ function requireElder(elderId?: string | null): string {
 
 // ── Adulto mayor ─────────────────────────────────────────────
 
-export type ElderBasics = Pick<Elder, 'firstName' | 'lastName' | 'gender' | 'birthDate' | 'age' | 'weightKg' | 'heightCm' | 'relation' | 'relationOther'>;
+export type ElderBasics = Pick<Elder, 'firstName' | 'lastName' | 'gender' | 'birthDate' | 'age' | 'weightKg' | 'heightCm' | 'relation' | 'relationOther' | 'phone'>;
 
 export const elderActions = {
   create(basics: ElderBasics): Elder {

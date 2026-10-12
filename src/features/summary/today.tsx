@@ -1,6 +1,6 @@
 /**
  * Panel "Hoy" del Resumen: línea de tiempo de lo registrado, bento asimétrico (agua, medicamentos, ánimo, sueño),
- * "BUDDY te sugiere" y existencias. Todo sale de registros reales; sin datos, estados vacíos.
+ existencias. "BUDDY te sugiere" vive aparte (src/features/feed). Todo sale de registros reales; sin datos, estados vacíos.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, type Href } from 'expo-router';
@@ -9,11 +9,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
-import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Face, ProgressRing, WaterFill } from '@/components/charts';
 import { Icon, type IconName } from '@/components/icon';
-import { BuddyRobot } from '@/components/robot';
 import { adherence, answersBy } from '@/domain/health';
 import { dayDoses, effectiveTime, stockUnit } from '@/domain/schedule';
 import { estimateStock } from '@/domain/stock';
@@ -86,17 +84,6 @@ export function TodayPanel({ elder }: { elder: Elder }) {
     .filter((x) => x.e.level !== 'none')
     .sort((a, b) => (a.e.daysLeft ?? 999) - (b.e.daysLeft ?? 999));
   const next = items.find((i) => i.status === 'pending' || i.status === 'snoozed');
-  const unconfirmed = items.filter((i) => i.status === 'unconfirmed');
-
-  const suggestion: { text: string; action?: { label: string; href: Href } } = unconfirmed.length
-    ? { text: `${unconfirmed[0].medication.name} de las ${formatClock(unconfirmed[0].dose.time)} sigue sin confirmar. Puedes llamar para preguntar.`, action: { label: 'Ver avisos', href: '/alerts' as Href } }
-    : lowStock[0] && lowStock[0].e.level !== 'ok'
-      ? { text: `Se están acabando las ${stockUnit(lowStock[0].m)} de ${lowStock[0].m.name}. Registra la compra cuando la hagas.`, action: { label: 'Registrar compra', href: { pathname: '/medication/[id]', params: { id: lowStock[0].m.id } } as unknown as Href } }
-      : !meds.length
-        ? { text: 'Agrega sus medicamentos para que BUDDY se los recuerde a tiempo.', action: { label: 'Agregar medicamento', href: '/medication/new' as Href } }
-        : goal && glasses < goal / 2 && now.getHours() >= 14
-          ? { text: `Hoy lleva ${glasses} de ${goal} vasos de agua. Un recordatorio extra puede ayudar.` }
-          : { text: 'Todo va según lo programado. BUDDY sigue pendiente.' };
 
   return (
     <View style={s.root}>
@@ -177,18 +164,6 @@ export function TodayPanel({ elder }: { elder: Elder }) {
         )}
       </Card>
 
-      {/* BUDDY te sugiere */}
-      <Card variant="tint" tone="mint" style={s.suggest}>
-        <BuddyRobot size={96} mood="think" shadow={false} flying={false} />
-        <View style={s.flex}>
-          <AppText variant="eyebrow" color={t.ink.mint}>
-            {S.suggests}
-          </AppText>
-          <AppText variant="secondaryStrong">{suggestion.text}</AppText>
-          {suggestion.action ? <Button label={suggestion.action.label} size="sm" variant="ghost" onPress={() => router.push(suggestion.action!.href)} style={s.suggestBtn} /> : null}
-        </View>
-      </Card>
-
       {/* Existencias */}
       {lowStock.length ? (
         <Card style={s.stock}>
@@ -227,8 +202,6 @@ const useStyles = makeStyles((t) =>
     timeline: { gap: spacing.sm },
     event: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 32 },
     dot: { width: 10, height: 10, borderRadius: 5 },
-    suggest: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, marginLeft: 0 },
-    suggestBtn: { alignSelf: 'flex-start', marginTop: spacing.xs },
     stock: { gap: spacing.sm },
     stockRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 32 },
   }),

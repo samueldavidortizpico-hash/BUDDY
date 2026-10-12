@@ -10,6 +10,8 @@ import { BottomSheet } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
+import { SuggestsPanel } from '@/features/feed/feed-card';
+import { useFeed } from '@/state/feed';
 import { TodayPanel } from '@/features/summary/today';
 import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
@@ -27,7 +29,7 @@ export default function Summary() {
   const user = useSession((x) => x.user);
   const elders = useElders();
   const elder = useActiveElder();
-  const alerts = useRecords('alerts', { scope: 'account' }).filter((a) => a.status === 'pending');
+  const { unread } = useFeed();
   const [picker, setPicker] = useState(false);
   const ready = elder?.setupDone ? elder : null;
 
@@ -49,7 +51,7 @@ export default function Summary() {
             <AppText variant="h1">{strings.brand.name}</AppText>
           )}
         </View>
-        <IconButton icon="bell" label={S.alerts} showLabel={false} badge={alerts.length} onPress={() => router.push('/alerts' as Href)} />
+        <IconButton icon="bell" label={S.alerts} showLabel={false} badge={unread} onPress={() => router.push('/alerts' as Href)} />
       </View>
 
       {!ready ? (
@@ -88,6 +90,7 @@ export default function Summary() {
               onPress={() => router.push('/preview' as Href)}
             />
           </Card>
+          <SuggestsPanel />
           <TodayPanel elder={ready} />
         </>
       )}

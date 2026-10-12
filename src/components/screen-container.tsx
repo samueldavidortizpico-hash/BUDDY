@@ -47,7 +47,8 @@ export function ScreenContainer({
 }: ScreenContainerProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const bottomPad = (insideTabs ? 0 : insets.bottom) + spacing.xl;
+  // Dentro de pestañas se deja sitio para el robot lanzador (72 dp) que flota sobre la barra.
+  const bottomPad = (insideTabs ? 88 : insets.bottom) + spacing.xl;
   const colors =
     gradientColors ?? (gradient === 'screen' || gradient === 'welcome' ? t.gradients[gradient] : legacyGradients[gradient]);
 

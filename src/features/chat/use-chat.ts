@@ -14,6 +14,7 @@ import { useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { SUGGESTIONS, answerQuery, context, conversation, draftActions, interpret, isDraftable, type ExecResult, type RoutineSegment } from '@/state/assistant';
 import { useActiveElder, useUserId } from '@/state/data';
+import { computeFeed } from '@/state/feed';
 import { successHaptic } from '@/utils/haptics';
 
 const B = strings.buddy;
@@ -26,6 +27,7 @@ export interface ChatHandlers {
   openScan: () => void;
   openRoutine: (segment: RoutineSegment) => void;
   openPreview: () => void;
+  openFeed: () => void;
   call: (phone: string) => void;
   /** Teléfono del contacto principal (para urgencias). */
   primary?: { name: string; phone: string };
@@ -134,6 +136,11 @@ export function useBuddyChat(h: ChatHandlers) {
         return h.openScan();
       }
       if (first.type === 'suggest_routine') return reply(B.suggestIntro, { proposal: JSON.stringify({ suggestions: true }), proposalState: null });
+      if (first.type === 'query_summary' && first.topic === 'recommendations') {
+        const items = computeFeed();
+        if (!items.length) return reply(strings.feed.noneToday);
+        return reply(items.slice(0, 3).map((f) => `• ${f.title}. ${f.reason}`).join('\n'), { quickReplies: [B.seeFeed] });
+      }
       if (first.type === 'query_summary') return reply(answerQuery(first.topic, first.match));
       const actions = r.actions.filter(isDraftable);
       if (!actions.length) return reply(r.reply ?? B.notUnderstood, { quickReplies: EXAMPLES.slice(0, 3) });
@@ -153,6 +160,7 @@ export function useBuddyChat(h: ChatHandlers) {
         return reply(draftActions.undoLast() ? B.undone : B.nothingToUndo);
       }
       if (q === B.seeRoutine) return h.openRoutine(lastSegment);
+      if (q === B.seeFeed) return h.openFeed();
       if (elder && q === B.seeElderScreen(elder.firstName)) return h.openPreview();
       if (q === B.call123) return h.call('123');
       if (h.primary && q === B.callContact(h.primary.name)) return h.call(h.primary.phone);

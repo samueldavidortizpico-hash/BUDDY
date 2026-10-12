@@ -369,8 +369,15 @@ export function applyField(a: AssistantAction, field: FieldKey, answer: string):
   }
 }
 
+/** Cierra una frase sin duplicar el punto de "a. m." / "p. m." ("6:00 p. m.." → "6:00 p. m."). */
+export const sentence = (s: string) => s.replace(/m\.\./g, 'm.');
+
 /** Respuesta de BUDDY tras confirmar: "Listo, agregué Losartán a las 6:00 p. m.". */
 export function doneText(a: AssistantAction): string {
+  return sentence(doneRaw(a));
+}
+
+function doneRaw(a: AssistantAction): string {
   switch (a.type) {
     case 'add_medication': {
       const when = a.everyHours ? `cada ${a.everyHours} horas desde las ${clock(a.from ?? '08:00')}` : `a las ${a.times.map(clock).join(' y ')}`;

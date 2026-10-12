@@ -129,6 +129,7 @@ function parseDate(t: string, today = new Date()): string | null {
 }
 
 function queryTopic(t: string): QueryTopic | null {
+  if (/recomendacion|sugerencia|novedad|alerta/.test(t)) return 'recommendations';
   if (/\bresumen\b|\bcomo (va|fue|le fue|le va)\b.*\bdia\b|\bcomo va hoy\b/.test(t)) return 'day';
   if (/\bdurmio\b|\bsueno\b|\bdormir\b/.test(t)) return 'sleep';
   if (/\bquedan?\b|\bexistencias\b|\bcuantas (pastillas|tabletas)\b/.test(t)) return 'stock';

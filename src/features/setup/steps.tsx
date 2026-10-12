@@ -15,7 +15,7 @@ import { TimeField } from '@/components/time-picker';
 import { describeDays, sortTimes, spreadTimes } from '@/domain/time';
 import type { ActivityKind, ClockTime, Elder, Gender, MealKind, Relation } from '@/domain/types';
 import { ALERT_KINDS } from '@/domain/types';
-import { formatPhone, isValidColombianPhone, isValidName, parseDecimal } from '@/domain/validation';
+import { digitsOnly, formatPhone, isValidColombianPhone, isValidName, parseDecimal } from '@/domain/validation';
 import { db } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { DEFAULT_MEALS, contactActions, elderActions, routineActions, type ElderBasics } from '@/state/actions';
@@ -70,6 +70,7 @@ interface WhoDraft {
   height: string;
   relation: Relation;
   relationOther: string;
+  phone: string;
 }
 
 export function useWhoStep(elder: Elder | null): StepHandle & { view: React.ReactNode } {
@@ -89,6 +90,7 @@ export function useWhoStep(elder: Elder | null): StepHandle & { view: React.Reac
       height: elder?.heightCm ? String(elder.heightCm) : '',
       relation: elder?.relation ?? 'mother',
       relationOther: elder?.relationOther ?? '',
+      phone: elder?.phone ?? '',
     };
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -114,6 +116,7 @@ export function useWhoStep(elder: Elder | null): StepHandle & { view: React.Reac
     const height = d.height.trim() ? parseDecimal(d.height, 100, 230) : null;
     if (d.weight.trim() && weight === null) e.weight = W.errors.weight;
     if (d.height.trim() && height === null) e.height = W.errors.height;
+    if (d.phone.trim() && !isValidColombianPhone(d.phone)) e.phone = strings.setup.contacts.errors.phone;
     setErrors(e);
     if (Object.keys(e).length) return false;
     const basics: ElderBasics = {
@@ -126,6 +129,7 @@ export function useWhoStep(elder: Elder | null): StepHandle & { view: React.Reac
       heightCm: height,
       relation: d.relation,
       relationOther: d.relation === 'other' ? d.relationOther.trim() : '',
+      phone: digitsOnly(d.phone),
     };
     if (elder) elderActions.update(elder.id, basics);
     else elderActions.create(basics);
@@ -167,6 +171,7 @@ export function useWhoStep(elder: Elder | null): StepHandle & { view: React.Reac
         ))}
       </Group>
       {d.relation === 'other' ? <Field label={W.relationOther} value={d.relationOther} onChangeText={(v) => set({ relationOther: v })} /> : null}
+      <Field label={W.phone} optional hint={W.phoneWhy} value={d.phone} onChangeText={(v) => set({ phone: v })} keyboardType="phone-pad" icon="phone" error={errors.phone} />
     </View>
   );
   return { save, dirty, view };

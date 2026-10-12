@@ -4,7 +4,7 @@
  */
 import type { ActivityKind, ClockTime, DoseUnit, MealKind, MedForm, Weekday } from '../types';
 
-export type QueryTopic = 'sleep' | 'mood' | 'medication' | 'water' | 'meals' | 'activity' | 'day' | 'stock';
+export type QueryTopic = 'sleep' | 'mood' | 'medication' | 'water' | 'meals' | 'activity' | 'day' | 'stock' | 'recommendations';
 
 export type AssistantAction =
   | {
@@ -134,7 +134,7 @@ export const TOOL_SCHEMAS: Record<ActionType, { description: string; parameters:
   add_appointment: { description: 'Cita médica u otra, con dirección.', parameters: { type: 'object', required: ['title'], properties: { title: { type: 'string' }, date: { type: ['string', 'null'] }, time: { ...time, type: ['string', 'null'] }, address: { type: 'string' } } } },
   add_note_for_elder: { description: 'Recordatorio para el adulto mayor (llamar a alguien, una nota).', parameters: { type: 'object', required: ['title'], properties: { title: { type: 'string' }, time: { ...time, type: ['string', 'null'] }, days } } },
   send_message: { description: 'Mensaje del cuidador que el adulto mayor verá hoy en su pantalla.', parameters: { type: 'object', required: ['text'], properties: { text: { type: 'string', maxLength: 200 } } } },
-  query_summary: { description: 'Responde SOLO con registros reales.', parameters: { type: 'object', required: ['topic'], properties: { topic: { enum: ['sleep', 'mood', 'medication', 'water', 'meals', 'activity', 'day', 'stock'] }, match: { type: ['string', 'null'] } } } },
+  query_summary: { description: 'Responde SOLO con registros reales.', parameters: { type: 'object', required: ['topic'], properties: { topic: { enum: ['sleep', 'mood', 'medication', 'water', 'meals', 'activity', 'day', 'stock', 'recommendations'] }, match: { type: ['string', 'null'] } } } },
   suggest_routine: { description: 'Sugerencias generales de bienestar (sin consejos médicos).', parameters: { type: 'object', properties: {} } },
   open_scan: { description: 'Abre la cámara para fotografiar un envase.', parameters: { type: 'object', properties: {} } },
   emergency: { description: 'Urgencia: recomendar 123 y contacto principal.', parameters: { type: 'object', properties: {} } },

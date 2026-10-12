@@ -14,6 +14,7 @@ import RoutineSection from '@/app/(caregiver)/routine/[section]';
 import { db, useDb } from '@/infrastructure/local/db';
 import { execute } from '@/state/assistant';
 import { useSession } from '@/state/session';
+import { BuddyLauncher } from '@/features/feed/launcher';
 import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
 import { toISODate } from '@/utils/dates';
 
@@ -23,6 +24,7 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn(), canGoBack: () => false, replace: jest.fn() }),
   useIsFocused: () => true,
   useFocusEffect: () => undefined,
+  usePathname: () => '/summary',
   useLocalSearchParams: () => mockParams,
   Redirect: () => null,
 }));
@@ -45,7 +47,7 @@ it('P2: lo que agrega BUDDY aparece en Rutina marcado "Nuevo"', () => {
   expect(screen.getByText('Nuevo')).toBeTruthy();
 });
 
-it.failing('P3: 14 días de ánimo bajo generan una recomendación con escalada para el administrador', () => {
+it('P3: 14 días de ánimo bajo generan una recomendación con escalada para el administrador', () => {
   for (let i = 0; i < 14; i++) db.insert('checkins', { date: daysAgo(i), mood: 'bad', sleep: 'good', unwell: false }, { userId: testUser.id, elderId });
   ui(<Summary />);
   expect(screen.getByText(/consulta con un médico o un profesional de salud mental/)).toBeTruthy();
@@ -90,12 +92,15 @@ it('P12: el onboarding tiene 6 diapositivas que explican qué es BUDDY', () => {
   expect(screen.getByText(/de 6/)).toBeTruthy();
 });
 
-it.failing('P13: el robot lanzador muestra las novedades sin leer', () => {
-  ui(<Summary />);
-  expect(screen.getByLabelText(/^BUDDY, \d+ novedad/)).toBeTruthy();
+it('P13: el robot lanzador (en todas las pestañas salvo el chat) muestra las novedades sin leer', () => {
+  db.insert('alerts', { kind: 'help_requested', title: 'Pidió ayuda', detail: 'Tocó "Pedir ayuda".', refId: 'h1', status: 'pending', snoozedUntil: null }, { userId: testUser.id, elderId });
+  ui(<BuddyLauncher />);
+  // Pidió ayuda + sugerencia de actividad (no tiene ninguna): 2 novedades.
+  expect(screen.getByLabelText('BUDDY, 2 novedades')).toBeTruthy();
+  expect(screen.getByText('2')).toBeTruthy();
 });
 
-it.failing('P14: con todo en orden, "BUDDY te sugiere" muestra tarjetas útiles', () => {
+it('P14: con todo en orden, "BUDDY te sugiere" muestra tarjetas útiles', () => {
   ui(<Summary />);
   expect(screen.getAllByTestId('reco-card').length).toBeGreaterThan(0);
 });

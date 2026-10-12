@@ -57,6 +57,8 @@ export interface Elder extends SyncMeta {
   heightCm: number | null;
   relation: Relation;
   relationOther: string;
+  /** Celular del adulto mayor (opcional): para llamarlo desde las alertas y recomendaciones de BUDDY. */
+  phone?: string;
   allergies: string[];
   conditions: string[];
   /** Contraindicaciones o cosas que debe evitar (texto del cuidador). */

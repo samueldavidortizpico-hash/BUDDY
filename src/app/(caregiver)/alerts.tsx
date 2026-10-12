@@ -1,6 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -10,88 +9,83 @@ import { Icon } from '@/components/icon';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { EmptyState } from '@/components/states';
+import { FeedCard } from '@/features/feed/feed-card';
 import { strings } from '@/i18n';
-import { useNow } from '@/hooks/use-now';
 import { alertActions } from '@/state/care';
-import { useElders, useRecords } from '@/state/data';
-import { radius, spacing } from '@/theme';
+import { useRecords } from '@/state/data';
+import { feedActions, useFeed } from '@/state/feed';
+import { spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 import { formatAgo } from '@/utils/dates';
 
-const A = strings.alertsScreen;
-const MED_KINDS = ['stock_low', 'stock_out', 'allergy_match', 'duplicate_ingredient', 'schedule_overlap', 'dose_unconfirmed'];
+const F = strings.feed;
+type Tab = 'all' | 'alert' | 'recommendation' | 'attended';
 
-/** Avisos de todas las personas de la cuenta. Ámbar para seguimiento; rojo solo cuando pidió ayuda. */
+/**
+ * Novedades de BUDDY: feed unificado de alertas (algo que requiere acción ahora) y recomendaciones (patrones y
+ * observaciones), por prioridad. Abrir el feed marca como leído lo que se ve.
+ */
 export default function Alerts() {
-  const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const [tab, setTab] = useState<'pending' | 'attended'>('pending');
-  const [open, setOpen] = useState<string | null>(null);
-  const elders = useElders();
-  const all = useRecords('alerts', { scope: 'account' }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const contacts = useRecords('contacts', { scope: 'account' });
-  const now = useNow().getTime();
-  const list = all.filter((a) => a.status === tab && (tab === 'attended' || !a.snoozedUntil || Date.parse(a.snoozedUntil) < now));
+  const [tab, setTab] = useState<Tab>('all');
+  const { items } = useFeed();
+  const attended = useRecords('alerts')
+    .filter((a) => a.status === 'attended')
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 20);
+
+  useEffect(() => {
+    if (items.length) feedActions.markRead(items);
+  }, [items]);
+
+  const list = tab === 'all' ? items : items.filter((f) => f.kind === tab);
 
   return (
-    <ScreenContainer header={<ScreenHeader title={A.title} fallback="/summary" />}>
-      <Segmented label={A.title} value={tab} onChange={setTab} options={[{ key: 'pending', label: A.pending }, { key: 'attended', label: A.attended }]} />
+    <ScreenContainer header={<ScreenHeader title={F.title} fallback="/summary" />}>
+      <Segmented
+        label={F.title}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { key: 'all', label: F.all },
+          { key: 'alert', label: F.alerts },
+          { key: 'recommendation', label: F.recommendations },
+          { key: 'attended', label: F.attended },
+        ]}
+      />
       <View style={s.list}>
-        {list.length ? (
-          list.map((a) => {
-            const urgent = a.kind === 'help_requested';
-            const elder = elders.find((e) => e.id === a.elderId);
-            const primary = contacts.find((c) => c.elderId === a.elderId && c.primary);
-            const medId = MED_KINDS.includes(a.kind) && a.refId && !a.refId.startsWith('help') ? (a.kind === 'dose_unconfirmed' ? null : a.refId) : null;
-            return (
-              <Card key={a.id} variant="tint" tone={urgent ? 'red' : 'yellow'} style={s.card}>
-                <View style={s.head}>
-                  <Icon name={urgent ? 'shield' : 'warning'} color={urgent ? t.ink.danger : t.ink.yellow} />
-                  <View style={s.flex}>
-                    <AppText variant="bodyStrong">{a.title}</AppText>
-                    <AppText variant="caption" color={t.c.muted}>{`${elder?.firstName ?? ''} · ${formatAgo(new Date(a.createdAt), new Date())}`}</AppText>
-                  </View>
+        {tab === 'attended' ? (
+          attended.length ? (
+            attended.map((a) => (
+              <Card key={a.id} style={s.done}>
+                <Icon name="check" color={t.ink.mint} />
+                <View style={s.flex}>
+                  <AppText variant="secondaryStrong">{a.title}</AppText>
+                  <AppText variant="caption" color={t.c.muted}>
+                    {formatAgo(new Date(a.updatedAt), new Date())}
+                  </AppText>
                 </View>
-                <AppText variant="secondary">{a.detail}</AppText>
-                {open === a.id ? (
-                  <View style={s.advice}>
-                    <AppText variant="secondary">{A.advice[a.kind]}</AppText>
-                  </View>
-                ) : null}
-                <View style={s.actions}>
-                  {urgent || a.kind === 'dose_unconfirmed' || a.kind === 'checkin_unwell' ? (
-                    <Button label={A.call} icon="phone" size="sm" variant={urgent ? 'danger' : 'tonal'} tone="yellow" onPress={() => Linking.openURL(primary ? `tel:${primary.phone.replace(/\s/g, '')}` : 'tel:123')} />
-                  ) : null}
-                  {medId ? <Button label={a.kind.startsWith('stock') ? A.purchase : A.viewMed} size="sm" variant="ghost" onPress={() => router.push({ pathname: '/medication/[id]', params: { id: medId } })} /> : null}
-                  <Button label={A.whatToDo} size="sm" variant="ghost" onPress={() => setOpen(open === a.id ? null : a.id)} />
-                  {a.status === 'pending' ? (
-                    <>
-                      <Button label={A.attend} icon="check" size="sm" variant="ghost" onPress={() => alertActions.attend(a.id)} />
-                      {a.kind.startsWith('stock') ? <Button label={A.snooze} size="sm" variant="ghost" onPress={() => alertActions.snooze(a.id)} /> : null}
-                    </>
-                  ) : (
-                    <Button label={strings.common.undo} size="sm" variant="ghost" onPress={() => alertActions.reopen(a.id)} />
-                  )}
-                </View>
+                <Button label={strings.common.undo} size="sm" variant="ghost" onPress={() => alertActions.reopen(a.id)} />
               </Card>
-            );
-          })
+            ))
+          ) : (
+            <EmptyState title={F.empty} text={F.emptyBody} mood="happy" />
+          )
+        ) : list.length ? (
+          list.map((f, i) => <FeedCard key={f.key} item={f} index={i} />)
         ) : (
-          <EmptyState title={A.empty} text={A.emptyBody} mood="celebrate" />
+          <EmptyState title={F.empty} text={F.emptyBody} mood="happy" />
         )}
       </View>
     </ScreenContainer>
   );
 }
 
-const useStyles = makeStyles((t) =>
+const useStyles = makeStyles(() =>
   StyleSheet.create({
     flex: { flex: 1 },
     list: { gap: spacing.md, marginTop: spacing.md },
-    card: { gap: spacing.sm },
-    head: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    advice: { padding: spacing.md, borderRadius: radius.md, backgroundColor: t.c.surface, ...t.hairline },
-    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    done: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   }),
 );

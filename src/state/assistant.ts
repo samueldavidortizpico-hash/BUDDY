@@ -6,7 +6,7 @@
  * - El borrador (DraftAction) se guarda en la base local por persona: sobrevive a cambiar de pestaña y a cerrar la app.
  * - Las consultas responden SOLO con registros reales.
  */
-import { DRAFTABLE, applyField, doneText, draftComplete, nextQuestion, type Draft } from '@/domain/assistant/draft';
+import { DRAFTABLE, applyField, doneText, draftComplete, nextQuestion, sentence, type Draft } from '@/domain/assistant/draft';
 import { interpretText } from '@/domain/assistant/engine';
 import type { AssistantAction, FieldKey, Interpretation } from '@/domain/assistant/types';
 import { activitySummary, adherence, answersBy, mealsSummary, waterByDay } from '@/domain/health';
@@ -77,6 +77,10 @@ export function interpret(text: string): Interpretation {
 
 /** Texto de una acción, para mostrar y para leer en voz alta. */
 export function describe(a: AssistantAction): string {
+  return sentence(describeRaw(a));
+}
+
+function describeRaw(a: AssistantAction): string {
   switch (a.type) {
     case 'add_medication': {
       const when = a.everyHours ? `cada ${a.everyHours} h desde ${formatClock(a.from ?? '08:00')}` : a.times.map(formatClock).join(', ') || 'hora por definir';

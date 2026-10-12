@@ -17,6 +17,8 @@ import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
 import { ALERT_KINDS, type Elder, type ElderAppearance } from '@/domain/types';
 import { ElderAccessForm } from '@/features/setup/access';
+import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
+import { feedActions } from '@/state/feed';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
@@ -199,7 +201,39 @@ function MyAlerts() {
       {ALERT_KINDS.map((k) => (
         <Row key={k} label={strings.alertKinds[k]} value={account.myAlerts[k]} onChange={(v) => db.update('accounts', account.id, { myAlerts: { ...account.myAlerts, [k]: v } })} />
       ))}
+      <Thresholds />
     </View>
+  );
+}
+
+/** Umbrales del motor de recomendaciones, por persona. Los define el cuidador o el médico; BUDDY no diagnostica. */
+function Thresholds() {
+  const t = useTheme();
+  const s = useStyles();
+  const elder = useActiveElder();
+  const userId = useSession((x) => x.user?.id ?? '');
+  const saved = useDb((x) => (elder ? (x.drafts[userId]?.[`reco.thresholds.${elder.id}`] as RecoThresholds | undefined) : undefined));
+  if (!elder) return null;
+  const th = saved ?? DEFAULT_THRESHOLDS;
+  const F = strings.feed;
+  const set = (patch: Partial<RecoThresholds>) => feedActions.setThresholds(elder.id, { ...th, ...patch });
+  const days = (n: number) => strings.meds.daysUnit(n);
+  return (
+    <Card style={s.stack}>
+      <AppText variant="h3">{F.thresholds}</AppText>
+      <AppText variant="caption" color={t.c.muted}>{F.thresholdsNote}</AppText>
+      <AppText variant="secondaryStrong">{F.moodDays}</AppText>
+      <Stepper label={F.severity.attention} value={th.moodDays[0]} min={1} max={th.moodDays[1]} onChange={(v) => set({ moodDays: [v, th.moodDays[1], th.moodDays[2]] })} format={days} />
+      <Stepper label={F.severity.attention} value={th.moodDays[1]} min={th.moodDays[0]} max={th.moodDays[2]} onChange={(v) => set({ moodDays: [th.moodDays[0], v, th.moodDays[2]] })} format={days} />
+      <Stepper label={F.severity.alarm} value={th.moodDays[2]} min={th.moodDays[1]} max={60} onChange={(v) => set({ moodDays: [th.moodDays[0], th.moodDays[1], v] })} format={days} />
+      <AppText variant="secondaryStrong">{F.sleepDays}</AppText>
+      <Stepper label={F.severity.attention} value={th.sleepDays[0]} min={1} max={th.sleepDays[1]} onChange={(v) => set({ sleepDays: [v, th.sleepDays[1], th.sleepDays[2]] })} format={days} />
+      <Stepper label={F.severity.alarm} value={th.sleepDays[1]} min={th.sleepDays[0]} max={th.sleepDays[2]} onChange={(v) => set({ sleepDays: [th.sleepDays[0], v, th.sleepDays[2]] })} format={days} />
+      <Stepper label={F.thresholds} value={th.sleepDays[2]} min={th.sleepDays[1]} max={60} onChange={(v) => set({ sleepDays: [th.sleepDays[0], th.sleepDays[1], v] })} format={days} />
+      <Stepper label={F.adherence} value={Math.round(th.adherence * 100)} min={50} max={100} step={5} onChange={(v) => set({ adherence: v / 100 })} format={(v) => `${v} %`} />
+      <Stepper label={F.waterDays} value={th.waterDays} min={1} max={7} onChange={(v) => set({ waterDays: v })} format={days} />
+      <Stepper label={F.checkinDays} value={th.checkinDays} min={1} max={7} onChange={(v) => set({ checkinDays: v })} format={days} />
+    </Card>
   );
 }
 
