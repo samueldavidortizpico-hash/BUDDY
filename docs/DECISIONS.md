@@ -77,3 +77,6 @@ Este prompt prevalece sobre los anteriores donde se contradicen.
 | 51 | "Deshacer" funciona inmediatamente después de confirmar (en memoria). | Deshacer más tarde se hace desde Rutina (editar o eliminar), que sí es persistente. |
 | 52 | Los mensajes para el adulto mayor son recordatorios de un solo día (`Reminder.date`) con el texto "Mensaje de [nombre]: …". | Reutiliza la pantalla "Ahora" sin un tipo nuevo de dato; no se repiten otros días. |
 | 53 | "Nuevo" dura 8 s y no se persiste. | Es una señal visual inmediata, no un dato. |
+| 54 | ChangeLog dentro del mismo store persistido (`changelog`), sin datos de salud (solo ids); se conservan todas las entradas pendientes y las últimas 500 sincronizadas. | Es la cola que el SyncEngine enviará; no debe crecer sin límite ni filtrar datos sensibles. |
+| 55 | "Probar como" usa la misma entrega (`handoff`) con `mode: 'test'`; las respuestas en modo prueba SÍ quedan registradas y la pantalla lo avisa. | Es la pantalla real (no una simulación); el dueño pidió ver exactamente lo que verá el adulto mayor. |
+| 56 | "Ver pantalla de [nombre]" abre una hoja inferior con el `ElderScreen` real en solo lectura. | Pedido 4: ver lo que BUDDY acaba de agregar sin salir de Rutina o del chat. |

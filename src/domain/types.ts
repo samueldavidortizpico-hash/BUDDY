@@ -22,6 +22,8 @@ export interface SyncMeta {
   /** Borrado lógico: el registro se oculta pero se conserva para sincronizar y deshacer. */
   deletedAt: Timestamp | null;
   syncStatus: SyncStatus;
+  /** Versión del registro (sube en cada cambio): base de la resolución de conflictos del SyncEngine. */
+  version?: number;
 }
 
 export type Role = 'caregiver' | 'elder';

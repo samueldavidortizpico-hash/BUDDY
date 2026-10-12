@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInRight, useReducedMotion } from 'react-native-reanimated';
 
@@ -9,17 +9,16 @@ import { Card } from '@/components/card';
 import { BottomSheet } from '@/components/feedback';
 import { Segmented } from '@/components/forms';
 import { Icon, type IconName } from '@/components/icon';
-import { PinPad } from '@/components/pin-pad';
 import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { EmptyState } from '@/components/states';
+import { PreviewSheetButton } from '@/features/elder/phone-preview';
 import { doseText, scheduleTimes } from '@/domain/schedule';
 import { describeDays } from '@/domain/time';
 import { formatPhone } from '@/domain/validation';
 import { strings } from '@/i18n';
 import { useActiveElder, useRecords } from '@/state/data';
-import { handoffActions } from '@/state/handoff';
 import { useRecentAny } from '@/state/recent';
 import { radius, spacing, touch, type Domain } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
@@ -45,16 +44,6 @@ export default function Routine() {
     if (params.seg) setSeg(asSeg(params.seg));
   }
   const [addSheet, setAddSheet] = useState(false);
-  const [pinSheet, setPinSheet] = useState<null | 'set' | 'confirm'>(null);
-  const [firstPin, setFirstPin] = useState('');
-  const [pinError, setPinError] = useState<string | null>(null);
-  const [pinBusy, setPinBusy] = useState(false);
-  const pinPending = useRef(false);
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => { mounted.current = false; };
-  }, []);
   const meds = useRecords('medications');
   const water = useRecords('waterPlans')[0];
   const meals = useRecords('meals');
@@ -72,11 +61,8 @@ export default function Routine() {
   }
 
   const go = (section: string) => router.push({ pathname: '/routine/[section]', params: { section } } as unknown as Href);
-  const handOff = () => {
-    if (!handoffActions.hasPin()) return setPinSheet('set');
-    handoffActions.start(elder.id);
-    router.replace('/elder');
-  };
+  // Entregar, probar como o mirar en vivo: todo en la pantalla "Entregar a [nombre]" (con flecha atrás).
+  const handOff = () => router.push('/handoff' as Href);
 
   const fab = () => {
     if (seg === 'meds') return setAddSheet(true);
@@ -101,7 +87,7 @@ export default function Routine() {
           {R.handoffBody}
         </AppText>
         <View style={s.row}>
-          <Button label={R.preview(elder.firstName)} icon="eye" variant="ghost" size="md" textColor={t.domains.activity.text} style={s.grow} onPress={() => router.push('/preview' as Href)} />
+          <PreviewSheetButton />
           <Button label={R.handoff(elder.firstName)} icon="lock" size="md" style={s.grow} onPress={handOff} />
         </View>
       </Card>
@@ -178,47 +164,6 @@ export default function Routine() {
         <Button label={R.withBuddy} icon="sparkle" variant="tonal" tone="mint" size="elder" onPress={() => { setAddSheet(false); router.push('/buddy' as Href); }} />
       </BottomSheet>
 
-      <BottomSheet visible={!!pinSheet} onClose={() => { if (pinPending.current) return; setPinSheet(null); setPinError(null); setFirstPin(''); }} title={pinSheet === 'confirm' ? strings.pin.confirm : strings.pin.setTitle}>
-        <AppText variant="secondary" color={t.c.muted}>
-          {strings.pin.setBody}
-        </AppText>
-        <PinPad
-          key={pinSheet ?? 'x'}
-          error={pinError}
-          disabled={pinBusy}
-          onComplete={async (pin) => {
-            if (pinPending.current) return;
-            if (pinSheet === 'set') {
-              setFirstPin(pin);
-              setPinError(null);
-              setPinSheet('confirm');
-            } else if (pin !== firstPin) {
-              setPinError(strings.pin.mismatch);
-              setPinSheet('set');
-            } else {
-              pinPending.current = true;
-              setPinBusy(true);
-              try {
-                const saved = await handoffActions.setPin(pin);
-                if (!mounted.current) return;
-                if (!saved) {
-                  setPinError(strings.pin.saveError);
-                  return;
-                }
-                handoffActions.start(elder.id);
-                setFirstPin('');
-                setPinSheet(null);
-                router.replace('/elder');
-              } catch {
-                if (mounted.current) setPinError(strings.pin.saveError);
-              } finally {
-                pinPending.current = false;
-                if (mounted.current) setPinBusy(false);
-              }
-            }
-          }}
-        />
-      </BottomSheet>
     </ScreenContainer>
   );
 }

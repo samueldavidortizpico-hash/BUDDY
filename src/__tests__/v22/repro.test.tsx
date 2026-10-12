@@ -57,7 +57,7 @@ it('P4: la entrada pregunta si eres administrador o adulto mayor', () => {
   expect(screen.getByText('Soy adulto mayor')).toBeTruthy();
 });
 
-it.failing('P5: cada cambio queda en un registro de cambios para reflejarlo en el otro celular', () => {
+it('P5: cada cambio queda en un registro de cambios para reflejarlo en el otro celular', () => {
   db.insert('reminders', { title: 'Llamar a Juan', time: '10:00', days: [] }, { userId: testUser.id, elderId });
   expect((useDb.getState() as unknown as { changelog?: unknown[] }).changelog?.length ?? 0).toBeGreaterThan(0);
 });
@@ -79,7 +79,7 @@ it('P9: en el login el robot forma parte del contenido que se desplaza (no una c
   expect(screen.getByTestId('auth-robot')).toBeTruthy();
 });
 
-it.failing('P10/P11: "Entregar a [nombre]" abre una pantalla propia con flecha atrás y vista previa', () => {
+it('P10/P11: "Entregar a [nombre]" abre una pantalla propia con flecha atrás y vista previa', () => {
   ui(<Routine />);
   fireEvent.press(screen.getByRole('button', { name: 'Entregar a Rosa' }));
   expect(mockPush).toHaveBeenCalledWith('/handoff');

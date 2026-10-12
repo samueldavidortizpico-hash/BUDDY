@@ -20,6 +20,7 @@ import type { Answer3 } from '@/domain/types';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { doseActions, elderAnswers } from '@/state/care';
+import { handoffActions } from '@/state/handoff';
 import { useRecords, useUserId } from '@/state/data';
 import { useSession } from '@/state/session';
 import { useNow } from '@/hooks/use-now';
@@ -66,6 +67,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const userId = useUserId() ?? '';
   const caregiver = useSession((x) => (x.user?.role === 'elder' ? '' : (x.user?.name.split(' ')[0] ?? '')));
   const role = useSession((x) => x.user?.role ?? 'caregiver');
+  const testMode = useDb((x) => x.handoff?.mode === 'test' && x.handoff.elderId === elderId);
   const elder = useDb((x) => (elderId ? x.elders[elderId] : undefined));
   const scope = { elderId };
   const meds = useRecords('medications', scope);
@@ -143,6 +145,26 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
 
   return (
     <ScreenContainer
+      header={
+        testMode && !preview ? (
+          <View style={s.testBanner} accessibilityRole="alert">
+            <Icon name="play" color={t.hc ? t.c.bg : '#FFFFFF'} size={18} />
+            <AppText variant="secondaryStrong" color={t.hc ? t.c.bg : '#FFFFFF'} style={s.flex}>
+              {strings.handoff.testBanner}
+            </AppText>
+            <Button
+              label={strings.handoff.testExit}
+              accessibilityHint={strings.handoff.testExitHint}
+              icon="close"
+              size="sm"
+              variant="white"
+              onPress={() => {
+                if (handoffActions.exitTest()) router.replace('/handoff');
+              }}
+            />
+          </View>
+        ) : undefined
+      }
       footer={
         <View style={s.help} pointerEvents={preview ? 'none' : 'auto'}>
           <Button
@@ -189,7 +211,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
             <AppText variant="h1" accessibilityRole="none">{E.greeting(greetingFor(now), elder.firstName)}</AppText>
           </Pressable>
         </View>
-        {preview || role === 'elder' ? null : (
+        {preview || role === 'elder' || testMode ? null : (
           <Pressable onPress={() => router.push('/elder/unlock')} accessibilityRole="button" accessibilityLabel={E.exit} hitSlop={6} style={s.lock}>
             <Icon name="lock" color={t.c.muted} size={22} />
           </Pressable>
@@ -449,6 +471,7 @@ const useStyles = makeStyles((t) =>
     chip: { flexDirection: 'row', gap: spacing.sm, padding: spacing.sm, paddingRight: spacing.lg, borderRadius: radius.button, backgroundColor: t.c.surface, ...t.hairline, ...t.shadow.soft },
     bar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
     help: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    testBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.xs, paddingLeft: spacing.sm, marginBottom: spacing.xs, borderRadius: radius.pill, backgroundColor: t.hc ? t.c.text : '#5B4BD0' },
     helpBtn: { flexGrow: 1, flexBasis: 140, minHeight: touch.elderMin + 8 },
   }),
 );

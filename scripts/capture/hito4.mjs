@@ -1,0 +1,25 @@
+// Capturas del Hito 4: "Entregar a [nombre]" con vista previa en vivo y modo prueba.
+import { mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { loadPlaywright } from './pw.mjs';
+const { seedState } = createRequire(import.meta.url)('./seed.js');
+const [base = 'http://localhost:8091', out = 'docs/capturas/v22/despues/hito4'] = process.argv.slice(2);
+mkdirSync(out, { recursive: true });
+const { chromium } = loadPlaywright();
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+await page.goto(`${base}/`);
+await page.waitForTimeout(2500);
+const seed = seedState({ days: 0 });
+await page.evaluate((s) => { localStorage.clear(); localStorage.setItem('buddy.session', JSON.stringify(s.session)); localStorage.setItem('buddy.db', JSON.stringify(s.db)); }, seed);
+await page.goto(`${base}/handoff`);
+await page.waitForTimeout(2500);
+await page.screenshot({ path: `${out}/entregar.png`, fullPage: true });
+await page.getByRole('button', { name: 'Probar como Elis' }).click();
+await page.waitForTimeout(2000);
+await page.screenshot({ path: `${out}/modo-prueba.png` });
+await page.goto(`${base}/routine`);
+await page.waitForTimeout(2000);
+await page.screenshot({ path: `${out}/rutina.png` });
+await browser.close();
+console.log('ok');

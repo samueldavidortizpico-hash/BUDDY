@@ -79,7 +79,29 @@ export interface Handoff {
   elderId: string;
   failedPins: number;
   lockedUntil: string | null;
+  /** `locked`: teléfono entregado, se sale con PIN. `test`: "Probar como", se sale sin PIN. */
+  mode?: 'locked' | 'test';
 }
+
+/**
+ * Entrada del registro de cambios local (ChangeLog). Toda escritura deja una: es lo que el SyncEngine enviará al
+ * servidor para reflejar los cambios en el otro celular (docs/SUPABASE_PLAN.md). Sin datos de salud: solo ids.
+ */
+export interface ChangeEntry {
+  id: string;
+  entity: CollectionName;
+  entityId: string;
+  op: 'insert' | 'update' | 'delete' | 'restore';
+  /** Cuenta que hizo el cambio (administrador o adulto mayor). */
+  author: string;
+  ownerUserId: string;
+  updatedAt: string;
+  version: number;
+  syncStatus: 'pending' | 'synced';
+}
+
+/** Máximo de entradas sincronizadas que se conservan (las pendientes nunca se descartan). */
+const CHANGELOG_KEEP_SYNCED = 500;
 
 type Tables = { [K in CollectionName]: Record<string, Collections[K]> };
 
@@ -89,6 +111,7 @@ export interface DbState extends Tables {
   handoff: Handoff | null;
   /** Última sincronización por cuenta (Supabase). */
   lastPulledAt: Record<string, string>;
+  changelog: ChangeEntry[];
 }
 
 export const SCHEMA_VERSION = 2;
@@ -98,6 +121,7 @@ const empty = (): DbState => ({
   drafts: {},
   handoff: null,
   lastPulledAt: {},
+  changelog: [],
 });
 
 /** Migraciones por versión de origen. v1 era el prototipo con datos de ejemplo: no se conserva nada. */
@@ -136,6 +160,15 @@ export interface Actor {
   by?: string;
 }
 
+let authorResolver: () => string | null = () => null;
+
+function logChange(log: ChangeEntry[], entity: CollectionName, r: SyncMeta, op: ChangeEntry['op'], author: string): ChangeEntry[] {
+  const entry: ChangeEntry = { id: newId(), entity, entityId: r.id, op, author, ownerUserId: r.ownerUserId, updatedAt: r.updatedAt, version: r.version ?? 1, syncStatus: 'pending' };
+  const synced = log.filter((c) => c.syncStatus === 'synced');
+  const kept = synced.length > CHANGELOG_KEEP_SYNCED ? log.filter((c) => c.syncStatus === 'pending' || synced.indexOf(c) >= synced.length - CHANGELOG_KEEP_SYNCED) : log;
+  return [...kept, entry];
+}
+
 export const db = {
   get<K extends CollectionName>(coll: K, id: string): Collections[K] | undefined {
     return useDb.getState()[coll][id] as Collections[K] | undefined;
@@ -150,27 +183,47 @@ export const db = {
 
   insert<K extends CollectionName>(coll: K, data: NewRecord<K>, actor: Actor): Collections[K] {
     const t = now();
+    const author = actor.by ?? actor.userId;
     const record = {
       ...data,
       id: data.id ?? newId(),
       ownerUserId: actor.userId,
       elderId: actor.elderId,
-      createdBy: actor.by ?? actor.userId,
+      createdBy: author,
       createdAt: t,
       updatedAt: t,
       deletedAt: null,
       syncStatus: 'pending',
+      version: 1,
     } as Collections[K];
-    useDb.setState((s) => ({ [coll]: { ...s[coll], [record.id]: record } }) as Partial<DbState>);
+    useDb.setState((s) => ({ [coll]: { ...s[coll], [record.id]: record }, changelog: logChange(s.changelog, coll, record, 'insert', author) }) as Partial<DbState>);
     return record;
   },
 
   update<K extends CollectionName>(coll: K, id: string, patch: Partial<Collections[K]>): Collections[K] | undefined {
     const current = db.get(coll, id);
     if (!current) return undefined;
-    const next = { ...current, ...patch, updatedAt: now(), syncStatus: 'pending' } as Collections[K];
-    useDb.setState((s) => ({ [coll]: { ...s[coll], [id]: next } }) as Partial<DbState>);
+    const next = { ...current, ...patch, updatedAt: now(), syncStatus: 'pending', version: (current.version ?? 1) + 1 } as Collections[K];
+    const op: ChangeEntry['op'] = 'deletedAt' in patch ? (patch.deletedAt ? 'delete' : 'restore') : 'update';
+    useDb.setState((s) => ({ [coll]: { ...s[coll], [id]: next }, changelog: logChange(s.changelog, coll, next, op, authorResolver() ?? next.ownerUserId) }) as Partial<DbState>);
     return next;
+  },
+
+  /** Las pantallas y el SyncEngine se suscriben a una colección y reaccionan al instante a cada cambio. */
+  subscribe<K extends CollectionName>(coll: K, listener: (records: Record<string, Collections[K]>) => void): () => void {
+    return useDb.subscribe((s, prev) => {
+      if (s[coll] !== prev[coll]) listener(s[coll] as Record<string, Collections[K]>);
+    });
+  },
+
+  /** Quién está escribiendo (lo define la sesión; la base no conoce la sesión). */
+  setAuthorResolver(fn: () => string | null) {
+    authorResolver = fn;
+  },
+
+  /** Cambios aún no enviados al servidor. */
+  pendingChanges(ownerUserId: string): ChangeEntry[] {
+    return useDb.getState().changelog.filter((c) => c.ownerUserId === ownerUserId && c.syncStatus === 'pending');
   },
 
   /** Borrado lógico (se puede deshacer con `restore`). */
@@ -197,7 +250,7 @@ export const db = {
       }
       const drafts = { ...s.drafts };
       delete drafts[userId];
-      return { ...next, drafts, handoff: s.handoff?.userId === userId ? null : s.handoff };
+      return { ...next, drafts, handoff: s.handoff?.userId === userId ? null : s.handoff, changelog: s.changelog.filter((c) => c.ownerUserId !== userId) };
     });
   },
 

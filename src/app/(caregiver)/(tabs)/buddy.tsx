@@ -15,6 +15,7 @@ import { EXAMPLES } from '@/domain/assistant/engine';
 import type { AssistantAction, FieldKey } from '@/domain/assistant/types';
 import type { AssistantMessage } from '@/domain/types';
 import { FINAL, useBuddyChat } from '@/features/chat/use-chat';
+import { PreviewSheetButton } from '@/features/elder/phone-preview';
 import { savePhoto } from '@/infrastructure/local/media';
 import { strings } from '@/i18n';
 import { SUGGESTIONS, conversation } from '@/state/assistant';
@@ -67,7 +68,7 @@ export default function Buddy() {
   const chat = useBuddyChat({
     openScan: () => router.push('/medication/scan'),
     openRoutine: (seg) => router.push({ pathname: '/routine', params: { seg } } as unknown as Href),
-    openPreview: () => router.push('/preview' as Href),
+    openPreview: () => router.push('/handoff' as Href),
     call: (phone) => Linking.openURL(`tel:${phone.replace(/\s/g, '')}`),
     primary: primary ? { name: primary.name, phone: primary.phone } : undefined,
   });
@@ -117,6 +118,7 @@ export default function Buddy() {
           <AppText variant="h3">{strings.brand.name}</AppText>
           <AppText variant="caption" color={t.c.muted}>{strings.summary.caring(elder.firstName)}</AppText>
         </View>
+        <PreviewSheetButton compact />
         {messages.length ? (
           <Pressable onPress={() => conversation.clear()} accessibilityRole="button" accessibilityLabel={B.clear} style={s.headerBtn}>
             <Icon name="trash" color={t.c.muted} size={20} />

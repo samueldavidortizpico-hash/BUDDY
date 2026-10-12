@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 
 import Welcome from '@/app/(auth)';
 import CaregiverLayout from '@/app/(caregiver)/_layout';
+import Handoff from '@/app/(caregiver)/handoff';
 import Routine from '@/app/(caregiver)/(tabs)/routine';
 import Preview from '@/app/(caregiver)/preview';
 import ElderHome from '@/app/elder';
@@ -25,6 +26,7 @@ const routes = {
   '(caregiver)/summary': () => <Text>Resumen de prueba</Text>,
   '(caregiver)/setup': () => <Text>Registro de prueba</Text>,
   '(caregiver)/routine': Routine,
+  '(caregiver)/handoff': Handoff,
   '(caregiver)/preview': Preview,
   'elder/_layout': ElderLayout,
   'elder/index': ElderHome,
@@ -67,8 +69,8 @@ it('protected routes settle at welcome after sign-out', async () => {
   await waitFor(() => expect(routed.getPathname()).toBe('/'));
 });
 
-it('creating and confirming a PIN from routine enters the real elder screen', async () => {
-  const routed = renderRouter(routes, { initialUrl: '/routine' });
+it('creating and confirming a PIN from "Entregar a" enters the real elder screen', async () => {
+  const routed = renderRouter(routes, { initialUrl: '/handoff' });
   fireEvent.press(screen.getByRole('button', { name: strings.routine.handoff('Rosa') }));
   for (const digit of '1234') fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(digit) }));
   await screen.findByText(strings.pin.confirm);

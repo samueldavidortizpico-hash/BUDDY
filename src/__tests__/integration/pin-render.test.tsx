@@ -1,7 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 
 import Unlock from '@/app/elder/unlock';
-import Routine from '@/app/(caregiver)/(tabs)/routine';
+import Handoff from '@/app/(caregiver)/handoff';
 import { PinPad } from '@/components/pin-pad';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
@@ -81,7 +81,7 @@ it.each(['false', 'exception'])('does not hand off when PIN creation fails (%s)'
   if (failure === 'false') save.mockResolvedValueOnce(false);
   else save.mockRejectedValueOnce(new Error('Controlled storage failure'));
   try {
-    const screen = render(<Routine />, { wrapper: RenderProviders });
+    const screen = render(<Handoff />, { wrapper: RenderProviders });
     fireEvent.press(screen.getByRole('button', { name: strings.routine.handoff('Rosa') }));
     enter(screen, '1234');
     await screen.findByText(strings.pin.confirm);

@@ -44,7 +44,21 @@ export const handoffActions = {
     if (!elder || elder.deletedAt || elder.ownerUserId !== userId || !acc?.pinHash || !acc.pinSalt) {
       throw new Error('No se puede entregar el teléfono sin paciente y PIN válidos.');
     }
-    db.setHandoff({ userId, elderId, failedPins: 0, lockedUntil: null });
+    db.setHandoff({ userId, elderId, failedPins: 0, lockedUntil: null, mode: 'locked' });
+  },
+  /** "Probar como [nombre]": la pantalla real del adulto mayor con banner "Modo prueba"; se sale sin PIN. */
+  startTest(elderId: string) {
+    const userId = currentUserId();
+    const elder = db.get('elders', elderId);
+    if (!elder || elder.deletedAt || elder.ownerUserId !== userId) throw new Error('No se puede probar sin una persona válida.');
+    db.setHandoff({ userId, elderId, failedPins: 0, lockedUntil: null, mode: 'test' });
+  },
+  /** Sale del modo prueba. No sirve para una entrega real (esa exige el PIN). */
+  exitTest(): boolean {
+    const h = db.draftHandoff();
+    if (!h || h.mode !== 'test') return false;
+    db.setHandoff(null);
+    return true;
   },
   /** Devuelve 'ok', 'wrong' (con intentos restantes) o 'locked' (con segundos de espera). */
   async unlock(pin: string): Promise<{ result: 'ok' } | { result: 'wrong'; left: number } | { result: 'locked'; seconds: number }> {

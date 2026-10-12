@@ -18,6 +18,9 @@ interface SessionState {
 
 export const useSession = create<SessionState>(() => ({ status: 'loading', user: null }));
 
+// Cada cambio queda en el ChangeLog con su autor real (administrador o adulto mayor).
+db.setAuthorResolver(() => useSession.getState().user?.id ?? null);
+
 export const ALL_ALERTS = Object.fromEntries(ALERT_KINDS.map((k) => [k, true])) as AccountSettings['myAlerts'];
 
 /** Crea los ajustes de la cuenta la primera vez que entra en este dispositivo. */
