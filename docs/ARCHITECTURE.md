@@ -1,4 +1,6 @@
-# BUDDY — Arquitectura
+# BUDDY — Arquitectura (histórico)
+
+> **Este mapa está obsoleto.** Algunas carpetas y capas descritas aquí ya no existen o cambiaron de nombre. Usa [`ARQUITECTURA_ACTUAL.md`](ARQUITECTURA_ACTUAL.md) para orientarte en el código vigente. Se conserva esta nota histórica para no borrar contexto anterior.
 
 > Documento vivo. Última actualización: 2026-10-10 · Fase 1 completa (interfaz con datos ficticios locales).
 > Ver también: DECISIONS.md, DESIGN_SYSTEM.md, PANTALLAS_CHECKLIST.md y ACCESSIBILITY_AUDIT.md.

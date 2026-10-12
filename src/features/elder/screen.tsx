@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -28,6 +28,7 @@ import { formatClock, formatLongDate, greetingFor, toISODate } from '@/utils/dat
 import { successHaptic } from '@/utils/haptics';
 
 const E = strings.elder;
+const EMPTY_SEEN: string[] = [];
 
 function domainOf(item: ElderItem): Domain {
   switch (item.kind) {
@@ -77,10 +78,15 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const reminders = useRecords('reminders', scope);
   const alerts = useRecords('alerts', scope);
   const contacts = useRecords('contacts', scope);
-  const seen = useDb((x) => (x.drafts[userId]?.['elder.seen'] as string[] | undefined) ?? []);
+  const seen = useDb((x) => x.drafts[userId]?.['elder.seen'] as string[] | undefined) ?? EMPTY_SEEN;
   const [help, setHelp] = useState(false);
   const [mood, setMood] = useState<RobotMood>('wave');
+  const thanksTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = toISODate(now);
+
+  useEffect(() => () => {
+    if (thanksTimer.current) clearTimeout(thanksTimer.current);
+  }, []);
 
   useEffect(() => {
     if (elderId && !preview) doseActions.sync(elderId, now);
@@ -119,12 +125,16 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
 
   if (!elder) return null;
 
-  const markSeen = (id: string) => db.setDraft(userId, 'elder.seen', [...seen, id]);
+  const markSeen = (id: string) => {
+    if (!preview) db.setDraft(userId, 'elder.seen', [...seen, id]);
+  };
   const thanks = () => {
+    if (preview) return;
     successHaptic();
     setMood('celebrate');
     toast({ message: E.thanks, icon: 'check' });
-    setTimeout(() => setMood('idle'), 1600);
+    if (thanksTimer.current) clearTimeout(thanksTimer.current);
+    thanksTimer.current = setTimeout(() => setMood('idle'), 1600);
   };
   const d = t.domains[domainOf(item)];
 
@@ -138,9 +148,9 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
             tone="mint"
             icon="phone"
             stacked
-            disabled={!primary}
+            disabled={preview || !primary}
             style={s.helpBtn}
-            onPress={() => primary && Linking.openURL(`tel:${primary.phone.replace(/\s/g, '')}`)}
+            onPress={() => !preview && primary && Linking.openURL(`tel:${primary.phone.replace(/\s/g, '')}`)}
           />
           <Button
             label={E.help}
@@ -149,7 +159,9 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
             icon="shield"
             stacked
             style={s.helpBtn}
+            disabled={preview}
             onPress={() => {
+              if (preview) return;
               elderAnswers.requestHelp(elder.id);
               setHelp(true);
             }}
@@ -179,7 +191,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
             <AppText variant="eyebrow" color={d.muted}>
               {E.now}
             </AppText>
-            <ItemView item={item} caregiver={caregiver} onThanks={thanks} onSeen={markSeen} maxSnoozes={elder.screen.maxSnoozes} elderId={elder.id} />
+            <ItemView item={item} caregiver={caregiver} onThanks={thanks} onSeen={markSeen} maxSnoozes={elder.screen.maxSnoozes} elderId={elder.id} preview={preview} />
           </View>
         </View>
       </Appear>
@@ -254,6 +266,7 @@ function ItemView({
   onSeen,
   maxSnoozes,
   elderId,
+  preview,
 }: {
   item: ElderItem;
   caregiver: string;
@@ -261,6 +274,7 @@ function ItemView({
   onSeen: (id: string) => void;
   maxSnoozes: number;
   elderId: string;
+  preview: boolean;
 }) {
   const t = useTheme();
   const s = useStyles();
@@ -279,7 +293,7 @@ function ItemView({
           <AppText variant="body" color={d.muted}>
             {E.stockBody(caregiver || 'tu familiar')}
           </AppText>
-          <Button label={E.ok} size="elder" onPress={() => onSeen(item.alert.id)} />
+          <Button label={E.ok} size="elder" disabled={preview} onPress={() => !preview && onSeen(item.alert.id)} />
         </View>
       );
     case 'dose': {
@@ -300,9 +314,9 @@ function ItemView({
               {medication.instructions}
             </AppText>
           ) : null}
-          <Button label={E.taken} icon="check" size="elder" onPress={() => { doseActions.confirm(dose.id, 'elder'); onThanks(); }} />
-          {snoozesLeft ? <Button label={E.snooze} icon="clock" variant="white" size="md" style={s.min56} onPress={() => doseActions.snooze(dose.id, 'elder')} /> : null}
-          <Button label={E.notTaken} variant="ghost" size="md" textColor={d.text} onPress={() => doseActions.skip(dose.id, 'elder')} />
+          <Button label={E.taken} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; doseActions.confirm(dose.id, 'elder'); onThanks(); }} />
+          {snoozesLeft ? <Button label={E.snooze} icon="clock" variant="white" size="md" style={s.min56} disabled={preview} onPress={() => !preview && doseActions.snooze(dose.id, 'elder')} /> : null}
+          <Button label={E.notTaken} variant="ghost" size="md" textColor={d.text} disabled={preview} onPress={() => !preview && doseActions.skip(dose.id, 'elder')} />
         </View>
       );
     }
@@ -317,13 +331,13 @@ function ItemView({
           {title(questionText(item)!)}
           {step === 'unwell' ? (
             <View style={s.twoCol}>
-              <Button label={E.yes} size="elder" variant="white" style={s.flex} onPress={() => { elderAnswers.checkin({ unwell: true }, elderId); onThanks(); }} />
-              <Button label={E.no} size="elder" style={s.flex} onPress={() => { elderAnswers.checkin({ unwell: false }, elderId); onThanks(); }} />
+              <Button label={E.yes} size="elder" variant="white" style={s.flex} disabled={preview} onPress={() => { if (preview) return; elderAnswers.checkin({ unwell: true }, elderId); onThanks(); }} />
+              <Button label={E.no} size="elder" style={s.flex} disabled={preview} onPress={() => { if (preview) return; elderAnswers.checkin({ unwell: false }, elderId); onThanks(); }} />
             </View>
           ) : (
             <View style={s.faces}>
               {(['good', 'regular', 'bad'] as Answer3[]).map((a) => (
-                <FaceButton key={a} kind={a} onPress={() => { elderAnswers.checkin({ [step]: a }, elderId); onThanks(); }} />
+                <FaceButton key={a} kind={a} disabled={preview} onPress={() => { if (preview) return; elderAnswers.checkin({ [step]: a }, elderId); onThanks(); }} />
               ))}
             </View>
           )}
@@ -337,8 +351,8 @@ function ItemView({
           <AppText variant="h3" color={d.muted}>
             {formatClock(item.meal.time)}
           </AppText>
-          <Button label={E.yes} icon="check" size="elder" onPress={() => { elderAnswers.meal(item.meal.id, 'yes', elderId); onThanks(); }} />
-          <Button label={E.notYet} variant="white" size="md" style={s.min56} onPress={() => elderAnswers.meal(item.meal.id, 'no', elderId)} />
+          <Button label={E.yes} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; elderAnswers.meal(item.meal.id, 'yes', elderId); onThanks(); }} />
+          <Button label={E.notYet} variant="white" size="md" style={s.min56} disabled={preview} onPress={() => !preview && elderAnswers.meal(item.meal.id, 'no', elderId)} />
         </View>
       );
     case 'activity':
@@ -350,8 +364,8 @@ function ItemView({
               {`${item.activity.minutes} min · ${formatClock(item.activity.time)}`}
             </AppText>
           ) : null}
-          <Button label={E.yes} icon="check" size="elder" onPress={() => { elderAnswers.activity(item.activity.id, true, elderId); onThanks(); }} />
-          <Button label={E.notYet} variant="white" size="md" style={s.min56} onPress={() => elderAnswers.activity(item.activity.id, false, elderId)} />
+          <Button label={E.yes} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; elderAnswers.activity(item.activity.id, true, elderId); onThanks(); }} />
+          <Button label={E.notYet} variant="white" size="md" style={s.min56} disabled={preview} onPress={() => !preview && elderAnswers.activity(item.activity.id, false, elderId)} />
         </View>
       );
     case 'water':
@@ -361,14 +375,14 @@ function ItemView({
           <AppText variant="heroL" color={d.text} style={s.tabular}>
             {E.waterProgress(item.glasses, item.goal)}
           </AppText>
-          <Button label={E.waterBtn} icon="drop" size="elder" variant={t.dark ? 'primary' : 'white'} onPress={() => { elderAnswers.addWater(elderId); onThanks(); }} />
+          <Button label={E.waterBtn} icon="drop" size="elder" variant={t.dark ? 'primary' : 'white'} disabled={preview} onPress={() => { if (preview) return; elderAnswers.addWater(elderId); onThanks(); }} />
         </View>
       );
     case 'reminder':
       return (
         <View style={s.itemBody}>
           {title(item.reminder.title)}
-          <Button label={E.ok} size="elder" onPress={() => onSeen(item.reminder.id)} />
+          <Button label={E.ok} size="elder" disabled={preview} onPress={() => !preview && onSeen(item.reminder.id)} />
         </View>
       );
     default:
@@ -383,12 +397,12 @@ function ItemView({
   }
 }
 
-function FaceButton({ kind, onPress }: { kind: Answer3; onPress: () => void }) {
+function FaceButton({ kind, onPress, disabled }: { kind: Answer3; onPress: () => void; disabled: boolean }) {
   const t = useTheme();
   const s = useStyles();
   const bg = { good: t.c.mintPale, regular: t.c.yellowPale, bad: t.c.coralPale }[kind];
   return (
-    <PressableScale haptic scaleTo={0.92} onPress={onPress} accessibilityLabel={strings.answers[kind]} style={s.faceBtn}>
+    <PressableScale haptic scaleTo={0.92} disabled={disabled} onPress={onPress} accessibilityLabel={strings.answers[kind]} style={s.faceBtn}>
       <View style={[s.faceCircle, { backgroundColor: t.hc ? t.c.bg : bg }, t.hairline]}>
         <Face kind={kind} size={72} />
       </View>

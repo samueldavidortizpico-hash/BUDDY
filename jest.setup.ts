@@ -2,6 +2,9 @@
 // Se completa el propio módulo del mock porque expo-router/testing-library también lo reutiliza.
 const reanimatedMock = require('react-native-reanimated/mock');
 reanimatedMock.useReducedMotion = () => false;
+// Reanimated's default mock leaves interpolated native style values undefined.
+// Identity interpolation preserves finite layout transforms in React component tests.
+reanimatedMock.interpolate = (value: number) => value;
 
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 

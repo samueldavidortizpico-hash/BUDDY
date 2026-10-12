@@ -9,43 +9,66 @@ import { currentUserId } from './session';
 
 const MAX = 5;
 const PIN_ITERATIONS = 300;
+let unlocking = false;
 
 function account() {
   return db.list('accounts', currentUserId())[0];
 }
 
 export const handoffActions = {
-  hasPin: () => !!account()?.pinHash,
+  hasPin: () => {
+    const acc = account();
+    return !!acc?.pinHash && !!acc.pinSalt;
+  },
   async setPin(pin: string) {
     const acc = account();
     if (!acc || !/^\d{4}$/.test(pin)) return false;
     const salt = await newSalt();
-    db.update('accounts', acc.id, { pinSalt: salt, pinHash: await hashSecret(pin, salt, PIN_ITERATIONS) });
+    const pinHash = await hashSecret(pin, salt, PIN_ITERATIONS);
+    if (currentUserId() !== acc.ownerUserId || account()?.id !== acc.id) return false;
+    db.update('accounts', acc.id, { pinSalt: salt, pinHash });
     return true;
   },
   start(elderId: string) {
-    db.setHandoff({ userId: currentUserId(), elderId, failedPins: 0, lockedUntil: null });
+    const userId = currentUserId();
+    const elder = db.get('elders', elderId);
+    const acc = account();
+    if (!elder || elder.deletedAt || elder.ownerUserId !== userId || !acc?.pinHash || !acc.pinSalt) {
+      throw new Error('No se puede entregar el teléfono sin paciente y PIN válidos.');
+    }
+    db.setHandoff({ userId, elderId, failedPins: 0, lockedUntil: null });
   },
   /** Devuelve 'ok', 'wrong' (con intentos restantes) o 'locked' (con segundos de espera). */
   async unlock(pin: string): Promise<{ result: 'ok' } | { result: 'wrong'; left: number } | { result: 'locked'; seconds: number }> {
-    const h = db.draftHandoff();
-    const acc = account();
-    if (!h || !acc?.pinHash || !acc.pinSalt) {
-      db.setHandoff(null);
-      return { result: 'ok' };
+    if (unlocking) throw new Error('Ya hay una verificación de PIN en curso.');
+    unlocking = true;
+    try {
+      const userId = currentUserId();
+      const h = db.draftHandoff();
+      const acc = account();
+      if (!h) return { result: 'ok' };
+      if (h.userId !== userId || !acc?.pinHash || !acc.pinSalt) throw new Error('No se puede verificar el PIN guardado.');
+      if (h.lockedUntil && Date.parse(h.lockedUntil) > Date.now()) {
+        return { result: 'locked', seconds: Math.ceil((Date.parse(h.lockedUntil) - Date.now()) / 1000) };
+      }
+      const matches = /^\d{4}$/.test(pin) && (await hashSecret(pin, acc.pinSalt, PIN_ITERATIONS)) === acc.pinHash;
+      if (currentUserId() !== userId || db.draftHandoff() !== h || account()?.pinHash !== acc.pinHash || account()?.pinSalt !== acc.pinSalt) {
+        throw new Error('La entrega o la sesión cambió durante la verificación.');
+      }
+      if (matches) {
+        db.setHandoff(null);
+        return { result: 'ok' };
+      }
+      const failed = h.failedPins + 1;
+      if (failed >= MAX) {
+        const seconds = Math.min(900, 30 * 2 ** (failed - MAX));
+        db.setHandoff({ ...h, failedPins: failed, lockedUntil: new Date(Date.now() + seconds * 1000).toISOString() });
+        return { result: 'locked', seconds };
+      }
+      db.setHandoff({ ...h, failedPins: failed });
+      return { result: 'wrong', left: MAX - failed };
+    } finally {
+      unlocking = false;
     }
-    if (h.lockedUntil && Date.parse(h.lockedUntil) > Date.now()) return { result: 'locked', seconds: Math.ceil((Date.parse(h.lockedUntil) - Date.now()) / 1000) };
-    if ((await hashSecret(pin, acc.pinSalt, PIN_ITERATIONS)) === acc.pinHash) {
-      db.setHandoff(null);
-      return { result: 'ok' };
-    }
-    const failed = h.failedPins + 1;
-    if (failed >= MAX) {
-      const seconds = Math.min(900, 30 * 2 ** (failed - MAX));
-      db.setHandoff({ ...h, failedPins: failed, lockedUntil: new Date(Date.now() + seconds * 1000).toISOString() });
-      return { result: 'locked', seconds };
-    }
-    db.setHandoff({ ...h, failedPins: failed });
-    return { result: 'wrong', left: MAX - failed };
   },
 };

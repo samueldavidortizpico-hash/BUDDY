@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -23,17 +23,34 @@ export default function Unlock() {
   const t = useTheme();
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   const submit = async (pin: string) => {
+    if (pending.current) return;
+    pending.current = true;
     setBusy(true);
-    const r = await handoffActions.unlock(pin);
-    setBusy(false);
-    if (r.result === 'ok') {
-      successHaptic();
-      router.replace('/summary');
-    } else {
+    setMessage(null);
+    try {
+      const r = await handoffActions.unlock(pin);
+      if (!mounted.current) return;
+      if (r.result === 'ok') {
+        successHaptic();
+        router.replace('/summary');
+      } else {
+        warningHaptic();
+        setMessage(r.result === 'wrong' ? P.wrong(r.left) : P.locked(r.seconds));
+      }
+    } catch {
       warningHaptic();
-      setMessage(r.result === 'wrong' ? P.wrong(r.left) : P.locked(r.seconds));
+      if (mounted.current) setMessage(P.unavailable);
+    } finally {
+      pending.current = false;
+      if (mounted.current) setBusy(false);
     }
   };
 
@@ -49,9 +66,20 @@ export default function Unlock() {
           label={P.forgot}
           variant="ghost"
           size="md"
+          disabled={busy}
           onPress={async () => {
-            await sessionActions.signOut();
-            router.replace('/sign-in');
+            if (pending.current) return;
+            pending.current = true;
+            setBusy(true);
+            try {
+              await sessionActions.signOut();
+              if (mounted.current) router.replace('/sign-in');
+            } catch {
+              if (mounted.current) setMessage(strings.auth.errors.unknown);
+            } finally {
+              pending.current = false;
+              if (mounted.current) setBusy(false);
+            }
           }}
         />
       </View>

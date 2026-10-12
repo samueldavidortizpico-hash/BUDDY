@@ -20,7 +20,7 @@ Fuentes, en orden: `docs/CONTEXTO_BUDDY.md` (no estaba en el repositorio ni en e
 | 11 | Sin "pasos" en el panel del cuidador (el Figma mostraba 1.250 pasos). Se usan tomas, sueño, ánimo y vasos de agua registrados. | No hay sensores: sería un dato de dispositivo inventado. |
 | 12 | Reportes: el círculo muestra el % de tomas confirmadas, no un puntaje "89/100". | No inventar índices de salud. |
 | 13 | Chequeo diario del primer prompt = Ánimo + Síntomas del Figma (no se creó un modal adicional). | El segundo prompt y el Figma mandan en la estructura. |
-| 14 | "Iniciar sesión" muestra un aviso (inicio real próximamente) y abre la elección de perfil. | No hay autenticación en esta fase. |
+| 14 | La app tiene autenticación local por dispositivo por defecto y un proveedor Supabase opcional mediante variables de entorno. El proveedor remoto está implementado en código, pero no validado contra un proyecto real. | No confundir credenciales locales ni sincronización no probada con cuentas multi-dispositivo listas para producción. |
 
 ## Diseño
 

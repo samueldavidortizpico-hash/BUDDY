@@ -30,8 +30,14 @@ export type RobotMood = 'idle' | 'wave' | 'think' | 'talk' | 'celebrate' | 'worr
 const VB = { x: 110, y: 30, w: 820, h: 920 };
 export const VECTOR_RATIO = VB.w / VB.h;
 const VIEWBOX = `${VB.x} ${VB.y} ${VB.w} ${VB.h}`;
-/** Punto del dibujo → porcentaje de la caja (para transformOrigin). */
-const pct = (x: number, y: number) => `${((x - VB.x) / VB.w) * 100}% ${((y - VB.y) / VB.h) * 100}%`;
+/** Punto del dibujo → origen relativo a la caja, con Z numérico explícito.
+ * El arreglo evita el parser de cadenas de RN, que separa los porcentajes decimales.
+ */
+const pct = (x: number, y: number): [`${number}%`, `${number}%`, number] => [
+  `${((x - VB.x) / VB.w) * 100}%`,
+  `${((y - VB.y) / VB.h) * 100}%`,
+  0,
+];
 
 const PIVOT = {
   head: pct(500, 620),
@@ -39,6 +45,7 @@ const PIVOT = {
   leftArm: pct(372, 682),
   rightArm: pct(682, 678),
   mouth: pct(490, 492),
+  heart: pct(586, 716),
 };
 
 /** Corazón del pecho relativo a la caja (para el brillo y efectos externos). */
@@ -228,12 +235,12 @@ export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = tru
   }, [look, live, eyesX]);
 
   useEffect(() => {
-    if (!animated) return;
-    if (reduce) {
-      loop(heart, 0, 0.35, 2400);
-    } else {
-      loop(heart, 0, 1, 1600);
+    if (!animated || reduce) {
+      cancelAnimation(heart);
+      heart.set(reduce ? 0.35 : 0);
+      return;
     }
+    loop(heart, 0, 1, 1600);
     return () => cancelAnimation(heart);
   }, [animated, reduce, heart]);
 
@@ -289,7 +296,7 @@ export function BuddyRobotVector({ size, mood = 'idle', look = 0, animated = tru
           true,
         )}
       </View>
-      <Animated.View style={[layer, { transformOrigin: pct(586, 716) }, heartStyle]}>
+      <Animated.View style={[layer, { transformOrigin: PIVOT.heart }, heartStyle]}>
         {svg(<Ellipse cx="586" cy="716" rx="88" ry="88" fill="url(#heartGlow)" />, true)}
       </Animated.View>
 

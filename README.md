@@ -1,56 +1,44 @@
-# Welcome to your Expo app 👋
+﻿# BUDDY
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+BUDDY es una aplicación móvil Expo para ayudar a familiares y cuidadores a organizar rutinas, medicamentos y registros de bienestar de adultos mayores. La experiencia prioriza una pantalla sencilla para el adulto mayor y un panel de organización para el cuidador.
 
-## Get started
+> **Estado actual:** prototipo funcional con datos locales. La autenticación local y la sincronización con Supabase no equivalen a un servicio de producción validado. No se deben usar datos reales de salud hasta completar la revisión de privacidad, seguridad y operación descrita en `docs/AUDITORIA_INTEGRAL_Y_MEJORAS.md`.
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Ejecutar la app
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Abre el proyecto con Expo Go para el ciclo de desarrollo. Las pruebas web y Jest no sustituyen la validación en teléfonos iOS y Android.
 
-### Other setup steps
+## Flujo principal
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- **Cuidador:** inicia sesión, completa el registro del familiar y organiza la rutina desde las pestañas Resumen, Rutina, BUDDY, Salud y Ajustes.
+- **Vista del adulto:** en Resumen, pulsa **Ver pantalla de [nombre]** para abrir una vista previa de solo lectura.
+- **Entregar el teléfono:** desde Rutina usa **Entregar a [nombre]**. La salida al modo familiar se protege con PIN.
 
-## Learn more
+## Comprobaciones locales
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm test -- --runInBand
+npm run typecheck
+npm run lint
+npm run check:headers
+npx expo-doctor
+npx expo install --check
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Organización del código
 
-## Join the community
+- `src/app/`: rutas y layouts de Expo Router.
+- `src/features/`: pantallas y flujos por dominio.
+- `src/components/`: componentes compartidos, incluido el robot vectorial.
+- `src/domain/`: reglas y modelos de negocio.
+- `src/state/`: estado de sesión, datos y acciones.
+- `src/infrastructure/`: persistencia local, autenticación y adaptadores de Supabase.
+- `src/theme/`, `src/i18n/`: apariencia, accesibilidad visual y textos.
+- `src/__tests__/`: regresiones de rutas y flujos.
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Consulta `docs/ARQUITECTURA_ACTUAL.md`, `docs/PANTALLAS_CHECKLIST.md` y `docs/AUDITORIA_INTEGRAL_Y_MEJORAS.md` antes de realizar cambios de estructura o de producto.

@@ -1,5 +1,5 @@
 import { useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -37,6 +37,13 @@ export default function Routine() {
   const [pinSheet, setPinSheet] = useState<null | 'set' | 'confirm'>(null);
   const [firstPin, setFirstPin] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
+  const pinPending = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const meds = useRecords('medications');
   const water = useRecords('waterPlans')[0];
   const meals = useRecords('meals');
@@ -159,14 +166,16 @@ export default function Routine() {
         <Button label={R.withBuddy} icon="sparkle" variant="tonal" tone="mint" size="elder" onPress={() => { setAddSheet(false); router.push('/buddy' as Href); }} />
       </BottomSheet>
 
-      <BottomSheet visible={!!pinSheet} onClose={() => { setPinSheet(null); setPinError(null); }} title={pinSheet === 'confirm' ? strings.pin.confirm : strings.pin.setTitle}>
+      <BottomSheet visible={!!pinSheet} onClose={() => { if (pinPending.current) return; setPinSheet(null); setPinError(null); setFirstPin(''); }} title={pinSheet === 'confirm' ? strings.pin.confirm : strings.pin.setTitle}>
         <AppText variant="secondary" color={t.c.muted}>
           {strings.pin.setBody}
         </AppText>
         <PinPad
           key={pinSheet ?? 'x'}
           error={pinError}
+          disabled={pinBusy}
           onComplete={async (pin) => {
+            if (pinPending.current) return;
             if (pinSheet === 'set') {
               setFirstPin(pin);
               setPinError(null);
@@ -175,10 +184,25 @@ export default function Routine() {
               setPinError(strings.pin.mismatch);
               setPinSheet('set');
             } else {
-              await handoffActions.setPin(pin);
-              setPinSheet(null);
-              handoffActions.start(elder.id);
-              router.replace('/elder');
+              pinPending.current = true;
+              setPinBusy(true);
+              try {
+                const saved = await handoffActions.setPin(pin);
+                if (!mounted.current) return;
+                if (!saved) {
+                  setPinError(strings.pin.saveError);
+                  return;
+                }
+                handoffActions.start(elder.id);
+                setFirstPin('');
+                setPinSheet(null);
+                router.replace('/elder');
+              } catch {
+                if (mounted.current) setPinError(strings.pin.saveError);
+              } finally {
+                pinPending.current = false;
+                if (mounted.current) setPinBusy(false);
+              }
             }
           }}
         />

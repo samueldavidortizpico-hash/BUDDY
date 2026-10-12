@@ -75,6 +75,19 @@ export default function Summary() {
       ) : (
         <>
           <FirstSteps />
+          <Card variant="tint" tone="mint" style={s.elderPreview}>
+            <AppText variant="h3">{S.elderScreenTitle}</AppText>
+            <AppText variant="secondary" color={t.c.muted}>{S.elderScreenBody}</AppText>
+            <Button
+              label={S.elderScreenAction(ready.firstName)}
+              icon="eye"
+              variant="tonal"
+              tone="mint"
+              size="md"
+              accessibilityHint={S.elderScreenHint}
+              onPress={() => router.push('/preview' as Href)}
+            />
+          </Card>
           <TodayPanel elder={ready} />
         </>
       )}
@@ -210,6 +223,7 @@ const useStyles = makeStyles((t) =>
       ...(t.hc ? t.hairline : {}),
     },
     steps: { gap: spacing.xs, marginBottom: spacing.section },
+    elderPreview: { gap: spacing.xs, marginBottom: spacing.sm },
     stepsHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
     stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.min },
     check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: t.hc ? t.c.text : t.c.muted, alignItems: 'center', justifyContent: 'center' },

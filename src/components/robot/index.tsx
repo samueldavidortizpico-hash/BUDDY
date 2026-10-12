@@ -46,6 +46,8 @@ export const ROBOT_RATIO = HIGH_RES_PNG ? PNG_RATIO : VECTOR_RATIO;
 export const ROBOT_MIN = 96;
 
 export interface BuddyRobotProps {
+  /** Fallbacks fuera del navegador: anima sin suscribirse al foco de una ruta. */
+  navigationIndependent?: boolean;
   /** Alto del robot en dp (mínimo 96 salvo `compact`). */
   size?: number;
   mood?: RobotMood;
@@ -102,7 +104,16 @@ export function RobotArt({ size, mood, look, animated = true }: { size: number; 
   return <BuddyRobotVector size={size} mood={mood} look={look} animated={animated} />;
 }
 
-export function BuddyRobot({
+export function BuddyRobot({ navigationIndependent = false, ...props }: BuddyRobotProps) {
+  return navigationIndependent ? <RobotBody {...props} focused /> : <FocusedRobot {...props} />;
+}
+
+function FocusedRobot(props: BuddyRobotProps) {
+  const focused = useIsFocused();
+  return <RobotBody {...props} focused={focused} />;
+}
+
+function RobotBody({
   size = 160,
   mood = 'idle',
   look = 0,
@@ -116,10 +127,10 @@ export function BuddyRobot({
   onPress,
   accessibilityLabel,
   style,
-}: BuddyRobotProps) {
+  focused,
+}: BuddyRobotProps & { focused: boolean }) {
   const t = useTheme();
   const reduce = useReducedMotion();
-  const focused = useIsFocused();
   const h = compact ? size : Math.max(size, ROBOT_MIN);
   const w = h * ROBOT_RATIO;
 
@@ -139,11 +150,13 @@ export function BuddyRobot({
   const twinkles = [t0, t1, t2, t3, t4, t5];
 
   useEffect(() => {
-    const loops = [bob, drift, tilt, hop, spin, ...twinkles];
+    const loops = [bob, drift, tilt, hop, spin, burst, fade, ...twinkles];
     const stopAll = () => loops.forEach((v) => cancelAnimation(v));
     if (reduce) {
+      stopAll();
+      [bob, drift, tilt, hop, spin, burst, ...twinkles].forEach((v) => v.set(0));
       fade.set(withTiming(1, { duration: 320 }));
-      return;
+      return stopAll;
     }
     if (!focused) {
       stopAll();
@@ -255,7 +268,7 @@ export function BuddyRobot({
           accessibilityLabel={onPress ? (accessibilityLabel ?? 'BUDDY') : undefined}
           style={StyleSheet.absoluteFill}
         >
-          <RobotArt size={h} mood={mood} look={look} />
+          <RobotArt size={h} mood={mood} look={look} animated={focused} />
         </Pressable>
         {mood === 'think' ? <ThinkingDots size={h} /> : null}
       </Animated.View>
@@ -327,13 +340,18 @@ function Sparkle({
 
 function ThinkingDots({ size }: { size: number }) {
   const t = useTheme();
+  const reduce = useReducedMotion();
   const a = useSharedValue(0);
   const b = useSharedValue(0);
   const c = useSharedValue(0);
   useEffect(() => {
+    if (reduce) {
+      [a, b, c].forEach((d) => { cancelAnimation(d); d.set(0); });
+      return;
+    }
     [a, b, c].forEach((d, i) => pingPong(d, 0, 1, 900, i * 150));
     return () => [a, b, c].forEach((d) => cancelAnimation(d));
-  }, [a, b, c]);
+  }, [a, b, c, reduce]);
   const d = size * 0.07;
   return (
     <View style={[styles.row, { top: -size * 0.04, right: -size * 0.12, gap: d * 0.5 }]} pointerEvents="none">

@@ -38,6 +38,22 @@
     "plugins": [
       "expo-router",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "BUDDY usa la cámara solo cuando eliges fotografiar el envase de un medicamento.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BUDDY accede a las fotos que eliges para adjuntarlas a un medicamento.",
+          "cameraPermission": "BUDDY usa la cámara solo cuando eliges fotografiar el envase de un medicamento.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#F8FAF8",

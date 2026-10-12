@@ -2,6 +2,7 @@ import { Redirect, Stack } from 'expo-router';
 import { useColorScheme } from 'react-native';
 
 import { useDb } from '@/infrastructure/local/db';
+import { useValidHandoff } from '@/state/nav';
 import { useSession } from '@/state/session';
 import { themes } from '@/theme';
 import { ThemeOverride, resolveThemeName } from '@/theme/provider';
@@ -10,8 +11,8 @@ import { ThemeOverride, resolveThemeName } from '@/theme/provider';
 export default function ElderLayout() {
   const system = useColorScheme();
   const user = useSession((s) => s.user);
-  const handoff = useDb((s) => s.handoff);
-  const elder = useDb((s) => (s.handoff ? s.elders[s.handoff.elderId] : undefined));
+  const handoff = useValidHandoff();
+  const elder = useDb((s) => (handoff ? s.elders[handoff.elderId] : undefined));
   if (!user) return <Redirect href="/" />;
   if (!handoff || handoff.userId !== user.id || !elder) return <Redirect href="/summary" />;
   const pref = elder.screen.appearance;
