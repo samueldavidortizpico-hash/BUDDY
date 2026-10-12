@@ -50,7 +50,22 @@ export interface ElderScreenPrefs {
   showMedName?: boolean;
 }
 
+/** Consentimiento de ubicación del adulto mayor (solo él decide; revocable en cualquier momento). */
+export type LocationConsent = 'none' | 'requested' | 'granted' | 'denied' | 'revoked';
+
+/** Ubicación compartida en primer plano, con su hora y precisión (metros). */
+export interface LocationFix extends SyncMeta {
+  lat: number;
+  lng: number;
+  accuracy: number | null;
+  at: Timestamp;
+}
+
 export interface Elder extends SyncMeta {
+  /** Ubicación: estado del consentimiento y fechas de solicitud y decisión. */
+  locationConsent?: LocationConsent;
+  locationRequestedAt?: Timestamp | null;
+  locationDecidedAt?: Timestamp | null;
   firstName: string;
   lastName: string;
   gender: Gender;

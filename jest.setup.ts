@@ -64,3 +64,16 @@ jest.mock('expo-notifications', () => {
 globalThis.fetch = jest.fn(async () => {
   throw new Error('Sin red en las pruebas');
 }) as unknown as typeof fetch;
+
+// Ubicación y mapas simulados (sin GPS ni mapas nativos en pruebas). La ubicación devuelta es FICTICIA.
+jest.mock('expo-location', () => ({
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  getForegroundPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  getCurrentPositionAsync: jest.fn(async () => ({ coords: { latitude: 4.6, longitude: -74.08, accuracy: 25 } })),
+}));
+jest.mock('react-native-maps', () => {
+  const { View } = jest.requireActual('react-native');
+  const MapView = (p: object) => require('react').createElement(View, { ...p, testID: 'map' });
+  return { __esModule: true, default: MapView, Marker: () => null, Circle: () => null };
+});

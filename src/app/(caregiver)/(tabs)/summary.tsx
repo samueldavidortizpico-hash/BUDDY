@@ -12,6 +12,9 @@ import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { SuggestsPanel } from '@/features/feed/feed-card';
 import { useFeed } from '@/state/feed';
+import { locationView } from '@/domain/location';
+import { useNow } from '@/hooks/use-now';
+import { formatAgo } from '@/utils/dates';
 import { TodayPanel } from '@/features/summary/today';
 import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
@@ -90,6 +93,7 @@ export default function Summary() {
               onPress={() => router.push('/preview' as Href)}
             />
           </Card>
+          <WhereCard name={ready.firstName} consent={ready.locationConsent} onPress={() => router.push('/location' as Href)} />
           <SuggestsPanel />
           <TodayPanel elder={ready} />
         </>
@@ -205,8 +209,33 @@ function FirstSteps() {
   );
 }
 
+/** "Dónde está [nombre]": acceso a la ubicación compartida (o a solicitarla) desde el Resumen. */
+function WhereCard({ name, consent, onPress }: { name: string; consent?: import('@/domain/types').LocationConsent; onPress: () => void }) {
+  const t = useTheme();
+  const s = useStyles();
+  const now = useNow(60_000);
+  const fixes = useRecords('locations');
+  const v = locationView({ locationConsent: consent }, fixes, now);
+  const L = strings.location;
+  const detail = v.kind === 'located' ? L.lastShort(formatAgo(new Date(v.last.at), now)) : v.kind === 'requested' ? L.requested(name) : v.kind === 'waiting' ? L.waiting(name) : L.summaryNone;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${L.title(name)}. ${detail}`} style={({ pressed }) => [s.where, t.hairline, pressed && { opacity: 0.85 }]}>
+      <View style={s.whereIcon}>
+        <Icon name="location" color={t.ink.mint} />
+      </View>
+      <View style={s.flex}>
+        <AppText variant="h3">{L.title(name)}</AppText>
+        <AppText variant="secondary" color={t.c.muted} numberOfLines={2}>{detail}</AppText>
+      </View>
+      <Icon name="chevron" color={t.c.muted} />
+    </Pressable>
+  );
+}
+
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
+    where: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.timeRow + 16, padding: spacing.md, borderRadius: radius.card, backgroundColor: t.c.surface },
+    whereIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.mintPale },
     flex: { flex: 1 },
     shrink: { flexShrink: 1 },
     tabular: { fontVariant: ['tabular-nums'] },

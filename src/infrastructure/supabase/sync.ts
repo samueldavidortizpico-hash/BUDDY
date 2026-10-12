@@ -30,6 +30,7 @@ export const TABLES: Record<CollectionName, string> = {
   checkins: 'checkin_answers',
   alerts: 'alerts',
   messages: 'assistant_messages',
+  locations: 'location_fixes',
 };
 
 const toSnake = (k: string) => k.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);

@@ -14,6 +14,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { AdminAccessSheet } from '@/features/elder/admin-access';
+import { ElderLocation } from '@/features/elder/location';
 import { planNotifications } from '@/domain/notifications';
 import { estimateStock } from '@/domain/stock';
 import { applyPlan } from '@/infrastructure/notifications';
@@ -246,6 +247,8 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
           </Pressable>
         )}
       </View>
+
+      <ElderLocation elder={elder} caregiver={caregiver} preview={preview} />
 
       <Appear key={JSON.stringify(item).slice(0, 80)} style={preview ? s.noTouch : undefined}>
         <View style={[s.card, { minHeight: Math.max(320, height * 0.42) }, t.hc ? t.hairline : t.shadow.hero]}>

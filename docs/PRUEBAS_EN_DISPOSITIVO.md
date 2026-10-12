@@ -57,6 +57,17 @@ Ver también `docs/NOTIFICACIONES.md`.
 | 4.7 | Ajustes > Apariencia: apaga "Deslizar el dedo sobre la barra". | El gesto ya no cambia de pestaña; tocar sigue funcionando. | ☐ | ☐ |
 | 4.8 | Desplázate rápido en Resumen y Rutina. | Inercia natural, sin tirones ni cambios de pestaña accidentales. | ☐ | ☐ |
 
+## 5. Ubicación y mapa (V2.4, Hito 6)
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 5.1 | Resumen > "Dónde está [nombre]" > "Solicitar ubicación". | Pasa a "Esperando la respuesta". | ☐ | ☐ |
+| 5.2 | Entregar el teléfono (o "Probar como") y tocar "Aceptar" en la tarjeta. | El sistema pide permiso de ubicación "mientras se usa la app" con el texto en español. | ☐ | ☐ |
+| 5.3 | Volver al administrador > "Dónde está". | Mapa nativo (Apple Maps / Google Maps) con marcador, hora y precisión; "Cómo llegar" abre la app de mapas. | ☐ | ☐ |
+| 5.4 | Rechazar el permiso del sistema. | Aviso "El teléfono no dio permiso de ubicación"; no aparece ninguna ubicación. | ☐ | ☐ |
+| 5.5 | En la pantalla del adulto mayor, "Dejar de compartir". | El administrador ve "dejó de compartir su ubicación" y no queda historial. | ☐ | ☐ |
+| 5.6 | Cerrar BUDDY 40 minutos y volver a "Dónde está". | Aviso de ubicación desactualizada (no hay seguimiento en segundo plano). | ☐ | ☐ |
+
 ## Pendiente de agregar en los hitos siguientes
 
-Ubicación y mapa (Hito 6), splash nativo y portada de carga (Hito 7).
+Splash nativo y portada de carga (Hito 7).

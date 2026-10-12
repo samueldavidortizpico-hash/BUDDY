@@ -62,6 +62,15 @@
         }
       ],
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "BUDDY usa tu ubicación solo si aceptas compartirla con tu familiar, mientras la app está abierta. Puedes dejar de compartirla cuando quieras.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
+      [
         "expo-notifications",
         {
           "color": "#174A59"

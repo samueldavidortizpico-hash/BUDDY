@@ -49,6 +49,7 @@ export interface ChatHandlers {
   openFeed: () => void;
   call: (phone: string) => void;
   openFood?: () => void;
+  openLocation?: () => void;
   /** Teléfono del contacto principal (para urgencias). */
   primary?: { name: string; phone: string };
 }
@@ -216,12 +217,13 @@ export function useBuddyChat(h: ChatHandlers) {
         if (!items.length) return reply(strings.feed.noneToday);
         return reply(items.slice(0, 3).map((f) => `• ${f.title}`).join('\n'), { quickReplies: [B.seeFeed] });
       }
+      if (first.type === 'query_summary' && first.topic === 'location' && elder) return reply(strings.location.title(elder.firstName), { quickReplies: [strings.location.open(elder.firstName)] });
       if (first.type === 'query_summary') return reply(answerQuery(first.topic, first.match));
       const actions = r.actions.filter(isDraftable);
       if (!actions.length) return showMenu(B.notUnderstoodMenu, EXAMPLES.slice(0, 3));
       startDraft(actions);
     },
-    [answer, medInfo, reply, showMenu, startDraft, h],
+    [answer, medInfo, reply, showMenu, startDraft, h, elder],
   );
 
   /** Una de las 8 acciones del menú. */
@@ -242,6 +244,7 @@ export function useBuddyChat(h: ChatHandlers) {
       if (q === B.seeRoutine) return h.openRoutine('meds');
       if (q === B.seeFeed) return h.openFeed();
       if (q === strings.food.open) return h.openFood?.();
+      if (elder && q === strings.location.open(elder.firstName)) return h.openLocation?.();
       if (elder && q === B.seeElderScreen(elder.firstName)) return h.openPreview();
       if (q === B.call123) return h.call('123');
       if (h.primary && q === B.callContact(h.primary.name)) return h.call(h.primary.phone);

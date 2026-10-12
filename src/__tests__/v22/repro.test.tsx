@@ -64,7 +64,7 @@ it('P5: cada cambio queda en un registro de cambios para reflejarlo en el otro c
   expect((useDb.getState() as unknown as { changelog?: unknown[] }).changelog?.length ?? 0).toBeGreaterThan(0);
 });
 
-it.failing('P6: el Resumen da acceso a la ubicación', () => {
+it('P6: el Resumen da acceso a la ubicación', () => {
   ui(<Summary />);
   expect(screen.getByRole('button', { name: /Ubicación/ })).toBeTruthy();
 });

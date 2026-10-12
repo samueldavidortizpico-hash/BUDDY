@@ -39,7 +39,7 @@ const ADD_VERBS = /^(ponle|ponerle|pon|agrega|agregale|agregar|anade|anadele|dal
 const FIXABLE_VERBS = ['ponle', 'agrega', 'agregale', 'anade', 'anadele', 'programa', 'programale', 'registra', 'configura', 'configurale', 'recuerdale', 'agenda', 'anota'];
 /** "¿Qué puedes hacer?", "ayuda": se responde con el menú de acciones. */
 const HELP = /^(ayuda|ayudame|menu|opciones|que (puedes|sabes) hacer|que haces|como funciona(s)?|como te uso|para que sirves)\b/;
-const QUESTION = /^(como|cuanto|cuanta|cuantas|cuantos|que tal|tomo|comio|almorzo|ceno|durmio|ya tomo|ya comio|resumen|dime|cual|camino|hizo)\b/;
+const QUESTION = /^(donde|como|cuanto|cuanta|cuantas|cuantos|que tal|tomo|comio|almorzo|ceno|durmio|ya tomo|ya comio|resumen|dime|cual|camino|hizo)\b/;
 
 /** Palabra original (con tildes) equivalente a un token normalizado, para conservar los nombres propios. */
 function original(text: string, token: string): string {
@@ -129,6 +129,7 @@ const MEALS: [RegExp, MealKind][] = [
 
 function queryTopic(t: string): QueryTopic | null {
   if (/recomendacion|sugerencia|novedad|alerta/.test(t)) return 'recommendations';
+  if (/\bdonde (esta|anda|se encuentra)\b|\bubicacion\b/.test(t)) return 'location';
   if (/\bresumen\b|\bcomo (va|fue|le fue|le va)\b.*\bdia\b|\bcomo va hoy\b/.test(t)) return 'day';
   if (/\bdurmio\b|\bsueno\b|\bdormir\b/.test(t)) return 'sleep';
   if (/\bquedan?\b|\bexistencias\b|\bcuantas (pastillas|tabletas)\b/.test(t)) return 'stock';

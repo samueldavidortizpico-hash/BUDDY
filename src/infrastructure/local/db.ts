@@ -21,6 +21,7 @@ import type {
   Contact,
   DoseEvent,
   Elder,
+  LocationFix,
   Meal,
   MealLog,
   Medication,
@@ -49,6 +50,7 @@ export interface Collections {
   checkins: CheckinAnswer;
   alerts: Alert;
   messages: AssistantMessage;
+  locations: LocationFix;
 }
 
 export type CollectionName = keyof Collections;
@@ -71,6 +73,7 @@ export const COLLECTIONS: CollectionName[] = [
   'checkins',
   'alerts',
   'messages',
+  'locations',
 ];
 
 /** Entrega del teléfono al adulto mayor: mientras exista, la app muestra solo su pantalla. */
@@ -229,6 +232,25 @@ export const db = {
   /** Borrado lógico (se puede deshacer con `restore`). */
   remove<K extends CollectionName>(coll: K, id: string) {
     return db.update(coll, id, { deletedAt: now() } as Partial<Collections[K]>);
+  },
+
+  /**
+   * Borrado REAL (no deja el dato con `deletedAt`): para datos que deben desaparecer, como la ubicación al revocar
+   * el consentimiento. Queda una entrada "delete" en el ChangeLog para borrarlo también en el servidor.
+   */
+  purge<K extends CollectionName>(coll: K, ids: string[]) {
+    if (!ids.length) return;
+    useDb.setState((s) => {
+      let changelog = s.changelog;
+      const table = { ...s[coll] } as Record<string, Collections[K]>;
+      for (const id of ids) {
+        const r = table[id];
+        if (!r) continue;
+        changelog = logChange(changelog, coll, { ...r, updatedAt: now() }, 'delete', authorResolver() ?? r.ownerUserId);
+        delete table[id];
+      }
+      return { [coll]: table, changelog } as Partial<DbState>;
+    });
   },
 
   restore<K extends CollectionName>(coll: K, id: string) {
