@@ -8,7 +8,7 @@ import { strings } from '@/i18n';
 import { useActiveElder } from '@/state/data';
 import { useSession } from '@/state/session';
 import { radius, spacing, touch } from '@/theme';
-import { makeStyles, useTheme } from '@/theme/provider';
+import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
 
 const S = strings.settings;
 
@@ -18,11 +18,14 @@ export default function Settings() {
   const s = useStyles();
   const user = useSession((x) => x.user);
   const elder = useActiveElder();
+  // Con texto muy grande el icono cede su espacio al texto (como iOS en tamaños de accesibilidad).
+  const bigText = useTextScaleFactor() >= 1.6;
   const rows: { key: string; icon: IconName; label: string }[] = [
     { key: 'account', icon: 'user', label: S.sections.account },
     { key: 'appearance', icon: 'contrast', label: S.sections.appearance },
     ...(elder ? [{ key: 'elder', icon: 'smile' as IconName, label: S.sections.elderScreen(elder.firstName) }] : []),
     { key: 'alerts', icon: 'bell', label: S.sections.alerts },
+    { key: 'notifications', icon: 'clock', label: S.sections.notifications },
     { key: 'people', icon: 'users', label: S.sections.people },
     { key: 'devices', icon: 'watch', label: S.sections.devices },
     { key: 'legal', icon: 'shield', label: S.sections.legal },
@@ -46,9 +49,11 @@ export default function Settings() {
             accessibilityLabel={r.label}
             style={({ pressed }) => [s.row, i > 0 && s.divider, pressed && { opacity: 0.8 }]}
           >
-            <View style={s.icon}>
-              <Icon name={r.icon} color={t.ink.mint} />
-            </View>
+            {bigText ? null : (
+              <View style={s.icon}>
+                <Icon name={r.icon} color={t.ink.mint} />
+              </View>
+            )}
             <AppText variant="bodyStrong" style={s.flex}>
               {r.label}
             </AppText>

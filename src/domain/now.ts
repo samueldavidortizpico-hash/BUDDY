@@ -5,7 +5,7 @@
  */
 import { effectiveTime, isOpen, type DoseItem } from './schedule';
 import { onDay, toMinutes } from './time';
-import type { Activity, ActivityLog, Alert, CheckinAnswer, ClockTime, Meal, MealLog, Reminder, WaterPlan } from './types';
+import type { Activity, ActivityLog, Alert, Appointment, CheckinAnswer, ClockTime, Meal, MealLog, Reminder, WaterPlan } from './types';
 
 export type ElderItem =
   | { kind: 'stock'; alert: Alert }
@@ -15,6 +15,7 @@ export type ElderItem =
   | { kind: 'activity'; activity: Activity }
   | { kind: 'water'; glasses: number; goal: number }
   | { kind: 'reminder'; reminder: Reminder }
+  | { kind: 'appointment'; appointment: Appointment; when: 'tomorrow' | 'today' }
   | { kind: 'done' };
 
 export interface ElderInput {
@@ -32,7 +33,13 @@ export interface ElderInput {
   glassesToday: number;
   reminders: Reminder[];
   seenReminders: string[];
+  /** Citas: se avisan el día anterior desde `apptNoticeTime` (18:00 por defecto) y el mismo día desde 3 h antes. */
+  appointments?: Appointment[];
+  apptNoticeTime?: ClockTime;
 }
+
+/** Clave de "Entendido" de una cita por aviso (día anterior / mismo día). */
+export const appointmentSeenKey = (id: string, when: 'tomorrow' | 'today') => `appt-${id}-${when}`;
 
 /**
  * Clave de "ya visto" de un recordatorio POR DÍA: un recordatorio diario debe volver a mostrarse mañana.
@@ -56,6 +63,19 @@ export function elderNow(i: ElderInput): { now: ElderItem; later: { time: ClockT
   const open = i.doses.filter((d) => isOpen(d.status));
   const dose = open.find((d) => d.status === 'unconfirmed') ?? open.find((d) => toMinutes(effectiveTime(d.dose)) - nowMin <= SOON_MIN);
   if (dose) queue.push({ kind: 'dose', item: dose });
+
+  // Citas después de los medicamentos: un aviso de cita no tapa una toma.
+  const todayIso = localDate(i.now);
+  const tomorrowIso = localDate(new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + 1));
+  for (const ap of i.appointments ?? []) {
+    if (ap.date === tomorrowIso && nowMin >= toMinutes(i.apptNoticeTime ?? '18:00') && !i.seenReminders.includes(appointmentSeenKey(ap.id, 'tomorrow'))) {
+      queue.push({ kind: 'appointment', appointment: ap, when: 'tomorrow' });
+    }
+    if (ap.date === todayIso && nowMin >= toMinutes(ap.time) - 180 && nowMin <= toMinutes(ap.time) && !i.seenReminders.includes(appointmentSeenKey(ap.id, 'today'))) {
+      queue.push({ kind: 'appointment', appointment: ap, when: 'today' });
+    }
+  }
+
 
   if (i.checkinTime && nowMin >= toMinutes(i.checkinTime)) {
     const c = i.checkin;

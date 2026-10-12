@@ -66,6 +66,9 @@ export function BottomTabBar({
               accessibilityRole="tab"
               accessibilityLabel={label}
               accessibilityState={{ selected: focused }}
+              // Como en iOS: la etiqueta no crece más allá de ×1.1; con texto grande, mantener presionado muestra el visor.
+              accessibilityShowsLargeContentViewer
+              accessibilityLargeContentTitle={label}
               onPress={onPress}
               style={s.item}
             >
@@ -77,7 +80,7 @@ export function BottomTabBar({
               ) : (
                 <TabIcon name={icons[route.name] ?? 'home'} focused={focused} />
               )}
-              <AppText variant="captionStrong" color={focused ? t.c.text : t.c.muted} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              <AppText variant="meta" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1.1} style={styles.label}>
                 {label}
               </AppText>
             </Pressable>
@@ -103,7 +106,7 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({ iconWrap: { height: PILL_H, justifyContent: 'center' } });
+const styles = StyleSheet.create({ iconWrap: { height: PILL_H, justifyContent: 'center' }, label: { letterSpacing: 0, textTransform: 'none' } });
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({

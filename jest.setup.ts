@@ -38,3 +38,24 @@ jest.mock('expo-secure-store', () => {
     __store: store,
   };
 });
+
+// expo-notifications en memoria: registra lo programado para verificar el NotificationScheduler.
+jest.mock('expo-notifications', () => {
+  const scheduled: { identifier?: string; content: unknown; trigger: unknown }[] = [];
+  return {
+    __scheduled: scheduled,
+    SchedulableTriggerInputTypes: { DATE: 'date', DAILY: 'daily', WEEKLY: 'weekly', TIME_INTERVAL: 'timeInterval' },
+    AndroidImportance: { HIGH: 4 },
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn(async () => null),
+    getPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+    requestPermissionsAsync: jest.fn(async () => ({ granted: true, canAskAgain: true })),
+    cancelAllScheduledNotificationsAsync: jest.fn(async () => {
+      scheduled.length = 0;
+    }),
+    scheduleNotificationAsync: jest.fn(async (req: { identifier?: string; content: unknown; trigger: unknown }) => {
+      scheduled.push(req);
+      return req.identifier ?? String(scheduled.length);
+    }),
+  };
+});

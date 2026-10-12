@@ -13,8 +13,8 @@ import { ScreenHeader } from '@/components/screen-header';
 import { EmptyState } from '@/components/states';
 import { TimeField } from '@/components/time-picker';
 import { WEEKDAY_SHORT, describeDays, intervalTimes, sortTimes, spreadTimes, toMinutes } from '@/domain/time';
-import type { ActivityKind, MealKind, Weekday } from '@/domain/types';
-import { formatPhone, isValidColombianPhone, isValidName, parseDecimal } from '@/domain/validation';
+import { appointmentAddress, type ActivityKind, type MealKind, type Weekday } from '@/domain/types';
+import { digitsOnly, formatPhone, isValidColombianPhone, isValidName, parseDecimal } from '@/domain/validation';
 import { strings } from '@/i18n';
 import { contactActions, routineActions } from '@/state/actions';
 import { useActiveElder, useRecords } from '@/state/data';
@@ -305,44 +305,65 @@ function Appointments() {
   const t = useTheme();
   const s = useStyles();
   const undo = useUndo();
+  const A = strings.appointments;
   const list = useRecords('appointments').slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-  const [title, setTitle] = useState('');
-  const [place, setPlace] = useState('');
+  const [f, setF] = useState({ title: '', doctor: '', place: '', city: '', reference: '', phone: '', notes: '', questions: '' });
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [time, setTime] = useState('09:00');
   const [error, setError] = useState<string | null>(null);
+  const set = (patch: Partial<typeof f>) => setF((x) => ({ ...x, ...patch }));
   const add = () => {
     const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    if (!title.trim() || !parseISODate(iso) || iso < toISODate(new Date())) return setError(strings.meds.errors.date);
-    routineActions.addAppointment(title.trim(), iso, time, place.trim());
-    setTitle('');
-    setPlace('');
+    if (!f.title.trim()) return setError(A.errors.title);
+    if (!parseISODate(iso) || iso < toISODate(new Date())) return setError(strings.meds.errors.date);
+    if (f.phone.trim() && digitsOnly(f.phone).length < 7) return setError(A.errors.phone);
+    routineActions.addAppointment(f.title.trim(), iso, time, f.place.trim(), undefined, {
+      doctor: f.doctor.trim(),
+      city: f.city.trim(),
+      reference: f.reference.trim(),
+      phone: digitsOnly(f.phone),
+      notes: f.notes.trim(),
+      questions: f.questions.split(/\n|;/).map((q) => q.trim()).filter(Boolean),
+    });
+    setF({ title: '', doctor: '', place: '', city: '', reference: '', phone: '', notes: '', questions: '' });
     setError(null);
   };
   return (
     <View style={s.stack}>
-      {list.map((a) => (
-        <Card key={a.id} style={s.item}>
-          <Icon name="calendar" color={t.ink.yellow} />
-          <View style={s.flex}>
-            <AppText variant="bodyStrong">{a.title}</AppText>
-            <AppText variant="caption" color={t.c.muted}>{`${a.date} · ${formatClock(a.time)}${a.place ? ` · ${a.place}` : ''}`}</AppText>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={`${strings.common.delete} ${a.title}`} onPress={() => { routineActions.removeAppointment(a.id); undo(a.title, () => routineActions.restoreAppointment?.(a.id)); }} style={s.iconBtn}>
-            <Icon name="trash" color={t.ink.danger} size={20} />
-          </Pressable>
-        </Card>
-      ))}
-      <Field label={R.appointmentTitle} value={title} onChangeText={setTitle} />
-      <Field label={R.place} optional value={place} onChangeText={setPlace} />
+      {list.map((a) => {
+        const where = appointmentAddress(a);
+        return (
+          <Card key={a.id} style={s.item}>
+            <Icon name="calendar" color={t.ink.yellow} />
+            <View style={s.flex}>
+              <AppText variant="bodyStrong">{a.title}</AppText>
+              <AppText variant="caption" color={t.c.muted}>{`${a.date} · ${formatClock(a.time)}${a.doctor ? ` · ${a.doctor}` : ''}`}</AppText>
+              {where ? <AppText variant="caption">{`${A.address}: ${where}`}</AppText> : null}
+              {a.questions?.length ? <AppText variant="caption" color={t.c.muted}>{A.questionsCount(a.questions.length)}</AppText> : null}
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${strings.common.delete} ${a.title}`} onPress={() => { routineActions.removeAppointment(a.id); undo(a.title, () => routineActions.restoreAppointment?.(a.id)); }} style={s.iconBtn}>
+              <Icon name="trash" color={t.ink.danger} size={20} />
+            </Pressable>
+          </Card>
+        );
+      })}
+      <Field label={R.appointmentTitle} value={f.title} onChangeText={(v) => set({ title: v })} />
+      <Field label={A.doctor} optional value={f.doctor} onChangeText={(v) => set({ doctor: v })} />
       <View style={s.row}>
         <Field label={strings.setup.who.day} value={day} onChangeText={(v) => setDay(v.replace(/\D/g, '').slice(0, 2))} keyboardType="number-pad" style={s.third} />
         <Field label={strings.setup.who.month} value={month} onChangeText={(v) => setMonth(v.replace(/\D/g, '').slice(0, 2))} keyboardType="number-pad" style={s.third} />
         <Field label={strings.setup.who.year} value={year} onChangeText={(v) => setYear(v.replace(/\D/g, '').slice(0, 4))} keyboardType="number-pad" style={s.third} />
       </View>
       <TimeField label={strings.meds.times} value={time} onChange={setTime} />
+      <AppText variant="h3">{A.address}</AppText>
+      <Field label={A.street} optional value={f.place} onChangeText={(v) => set({ place: v })} hint={A.addressHint} icon="location" />
+      <Field label={A.city} optional value={f.city} onChangeText={(v) => set({ city: v })} />
+      <Field label={A.reference} optional value={f.reference} onChangeText={(v) => set({ reference: v })} />
+      <Field label={A.phone} optional value={f.phone} onChangeText={(v) => set({ phone: v })} keyboardType="phone-pad" icon="phone" />
+      <Field label={A.notes} optional value={f.notes} onChangeText={(v) => set({ notes: v })} multiline />
+      <Field label={A.questions} optional value={f.questions} onChangeText={(v) => set({ questions: v })} hint={A.questionsHint} multiline />
       {error ? <AppText variant="caption" color={t.ink.danger}>{error}</AppText> : null}
       <Button label={R.add} icon="plus" onPress={add} />
     </View>

@@ -13,7 +13,7 @@ import type { Period } from '@/domain/health';
 import { METRICS, MetricBody, useHealth } from '@/features/health/metrics';
 import { strings } from '@/i18n';
 import { radius, spacing } from '@/theme';
-import { makeStyles, useTheme } from '@/theme/provider';
+import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
 
 const H = strings.health;
 
@@ -24,6 +24,7 @@ export default function Health() {
   const s = useStyles();
   const [period, setPeriod] = useState<Period>('day');
   const data = useHealth(period);
+  const scale = useTextScaleFactor();
 
   if (!data.elder?.setupDone) {
     return (
@@ -44,10 +45,11 @@ export default function Health() {
       <Segmented label={H.title} value={period} onChange={setPeriod} options={(['day', 'week', 'month'] as Period[]).map((p) => ({ key: p, label: H.periods[p] }))} />
       <View style={s.grid}>
         {METRICS.map((m, i) => (
-          <Appear key={m.key} index={i} style={i < 2 ? s.full : s.half}>
+          // Solo ánimo y sueño comparten fila, y solo con texto de tamaño normal; con texto grande todo va a lo ancho.
+          <Appear key={m.key} index={i} style={(m.key === 'mood' || m.key === 'sleep') && scale < 1.3 ? s.half : s.full}>
             <Card variant="gradient" domain={m.domain} radius={radius.hero} style={s.card} onPress={() => router.push({ pathname: '/health/[metric]', params: { metric: m.key } })} accessibilityLabel={m.title}>
               <View style={s.cardHead}>
-                <AppText variant="h3" color={t.domains[m.domain].text} style={s.flex}>
+                <AppText variant="h3" color={t.hc ? t.c.text : t.domains[m.domain].text} style={s.flex}>
                   {m.title}
                 </AppText>
                 <Icon name="chevron" color={t.domains[m.domain].muted} />

@@ -294,7 +294,12 @@ export default function MedicationForm() {
         </Card>
 
         <Card style={s.stack}>
-          <AppText variant="h3">{M.pharmaTitle}</AppText>
+          <View style={s.soonRow}>
+            <AppText variant="h3" style={s.flex}>{M.pharmaTitle}</AppText>
+            <View style={[s.soon, t.hairline]}>
+              <AppText variant="meta" color={t.ink.lavender}>{strings.common.soon}</AppText>
+            </View>
+          </View>
           <AppText variant="secondary" color={t.c.muted}>
             {M.pharmaBody}
           </AppText>
@@ -322,16 +327,16 @@ export default function MedicationForm() {
                 </AppText>
               </View>
             ))}
-            <AppText variant="secondaryStrong">{CONSULT_TEXT}</AppText>
           </>
         ) : (
           <View style={s.ok}>
-            <Icon name="check" color={t.ink.mint} />
+            <Icon name="info" color={t.ink.mint} />
             <AppText variant="secondary" style={s.flex}>
               {NO_MATCH_TEXT}
             </AppText>
           </View>
         )}
+        <AppText variant="secondaryStrong">{CONSULT_TEXT}</AppText>
         <Button
           label={strings.common.done}
           onPress={() => {
@@ -382,6 +387,8 @@ function Section({ title, hint, error, children }: { title: string; hint?: strin
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
+    soonRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    soon: { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: 999, backgroundColor: t.c.lavenderPale },
     flex: { flex: 1 },
     stack: { gap: spacing.md },
     row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

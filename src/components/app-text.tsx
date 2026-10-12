@@ -7,6 +7,8 @@ export interface AppTextProps extends TextProps {
   variant?: TypeVariant;
   color?: string;
   align?: TextStyle['textAlign'];
+  /** Tope de escala propio (p. ej. etiquetas de la barra de pestañas, que no caben al 200 %). */
+  maxScale?: number;
 }
 
 const HEADERS: TypeVariant[] = ['display', 'h1', 'h2'];
@@ -15,11 +17,11 @@ const HEADERS: TypeVariant[] = ['display', 'h1', 'h2'];
  * Texto de BUDDY: escala tipográfica + tamaño elegido en Ajustes > Apariencia + escala del sistema.
  * La suma nunca pasa de ×2 (texto al 200 %); los números héroe tienen tope propio para no romper su tarjeta.
  */
-export function AppText({ variant = 'body', color, align, style, accessibilityRole, ...rest }: AppTextProps) {
+export function AppText({ variant = 'body', color, align, maxScale, style, accessibilityRole, ...rest }: AppTextProps) {
   const t = useTheme();
   const scale = useTextScaleFactor();
   const base = type[variant];
-  const cap = maxFontScale[variant] ?? 2;
+  const cap = maxScale ?? maxFontScale[variant] ?? 2;
   const appScale = Math.min(scale, cap);
   return (
     <Text

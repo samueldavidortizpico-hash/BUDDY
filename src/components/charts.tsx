@@ -99,18 +99,18 @@ export function WaterFill({ ratio, height = 236 }: { ratio: number; height?: num
 }
 
 /** Barras verticales que crecen con ease-out (scaleY). */
-export function Bars({ values, max, color, labels, height = 96 }: { values: number[]; max?: number; color: string; labels?: string[]; height?: number }) {
+export function Bars({ values, max, color, labels, height = 96, labelColor }: { values: number[]; max?: number; color: string; labels?: string[]; height?: number; labelColor?: string }) {
   const t = useTheme();
   const top = max ?? Math.max(1, ...values);
   return (
-    <View style={[styles.bars, { height: height + 22 }]}>
+    <View style={[styles.bars, { minHeight: height + 22 }]}>
       {values.map((v, i) => (
         <View key={i} style={styles.barCol}>
           <View style={[styles.barTrack, { height, backgroundColor: t.c.surface2 }]}>
             <Bar ratio={v / top} color={t.hc ? t.c.text : color} height={height} />
           </View>
           {labels ? (
-            <AppText variant="meta" color={t.c.muted}>
+            <AppText variant="meta" color={labelColor ?? t.c.muted} align="center" style={styles.barLabel}>
               {labels[i]}
             </AppText>
           ) : null}
@@ -146,6 +146,7 @@ export function Face({ kind, size = 96, color }: { kind: Answer3; size?: number;
 }
 
 const styles = StyleSheet.create({
+  barLabel: { alignSelf: 'stretch', flexShrink: 1 },
   wave: { position: 'absolute', top: -14, left: 0, width: 400, height: 40 },
   waterBody: { position: 'absolute', top: 22, left: 0, right: 0, bottom: -10 },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },

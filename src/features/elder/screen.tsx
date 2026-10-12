@@ -14,9 +14,13 @@ import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { AdminAccessSheet } from '@/features/elder/admin-access';
-import { elderNow, reminderSeenKey, type ElderItem } from '@/domain/now';
+import { planNotifications } from '@/domain/notifications';
+import { estimateStock } from '@/domain/stock';
+import { applyPlan } from '@/infrastructure/notifications';
+import { appointmentSeenKey, elderNow, reminderSeenKey, type ElderItem } from '@/domain/now';
+import { directionsUrl } from '@/utils/maps';
 import { dayDoses, doseText, effectiveTime } from '@/domain/schedule';
-import type { Answer3 } from '@/domain/types';
+import { appointmentAddress, type Answer3 } from '@/domain/types';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { doseActions, elderAnswers } from '@/state/care';
@@ -30,6 +34,7 @@ import { formatClock, formatLongDate, greetingFor, toISODate } from '@/utils/dat
 import { successHaptic } from '@/utils/haptics';
 
 const E = strings.elder;
+const AP = strings.appointments;
 const EMPTY_SEEN: string[] = [];
 
 function domainOf(item: ElderItem): Domain {
@@ -48,6 +53,8 @@ function domainOf(item: ElderItem): Domain {
       return 'water';
     case 'reminder':
       return 'contact';
+    case 'appointment':
+      return 'followUp';
     default:
       return 'activity';
   }
@@ -80,6 +87,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const water = useRecords('waterPlans', scope)[0] ?? null;
   const waterEntries = useRecords('water', scope);
   const reminders = useRecords('reminders', scope);
+  const appointments = useRecords('appointments', scope);
   const alerts = useRecords('alerts', scope);
   const contacts = useRecords('contacts', scope);
   const seen = useDb((x) => x.drafts[userId]?.['elder.seen'] as string[] | undefined) ?? EMPTY_SEEN;
@@ -97,6 +105,25 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
     if (elderId && !preview) doseActions.sync(elderId, now);
   }, [elderId, now, preview]);
 
+  // NotificationScheduler: este teléfono programa sus avisos locales con los datos del perfil y los reprograma cuando
+  // cambian (applyPlan no hace nada si el plan es el mismo). La vista previa del administrador no programa nada.
+  const lowStock = useMemo(() => meds.filter((m) => ['low', 'out'].includes(estimateStock(m, today).level)), [meds, today]);
+  useEffect(() => {
+    if (preview || !elder) return;
+    const plan = planNotifications({
+      now: new Date(),
+      meds,
+      water,
+      meals,
+      checkinTime: elder.checkinTime,
+      appointments,
+      lowStock,
+      apptNoticeTime: elder.screen.apptNoticeTime,
+      showMedName: elder.screen.showMedName,
+    });
+    applyPlan(plan).catch(() => undefined); // sin permiso o en web: la app sigue mostrando todo dentro de BUDDY
+  }, [preview, elder, meds, water, meals, appointments, lowStock]);
+
   const items = useMemo(() => dayDoses(meds, doses, today, now), [meds, doses, today, now]);
   const { now: item, later } = elderNow({
     now,
@@ -113,6 +140,8 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
     glassesToday: waterEntries.filter((w) => w.date === today).length,
     reminders,
     seenReminders: seen,
+    appointments,
+    apptNoticeTime: elder?.screen.apptNoticeTime ?? '18:00',
   });
 
   const primary = contacts.find((c) => c.primary) ?? contacts[0];
@@ -291,6 +320,8 @@ function questionText(item: ElderItem): string | null {
       return E.waterQ;
     case 'reminder':
       return `${E.reminder}: ${item.reminder.title}`;
+    case 'appointment':
+      return (item.when === 'tomorrow' ? AP.elderTomorrow : AP.elderToday)(formatClock(item.appointment.time));
     default:
       return null;
   }
@@ -415,6 +446,26 @@ function ItemView({
           <Button label={E.waterBtn} icon="drop" size="elder" variant={t.dark ? 'primary' : 'white'} disabled={preview} onPress={() => { if (preview) return; elderAnswers.addWater(elderId); onThanks(); }} />
         </View>
       );
+    case 'appointment': {
+      const ap = item.appointment;
+      const where = appointmentAddress(ap);
+      return (
+        <View style={s.itemBody}>
+          {title(questionText(item)!)}
+          <AppText variant="h3" color={d.text}>
+            {ap.title}
+          </AppText>
+          {where ? (
+            <AppText variant="body" color={d.muted}>
+              {AP.elderWhere(where)}
+            </AppText>
+          ) : null}
+          <Button label={E.ok} size="elder" disabled={preview} onPress={() => !preview && onSeen(appointmentSeenKey(ap.id, item.when))} />
+          {where ? <Button label={AP.directions} icon="location" variant="white" size="md" style={s.min56} disabled={preview} onPress={() => !preview && Linking.openURL(directionsUrl(where))} /> : null}
+          {ap.phone ? <Button label={AP.callOffice} icon="phone" variant="ghost" size="md" textColor={d.text} disabled={preview} onPress={() => !preview && Linking.openURL(`tel:${ap.phone}`)} /> : null}
+        </View>
+      );
+    }
     case 'reminder':
       return (
         <View style={s.itemBody}>

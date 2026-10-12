@@ -44,6 +44,10 @@ export interface ElderScreenPrefs {
   /** 0.7 (lenta) … 1.1 (normal+). */
   voiceRate: number;
   maxSnoozes: number;
+  /** Hora del aviso del día anterior a una cita (la define el cuidador; 18:00 por defecto). */
+  apptNoticeTime?: ClockTime;
+  /** Mostrar el nombre del medicamento en las notificaciones (pantalla de bloqueo). Apagado por defecto. */
+  showMedName?: boolean;
 }
 
 export interface Elder extends SyncMeta {
@@ -199,7 +203,24 @@ export interface Appointment extends SyncMeta {
   title: string;
   date: ISODate;
   time: ClockTime;
+  /** Dirección (calle y número). */
   place: string;
+  /** Especialidad o médico. */
+  doctor?: string;
+  city?: string;
+  /** Punto de referencia ("frente al parque"). */
+  reference?: string;
+  /** Teléfono del consultorio. */
+  phone?: string;
+  notes?: string;
+  /** Preguntas para llevar a la cita. */
+  questions?: string[];
+}
+
+/** "Calle 10 # 5-20, Bogotá (frente al parque)". */
+export function appointmentAddress(a: Pick<Appointment, 'place' | 'city' | 'reference'>): string {
+  const main = [a.place, a.city].map((x) => x?.trim()).filter(Boolean).join(', ');
+  return a.reference?.trim() ? `${main}${main ? ' ' : ''}(${a.reference.trim()})` : main;
 }
 
 // ── Respuestas del adulto mayor ──────────────────────────────

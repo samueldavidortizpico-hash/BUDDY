@@ -102,13 +102,24 @@ export function MetricBody({ metric, data, big = false }: { metric: MetricKey; d
       const r = metric === 'mood' ? data.mood : data.sleep;
       if (!r.answered) return empty;
       const top = (['good', 'regular', 'bad'] as Answer3[]).sort((a, b) => r[b] - r[a])[0];
+      // Cara en un contenedor que no se comprime y texto que puede ocupar varias líneas (antes la palabra grande
+      // aplastaba la cara a ancho 0 en tarjetas de media columna).
       return (
         <View style={styles.gap}>
           <View style={styles.row}>
-            <Face kind={top} size={big ? 80 : 56} color={d.text} />
-            {num(strings.answers[top], H.answers(r.answered))}
+            <View style={styles.faceBox}>
+              <Face kind={top} size={big ? 80 : 48} color={d.text} />
+            </View>
+            <View style={styles.textCol}>
+              <AppText variant={big ? 'heroL' : 'h2'} color={d.text}>
+                {strings.answers[top]}
+              </AppText>
+              <AppText variant="secondaryStrong" color={d.muted}>
+                {H.answers(r.answered)}
+              </AppText>
+            </View>
           </View>
-          <Bars values={[r.good, r.regular, r.bad]} color={d.accent} labels={['Bien', 'Regular', 'Mal']} height={big ? 100 : 48} />
+          <Bars values={[r.good, r.regular, r.bad]} color={d.accent} labels={['Bien', 'Regular', 'Mal']} labelColor={d.muted} height={big ? 100 : 48} />
           {metric === 'mood' && data.trend ? <AppText variant="caption" color={d.muted}>{H.trend[data.trend]}</AppText> : null}
           {metric === 'sleep' ? <AppText variant="caption" color={d.muted}>{H.sleepNote}</AppText> : null}
         </View>
@@ -137,4 +148,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   gap: { gap: spacing.sm },
+  faceBox: { flexShrink: 0 },
+  textCol: { flex: 1, minWidth: 0 },
 });

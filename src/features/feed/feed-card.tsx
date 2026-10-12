@@ -116,7 +116,7 @@ export function SuggestsPanel({ max = 4 }: { max?: number }) {
     <View style={s.panel}>
       <View style={s.panelHead}>
         <BuddyRobot size={56} compact mood={items.some((f) => f.severity === 'alarm') ? 'worry' : 'happy'} shadow={false} flying={false} />
-        <AppText variant="h2" style={s.flex} accessibilityRole="header">
+        <AppText variant="h2" style={s.panelTitle} accessibilityRole="header">
           {F.suggests}
         </AppText>
         {items.length > max ? <Button label={F.seeAll(items.length)} size="sm" variant="ghost" onPress={() => router.push('/alerts' as Href)} /> : null}
@@ -142,6 +142,7 @@ const useStyles = makeStyles((t) =>
     support: { gap: 2, padding: spacing.sm, borderRadius: radius.md, backgroundColor: t.c.surface, ...t.hairline },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     panel: { gap: spacing.sm },
-    panelHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    panelHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
+    panelTitle: { flexGrow: 1, flexShrink: 1, flexBasis: 140 },
   }),
 );

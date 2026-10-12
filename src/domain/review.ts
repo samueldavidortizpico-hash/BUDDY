@@ -20,7 +20,8 @@ export interface ReviewFinding {
 }
 
 export const NO_MATCH_TEXT = 'No encontré coincidencias con lo registrado (esta revisión solo compara los datos escritos).';
-export const CONSULT_TEXT = 'Consulta con el médico o el farmacéutico antes de continuar con este medicamento.';
+/** Cierre obligatorio de toda revisión de BUDDY (con o sin coincidencias). Nunca dice que algo es seguro o apto. */
+export const CONSULT_TEXT = 'BUDDY advierte pero nunca receta ni cambia dosis. Por mayor seguridad, consulta con un médico o un farmacéutico.';
 
 /** Palabras (≥ 4 letras) de un texto normalizado. */
 function words(text: string): string[] {

@@ -61,6 +61,12 @@
           "imageWidth": 200
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "color": "#174A59"
+        }
+      ],
       "expo-secure-store",
       "expo-sqlite"
     ],

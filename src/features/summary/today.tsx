@@ -15,7 +15,7 @@ import { Icon, type IconName } from '@/components/icon';
 import { adherence, answersBy } from '@/domain/health';
 import { dayDoses, effectiveTime, stockUnit } from '@/domain/schedule';
 import { estimateStock } from '@/domain/stock';
-import type { Elder } from '@/domain/types';
+import { appointmentAddress, type Elder } from '@/domain/types';
 import { strings } from '@/i18n';
 import { doseActions, evaluateAlerts } from '@/state/care';
 import { useRecords } from '@/state/data';
@@ -47,6 +47,7 @@ export function TodayPanel({ elder }: { elder: Elder }) {
   const mealLogs = useRecords('mealLogs', { elderId: elder.id });
   const checkins = useRecords('checkins', { elderId: elder.id });
   const alerts = useRecords('alerts', { elderId: elder.id });
+  const appointments = useRecords('appointments', { elderId: elder.id });
 
   // Tomas de hoy y avisos pendientes (sin confirmar, existencias) cada vez que cambia la hora.
   useEffect(() => {
@@ -84,6 +85,7 @@ export function TodayPanel({ elder }: { elder: Elder }) {
     .filter((x) => x.e.level !== 'none')
     .sort((a, b) => (a.e.daysLeft ?? 999) - (b.e.daysLeft ?? 999));
   const next = items.find((i) => i.status === 'pending' || i.status === 'snoozed');
+  const nextAppt = appointments.filter((a) => a.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
 
   return (
     <View style={s.root}>
@@ -139,6 +141,18 @@ export function TodayPanel({ elder }: { elder: Elder }) {
         <Card variant="tint" tone="coral" style={s.nextCard}>
           <Icon name="clock" color={t.ink.coral} />
           <AppText variant="secondaryStrong" style={s.flex}>{`Próxima toma: ${next.medication.name} a las ${formatClock(effectiveTime(next.dose))}`}</AppText>
+        </Card>
+      ) : null}
+
+      {/* Próxima cita, con su dirección */}
+      {nextAppt ? (
+        <Card variant="tint" tone="sky" style={s.nextCard}>
+          <Icon name="calendar" color={t.ink.info} />
+          <View style={s.flex}>
+            <AppText variant="captionStrong" color={t.c.muted}>{strings.appointments.next}</AppText>
+            <AppText variant="secondaryStrong">{`${nextAppt.title} · ${nextAppt.date === today ? 'hoy' : nextAppt.date} · ${formatClock(nextAppt.time)}`}</AppText>
+            {appointmentAddress(nextAppt) ? <AppText variant="caption">{`${strings.appointments.address}: ${appointmentAddress(nextAppt)}`}</AppText> : null}
+          </View>
         </Card>
       ) : null}
 

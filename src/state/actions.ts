@@ -3,7 +3,7 @@
  * Cada escritura registra autor (cuenta conectada) y persona (adulto mayor activo o indicado).
  */
 import { spreadTimes } from '@/domain/time';
-import type { Activity, ActivityKind, ClockTime, Contact, Elder, Meal, MealKind, Weekday } from '@/domain/types';
+import type { Activity, ActivityKind, Appointment, ClockTime, Contact, Elder, Meal, MealKind, Weekday } from '@/domain/types';
 import { ALERT_KINDS } from '@/domain/types';
 import { db, type Actor } from '@/infrastructure/local/db';
 
@@ -142,9 +142,10 @@ export const routineActions = {
   removeReminder: (id: string) => db.remove('reminders', id),
   restoreReminder: (id: string) => db.restore('reminders', id),
   restoreAppointment: (id: string) => db.restore('appointments', id),
-  addAppointment(title: string, date: string, time: ClockTime, place: string, elderId?: string) {
-    return db.insert('appointments', { title, date, time, place }, actor(requireElder(elderId)));
+  addAppointment(title: string, date: string, time: ClockTime, place: string, elderId?: string, extra: Partial<Pick<Appointment, 'doctor' | 'city' | 'reference' | 'phone' | 'notes' | 'questions'>> = {}) {
+    return db.insert('appointments', { title, date, time, place, ...extra }, actor(requireElder(elderId)));
   },
+  updateAppointment: (id: string, patch: Partial<Appointment>) => db.update('appointments', id, patch),
   removeAppointment: (id: string) => db.remove('appointments', id),
 };
 

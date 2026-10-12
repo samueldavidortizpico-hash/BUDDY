@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -19,6 +19,8 @@ import { ALERT_KINDS, type Elder, type ElderAppearance } from '@/domain/types';
 import { ElderAccessForm } from '@/features/setup/access';
 import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
 import { feedActions } from '@/state/feed';
+import { notificationPermission, sendTestNotification } from '@/infrastructure/notifications';
+import { TimeField } from '@/components/time-picker';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
@@ -38,13 +40,14 @@ export default function SettingsSection() {
     appearance: S.sections.appearance,
     elder: elder ? S.sections.elderScreen(elder.firstName) : '',
     alerts: S.sections.alerts,
+    notifications: S.sections.notifications,
     people: S.sections.people,
     devices: S.sections.devices,
     legal: S.sections.legal,
     advanced: S.sections.advanced,
     about: S.sections.about,
   };
-  const View_ = { account: Account, appearance: Appearance, elder: ElderScreenPrefs, alerts: MyAlerts, people: People, devices: Devices, legal: Legal, advanced: Advanced, about: About }[section as 'account'] ?? About;
+  const View_ = { account: Account, appearance: Appearance, elder: ElderScreenPrefs, alerts: MyAlerts, notifications: NotificationsSection, people: People, devices: Devices, legal: Legal, advanced: Advanced, about: About }[section as 'account'] ?? About;
   return (
     <ScreenContainer keyboard header={<ScreenHeader title={titles[section] ?? S.title} fallback="/settings" />}>
       <View_ />
@@ -234,6 +237,45 @@ function Thresholds() {
       <Stepper label={F.waterDays} value={th.waterDays} min={1} max={7} onChange={(v) => set({ waterDays: v })} format={days} />
       <Stepper label={F.checkinDays} value={th.checkinDays} min={1} max={7} onChange={(v) => set({ checkinDays: v })} format={days} />
     </Card>
+  );
+}
+
+// ── Notificaciones ───────────────────────────────────────────
+function NotificationsSection() {
+  const t = useTheme();
+  const s = useStyles();
+  const toast = useToast();
+  const elder = useActiveElder();
+  const N = strings.notifications;
+  const [state, setState] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    notificationPermission(false).then((st) => alive && setState(st)).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!elder) return null;
+  const prefs = elder.screen;
+  return (
+    <View style={s.stack}>
+      <AppText variant="secondary" color={t.c.muted}>{N.body(elder.firstName)}</AppText>
+      {state ? <AppText variant="secondaryStrong">{N.status[state]}</AppText> : null}
+      <Button
+        label={N.test(elder.firstName)}
+        icon="bell"
+        variant="tonal"
+        tone="mint"
+        onPress={async () => {
+          const st = await sendTestNotification(elder.firstName);
+          setState(st);
+          toast({ message: st === 'granted' ? N.testSent : N.status[st], icon: st === 'granted' ? 'check' : 'info' });
+        }}
+      />
+      <TimeField label={N.apptTime} value={prefs.apptNoticeTime ?? '18:00'} onChange={(v) => elderActions.update(elder.id, { screen: { ...prefs, apptNoticeTime: v } })} />
+      <Row label={N.showMedName} hint={N.showMedNameHint} value={!!prefs.showMedName} onChange={(v) => elderActions.update(elder.id, { screen: { ...prefs, showMedName: v } })} />
+      <AppText variant="caption" color={t.c.muted}>{N.honest}</AppText>
+    </View>
   );
 }
 

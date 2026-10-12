@@ -69,7 +69,7 @@ it.failing('P6: el Resumen da acceso a la ubicación', () => {
   expect(screen.getByRole('button', { name: /Ubicación/ })).toBeTruthy();
 });
 
-it.failing('P8: una cita tiene dirección', () => {
+it('P8: una cita tiene dirección', () => {
   mockParams = { section: 'appointments' };
   ui(<RoutineSection />);
   expect(screen.getByText('Dirección')).toBeTruthy();

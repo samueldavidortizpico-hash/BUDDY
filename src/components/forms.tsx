@@ -280,7 +280,7 @@ export function Segmented<T extends string>({
             }}
             style={s.segmentItem}
           >
-            <AppText variant="captionStrong" color={on ? (t.hc ? t.c.bg : t.c.text) : t.c.muted} align="center" numberOfLines={2}>
+            <AppText variant="captionStrong" color={on ? (t.hc ? t.c.bg : t.c.text) : t.c.muted} align="center" numberOfLines={2} maxScale={1.5}>
               {o.label}
             </AppText>
           </Pressable>

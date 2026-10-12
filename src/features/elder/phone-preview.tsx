@@ -8,7 +8,7 @@ import { StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
-import { Button } from '@/components/button';
+import { Button, IconButton } from '@/components/button';
 import { BottomSheet } from '@/components/feedback';
 import { strings } from '@/i18n';
 import { useActiveElder } from '@/state/data';
@@ -53,8 +53,12 @@ export function PreviewSheetButton({ compact = false }: { compact?: boolean }) {
   const label = strings.buddy.seeElderScreen(elder.firstName);
   return (
     <>
-      <Animated.View entering={reduce ? undefined : FadeIn.duration(220)}>
-        <Button label={label} icon="eye" variant="tonal" tone="mint" size="sm" accessibilityHint={strings.summary.elderScreenHint} onPress={() => setOpen(true)} style={compact ? styles.compact : undefined} />
+      <Animated.View entering={reduce ? undefined : FadeIn.duration(220)} style={{ flexShrink: 1, maxWidth: '100%' }}>
+        {compact ? (
+          <IconButton icon="eye" label={label} showLabel={false} accessibilityHint={strings.summary.elderScreenHint} onPress={() => setOpen(true)} />
+        ) : (
+          <Button label={label} icon="eye" variant="tonal" tone="mint" size="sm" accessibilityHint={strings.summary.elderScreenHint} onPress={() => setOpen(true)} />
+        )}
       </Animated.View>
       <BottomSheet visible={open} onClose={() => setOpen(false)} title={label}>
         {open ? <PhonePreview height={520} /> : null}
@@ -62,8 +66,6 @@ export function PreviewSheetButton({ compact = false }: { compact?: boolean }) {
     </>
   );
 }
-
-const styles = StyleSheet.create({ compact: { minHeight: 40 } });
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
