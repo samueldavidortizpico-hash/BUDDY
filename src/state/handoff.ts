@@ -9,7 +9,15 @@ import { currentUserId } from './session';
 
 const MAX = 5;
 const PIN_ITERATIONS = 300;
+const GUARD_KEY = 'pin.guard';
 let unlocking = false;
+
+export type PinResult = { result: 'ok' } | { result: 'wrong'; left: number } | { result: 'locked'; seconds: number };
+
+/** Espera creciente tras 5 intentos fallidos: 30 s, 60 s, … hasta 15 min. */
+function lockSeconds(failed: number) {
+  return Math.min(900, 30 * 2 ** (failed - MAX));
+}
 
 function account() {
   return db.list('accounts', currentUserId())[0];
@@ -61,11 +69,43 @@ export const handoffActions = {
       }
       const failed = h.failedPins + 1;
       if (failed >= MAX) {
-        const seconds = Math.min(900, 30 * 2 ** (failed - MAX));
+        const seconds = lockSeconds(failed);
         db.setHandoff({ ...h, failedPins: failed, lockedUntil: new Date(Date.now() + seconds * 1000).toISOString() });
         return { result: 'locked', seconds };
       }
       db.setHandoff({ ...h, failedPins: failed });
+      return { result: 'wrong', left: MAX - failed };
+    } finally {
+      unlocking = false;
+    }
+  },
+  /**
+   * Verifica el PIN del administrador sin entrega activa (pantalla del adulto mayor con su propio acceso).
+   * Mismo límite de intentos y espera creciente; el contador vive en el borrador de la cuenta dueña.
+   */
+  async verifyAdminPin(pin: string): Promise<PinResult> {
+    if (unlocking) throw new Error('Ya hay una verificación de PIN en curso.');
+    unlocking = true;
+    try {
+      const owner = currentUserId();
+      const acc = account();
+      if (!acc?.pinHash || !acc.pinSalt) throw new Error('No hay PIN guardado.');
+      const guard = db.draft<{ failed: number; lockedUntil: string | null }>(owner, GUARD_KEY) ?? { failed: 0, lockedUntil: null };
+      if (guard.lockedUntil && Date.parse(guard.lockedUntil) > Date.now()) {
+        return { result: 'locked', seconds: Math.ceil((Date.parse(guard.lockedUntil) - Date.now()) / 1000) };
+      }
+      const matches = /^\d{4}$/.test(pin) && (await hashSecret(pin, acc.pinSalt, PIN_ITERATIONS)) === acc.pinHash;
+      if (matches) {
+        db.setDraft(owner, GUARD_KEY, undefined);
+        return { result: 'ok' };
+      }
+      const failed = guard.failed + 1;
+      if (failed >= MAX) {
+        const seconds = lockSeconds(failed);
+        db.setDraft(owner, GUARD_KEY, { failed, lockedUntil: new Date(Date.now() + seconds * 1000).toISOString() });
+        return { result: 'locked', seconds };
+      }
+      db.setDraft(owner, GUARD_KEY, { failed, lockedUntil: null });
       return { result: 'wrong', left: MAX - failed };
     } finally {
       unlocking = false;

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -10,7 +10,8 @@ import { useSharedValue } from 'react-native-reanimated';
 import { AuthRobot, useFormRobot } from '@/components/robot/auth-robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
-import { AuthError } from '@/domain/auth';
+import { AuthError, dataOwnerId } from '@/domain/auth';
+import type { Role } from '@/domain/types';
 import { isValidEmail } from '@/domain/validation';
 import { db } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
@@ -24,6 +25,9 @@ const A = strings.auth;
 
 export default function SignIn() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ role?: string }>();
+  const role: Role = params.role === 'elder' ? 'elder' : 'caregiver';
+  const R = A.roles;
   const t = useTheme();
   const s = useStyles();
   const robot = useFormRobot('wave');
@@ -45,11 +49,12 @@ export default function SignIn() {
     }
     setBusy(true);
     try {
-      const user = await sessionActions.signIn({ email, password });
+      const user = await sessionActions.signIn({ email, password, role });
       successHaptic();
       robot.success();
-      const hasElder = db.list('elders', user.id).some((e) => e.setupDone);
-      router.replace(homeHrefFor(user.id, hasElder, false));
+      const owner = dataOwnerId(user);
+      const hasElder = db.list('elders', owner).some((e) => e.setupDone);
+      router.replace(homeHrefFor(owner, hasElder, false, user.role));
     } catch (e) {
       warningHaptic();
       robot.error();
@@ -60,11 +65,11 @@ export default function SignIn() {
   };
 
   return (
-    <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={A.signInTitle} fallback="/" />}>
+    <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={A.signInTitle} subtitle={role === 'elder' ? R.elder : R.admin} fallback="/" />}>
       <View style={s.hero}>
         <AuthRobot maxHeight={160} scrollY={scrollY} mood={robot.mood} look={robot.mood === 'look' ? -0.6 : 0} />
         <AppText variant="secondary" color={t.c.muted} align="center">
-          {A.signInSubtitle}
+          {role === 'elder' ? R.elderNote : A.signInSubtitle}
         </AppText>
       </View>
       <View style={s.form}>
@@ -84,9 +89,13 @@ export default function SignIn() {
             </AppText>
           </View>
         ) : null}
-        <Button label={A.enter} loading={busy} onPress={submit} haptic />
-        <Button label={A.forgotLink} variant="ghost" size="md" onPress={() => router.push('/forgot-password')} />
-        <Button label={A.noAccount} variant="tonal" tone="mint" size="md" onPress={() => router.replace('/sign-up')} />
+        <Button label={A.enter} loading={busy} onPress={submit} haptic size={role === 'elder' ? 'elder' : undefined} />
+        {role === 'caregiver' ? (
+          <>
+            <Button label={A.forgotLink} variant="ghost" size="md" onPress={() => router.push('/forgot-password')} />
+            <Button label={A.noAccount} variant="tonal" tone="mint" size="md" onPress={() => router.replace('/sign-up')} />
+          </>
+        ) : null}
       </View>
     </ScreenContainer>
   );

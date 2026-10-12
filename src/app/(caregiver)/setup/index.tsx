@@ -22,6 +22,7 @@ import {
   useWhoStep,
   type StepHandle,
 } from '@/features/setup/steps';
+import { ElderAccessForm } from '@/features/setup/access';
 import { strings } from '@/i18n';
 import { activeElderId, elderActions } from '@/state/actions';
 import { useElders, useRecords } from '@/state/data';
@@ -31,10 +32,11 @@ import { formatClock } from '@/utils/dates';
 import { successHaptic } from '@/utils/haptics';
 
 const S = strings.setup;
-const TOTAL = 8;
-const ROBOT_MOOD = ['wave', 'think', 'idle', 'look', 'idle', 'wave', 'look', 'celebrate'] as const;
+const TOTAL = 9;
+const ACCESS = 8;
+const ROBOT_MOOD = ['wave', 'think', 'idle', 'look', 'idle', 'wave', 'look', 'happy', 'celebrate'] as const;
 
-/** Asistente de registro del adulto mayor (8 pasos). Se puede salir y retomar: cada paso guarda un borrador. */
+/** Asistente de registro del adulto mayor (9 pasos, incluido su acceso). Se puede salir y retomar: cada paso guarda un borrador. */
 export default function ElderSetup() {
   const router = useRouter();
   const params = useLocalSearchParams<{ elderId?: string; new?: string }>();
@@ -84,13 +86,14 @@ export default function ElderSetup() {
       <View style={styles.robotRow}>
         <BuddyRobot size={96} mood={ROBOT_MOOD[step - 1]} shadow={false} />
         <AppText variant="h2" style={styles.flex}>
-          {step === 1 ? S.who.title : step === TOTAL && elder ? S.done.title(elder.firstName) : S.stepNames[step - 1]}
+          {step === 1 ? S.who.title : step === TOTAL && elder ? S.done.title(elder.firstName) : step === ACCESS && elder ? S.access.title(elder.firstName) : S.stepNames[step - 1]}
         </AppText>
       </View>
 
       <Appear key={step}>
         {step === 1 ? <WhoStep elder={elder} onNext={next} /> : null}
-        {step > 1 && step < TOTAL && elder ? <MiddleStep step={step} elder={elder} onNext={next} onSkip={() => goto(step + 1)} /> : null}
+        {step === ACCESS && elder ? <ElderAccessForm elder={elder} onDone={next} onLater={() => goto(step + 1)} /> : null}
+        {step > 1 && step < ACCESS && elder ? <MiddleStep step={step} elder={elder} onNext={next} onSkip={() => goto(step + 1)} /> : null}
         {step === TOTAL && elder ? <DoneStep elder={elder} onFinish={finish} /> : null}
       </Appear>
 

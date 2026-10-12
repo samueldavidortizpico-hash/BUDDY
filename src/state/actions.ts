@@ -7,13 +7,16 @@ import type { Activity, ActivityKind, ClockTime, Contact, Elder, Meal, MealKind,
 import { ALERT_KINDS } from '@/domain/types';
 import { db, type Actor } from '@/infrastructure/local/db';
 
-import { currentUserId } from './session';
+import { currentAuthorId, currentUserId, useSession } from './session';
 
 export function actor(elderId: string | null): Actor {
-  return { userId: currentUserId(), elderId };
+  return { userId: currentUserId(), elderId, by: currentAuthorId() };
 }
 
 export function activeElderId(): string | null {
+  // El adulto mayor con su propio acceso solo ve su perfil.
+  const linked = useSession.getState().user?.elderId;
+  if (useSession.getState().user?.role === 'elder' && linked) return linked;
   const userId = currentUserId();
   const account = db.list('accounts', userId)[0];
   const elders = db.list('elders', userId);

@@ -7,18 +7,24 @@ import { useSession } from '@/state/session';
 import { themes } from '@/theme';
 import { ThemeOverride, resolveThemeName } from '@/theme/provider';
 
-/** Pantalla del adulto mayor: solo existe mientras el teléfono está entregado. Usa su apariencia y su tamaño de texto. */
+/**
+ * Pantalla del adulto mayor. Se llega de dos formas:
+ * - con su propio acceso (sesión con rol `elder`, creada por su administrador), o
+ * - con el teléfono del administrador entregado (handoff), que se cierra con el PIN.
+ * Usa su apariencia y su tamaño de texto.
+ */
 export default function ElderLayout() {
   const system = useColorScheme();
   const user = useSession((s) => s.user);
   const handoff = useValidHandoff();
-  const elder = useDb((s) => (handoff ? s.elders[handoff.elderId] : undefined));
+  const elderId = user?.role === 'elder' ? (user.elderId ?? null) : (handoff?.elderId ?? null);
+  const elder = useDb((s) => (elderId ? s.elders[elderId] : undefined));
   if (!user) return <Redirect href="/" />;
-  if (!handoff || handoff.userId !== user.id || !elder) return <Redirect href="/summary" />;
-  const pref = elder.screen.appearance;
+  if (user.role !== 'elder' && (!handoff || !elder)) return <Redirect href="/summary" />;
+  const pref = elder?.screen.appearance ?? 'auto';
   const name = resolveThemeName({ mode: pref === 'contrast' ? 'auto' : pref, highContrast: pref === 'contrast' }, system);
   return (
-    <ThemeOverride name={name} textScale={elder.screen.textScale}>
+    <ThemeOverride name={name} textScale={elder?.screen.textScale ?? 'large'}>
       <Stack screenOptions={{ headerShown: false, gestureEnabled: false, contentStyle: { backgroundColor: themes[name].c.bg } }} />
     </ThemeOverride>
   );

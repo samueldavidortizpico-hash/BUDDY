@@ -4,10 +4,17 @@ import { useMemo } from 'react';
 import type { AccountSettings, Elder } from '@/domain/types';
 import { db, useDb, type CollectionName, type Collections } from '@/infrastructure/local/db';
 
+import { dataOwnerId } from '@/domain/auth';
+
 import { useSession } from './session';
 
+/** Cuenta dueña de los datos (en la sesión del adulto mayor, su administrador). */
 export function useUserId(): string | null {
-  return useSession((s) => s.user?.id ?? null);
+  return useSession((s) => (s.user ? dataOwnerId(s.user) : null));
+}
+
+export function useRole() {
+  return useSession((s) => s.user?.role ?? 'caregiver');
 }
 
 export function useAccount(): AccountSettings | null {
@@ -29,6 +36,8 @@ export function useElders(): Elder[] {
 export function useActiveElder(): Elder | null {
   const account = useAccount();
   const elders = useElders();
+  const linked = useSession((s) => (s.user?.role === 'elder' ? (s.user.elderId ?? null) : null));
+  if (linked) return elders.find((e) => e.id === linked) ?? null;
   return elders.find((e) => e.id === account?.activeElderId) ?? elders.find((e) => e.setupDone) ?? elders[0] ?? null;
 }
 

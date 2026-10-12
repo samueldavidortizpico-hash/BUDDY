@@ -13,6 +13,7 @@ import { Icon } from '@/components/icon';
 import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
+import { AdminAccessSheet } from '@/features/elder/admin-access';
 import { elderNow, type ElderItem } from '@/domain/now';
 import { dayDoses, doseText, effectiveTime } from '@/domain/schedule';
 import type { Answer3 } from '@/domain/types';
@@ -63,7 +64,8 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const now = useNow(30_000);
   const { height } = useWindowDimensions();
   const userId = useUserId() ?? '';
-  const caregiver = useSession((x) => x.user?.name.split(' ')[0] ?? '');
+  const caregiver = useSession((x) => (x.user?.role === 'elder' ? '' : (x.user?.name.split(' ')[0] ?? '')));
+  const role = useSession((x) => x.user?.role ?? 'caregiver');
   const elder = useDb((x) => (elderId ? x.elders[elderId] : undefined));
   const scope = { elderId };
   const meds = useRecords('medications', scope);
@@ -80,6 +82,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const contacts = useRecords('contacts', scope);
   const seen = useDb((x) => x.drafts[userId]?.['elder.seen'] as string[] | undefined) ?? EMPTY_SEEN;
   const [help, setHelp] = useState(false);
+  const [admin, setAdmin] = useState(false);
   const [mood, setMood] = useState<RobotMood>('wave');
   const thanksTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = toISODate(now);
@@ -174,9 +177,19 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
           <AppText variant="eyebrow" color={t.ink.mint}>
             {formatLongDate(now)}
           </AppText>
-          <AppText variant="h1">{E.greeting(greetingFor(now), elder.firstName)}</AppText>
+          <Pressable
+            disabled={preview}
+            delayLongPress={2000}
+            onLongPress={() => setAdmin(true)}
+            accessibilityRole="header"
+            accessibilityHint={preview ? undefined : strings.adminAccess.hint}
+            accessibilityActions={preview ? undefined : [{ name: 'longpress', label: strings.adminAccess.enterAdmin }]}
+            onAccessibilityAction={() => setAdmin(true)}
+          >
+            <AppText variant="h1" accessibilityRole="none">{E.greeting(greetingFor(now), elder.firstName)}</AppText>
+          </Pressable>
         </View>
-        {preview ? null : (
+        {preview || role === 'elder' ? null : (
           <Pressable onPress={() => router.push('/elder/unlock')} accessibilityRole="button" accessibilityLabel={E.exit} hitSlop={6} style={s.lock}>
             <Icon name="lock" color={t.c.muted} size={22} />
           </Pressable>
@@ -220,6 +233,8 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
           </AppText>
         )}
       </View>
+
+      {preview ? null : <AdminAccessSheet visible={admin} onClose={() => setAdmin(false)} />}
 
       <BottomSheet visible={help} onClose={() => setHelp(false)} title={E.helpTitle}>
         <AppText variant="body">{E.helpBody}</AppText>

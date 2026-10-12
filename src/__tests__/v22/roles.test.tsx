@@ -1,0 +1,151 @@
+/**
+ * Paso 2 (v2.2): cuentas y roles. Matriz de permisos, cuentas del adulto mayor creadas por su administrador,
+ * dos cuentas en un mismo dispositivo con datos aislados, y acceso del administrador con PIN.
+ */
+import { Stack } from 'expo-router';
+import { act, cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { Text } from 'react-native';
+
+import Welcome from '@/app/(auth)';
+import SignIn from '@/app/(auth)/sign-in';
+import CaregiverLayout from '@/app/(caregiver)/_layout';
+import ElderHome from '@/app/elder';
+import ElderLayout from '@/app/elder/_layout';
+import { AuthError } from '@/domain/auth';
+import { can, type Permission } from '@/domain/permissions';
+import { getAuthService } from '@/infrastructure';
+import { db } from '@/infrastructure/local/db';
+import { strings } from '@/i18n';
+import { activeElderId } from '@/state/actions';
+import { elderAnswers } from '@/state/care';
+import { handoffActions } from '@/state/handoff';
+import { sessionActions, useSession } from '@/state/session';
+import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
+
+describe('matriz can(rol, acción)', () => {
+  const adminOnly: Permission[] = ['add_medication', 'remove_medication', 'set_water_goal', 'edit_profile', 'manage_access', 'request_location', 'settings', 'use_assistant', 'handoff'];
+  const elderAllowed: Permission[] = ['answer_question', 'confirm_dose', 'request_help', 'call_contact', 'location_consent', 'share_location'];
+  it.each(adminOnly)('el adulto mayor NO puede %s', (a) => expect(can('elder', a)).toBe(false));
+  it.each(adminOnly)('el administrador puede %s', (a) => expect(can('caregiver', a)).toBe(true));
+  it.each(elderAllowed)('el adulto mayor puede %s', (a) => expect(can('elder', a)).toBe(true));
+  it('la decisión sobre la ubicación es solo del adulto mayor', () => {
+    expect(can('caregiver', 'location_consent')).toBe(false);
+    expect(can('caregiver', 'share_location')).toBe(false);
+  });
+});
+
+let n = 0;
+const unique = (name: string) => `${name}${Date.now()}${n++}@correo.com`;
+
+describe('cuentas del adulto mayor (dos cuentas en un mismo dispositivo)', () => {
+  let elderId: string;
+  const auth = getAuthService();
+  beforeEach(async () => {
+    elderId = (await seedRenderData()).id;
+    // Sesión real del administrador en el proveedor local; la persona pasa a ser suya.
+    const admin = await auth.signUp({ name: 'Laura', email: unique('laura'), password: 'Segura123' });
+    useSession.setState({ status: 'signedIn', user: admin });
+    db.putMany('elders', [{ ...db.get('elders', elderId)!, ownerUserId: admin.id }]);
+  });
+
+  it('el administrador crea el acceso; el adulto mayor entra con su rol y ve solo su perfil', async () => {
+    const ownerId = useSession.getState().user!.id;
+    const email = unique('elis');
+    await sessionActions.createElderAccess({ elderId, name: 'Rosa', email, password: 'Rosa2026!' });
+    expect(await sessionActions.elderAccess(elderId)).toEqual({ email, revoked: false });
+    await sessionActions.signOut();
+    // Con el selector equivocado, el error lo explica.
+    await expect(sessionActions.signIn({ email, password: 'Rosa2026!', role: 'caregiver' })).rejects.toMatchObject({ code: 'wrong_role' });
+    const elderUser = await sessionActions.signIn({ email, password: 'Rosa2026!', role: 'elder' });
+    useSession.setState({ status: 'signedIn', user: elderUser });
+    expect(elderUser).toMatchObject({ role: 'elder', ownerId, elderId });
+    expect(activeElderId()).toBe(elderId);
+    // Lo que responde queda en los datos de su administrador, con su autoría.
+    const water = elderAnswers.addWater();
+    expect(water.ownerUserId).toBe(ownerId);
+    expect(water.createdBy).toBe(elderUser.id);
+  });
+
+  it('revocar impide entrar; sin sesión de administrador no se puede reactivar', async () => {
+    const email = unique('ana');
+    await sessionActions.createElderAccess({ elderId, name: 'Rosa', email, password: 'Rosa2026!' });
+    await sessionActions.revokeElderAccess(elderId);
+    const admin = useSession.getState().user!;
+    await auth.signOut();
+    await expect(auth.signIn({ email, password: 'Rosa2026!', role: 'elder' })).rejects.toMatchObject({ code: 'revoked' });
+    await expect(auth.resetManagedPassword({ ownerId: admin.id, elderId, password: 'Nueva2026!' })).rejects.toBeInstanceOf(AuthError);
+  });
+
+  it('restablecer la contraseña reactiva el acceso', async () => {
+    const email = unique('eva');
+    await sessionActions.createElderAccess({ elderId, name: 'Rosa', email, password: 'Rosa2026!' });
+    await sessionActions.revokeElderAccess(elderId);
+    await sessionActions.resetElderAccess(elderId, 'Nueva2026!');
+    expect(await sessionActions.elderAccess(elderId)).toEqual({ email, revoked: false });
+    await auth.signOut();
+    expect((await auth.signIn({ email, password: 'Nueva2026!', role: 'elder' })).elderId).toBe(elderId);
+  });
+
+  it('rechaza contraseñas débiles para el acceso', async () => {
+    await expect(sessionActions.createElderAccess({ elderId, name: 'Rosa', email: unique('x'), password: 'corta' })).rejects.toMatchObject({ code: 'weak_password' });
+  });
+});
+
+describe('navegación por rol', () => {
+  function TestRoot() {
+    return (
+      <RenderProviders>
+        <Stack screenOptions={{ headerShown: false }} />
+      </RenderProviders>
+    );
+  }
+  const routes = {
+    _layout: TestRoot,
+    index: Welcome,
+    'sign-in': SignIn,
+    '(caregiver)/_layout': CaregiverLayout,
+    '(caregiver)/summary': () => <Text>Resumen de prueba</Text>,
+    'elder/_layout': ElderLayout,
+    'elder/index': ElderHome,
+  };
+  let elderId: string;
+  const elderSession = () => ({ id: 'elder-acc', email: 'e@correo.com', name: 'Rosa', createdAt: '', role: 'elder' as const, ownerId: testUser.id, elderId });
+  beforeEach(async () => {
+    elderId = (await seedRenderData()).id;
+  });
+  afterEach(() => cleanup());
+
+  it('el adulto mayor con su acceso nunca entra a la zona del administrador', async () => {
+    useSession.setState({ status: 'signedIn', user: elderSession() });
+    const r = renderRouter(routes, { initialUrl: '/summary' });
+    await waitFor(() => expect(r.getPathname()).toBe('/elder'));
+    expect(screen.getByText(/Rosa/)).toBeTruthy();
+  });
+
+  it('la entrada pregunta el rol; el adulto mayor solo tiene "Iniciar sesión"', () => {
+    useSession.setState({ status: 'signedOut', user: null });
+    renderRouter(routes, { initialUrl: '/' });
+    fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.elder) }));
+    expect(screen.getByText(strings.auth.roles.elderNote)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: strings.welcome.createAccount })).toBeNull();
+    fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.admin) }));
+    expect(screen.getByRole('button', { name: strings.welcome.createAccount })).toBeTruthy();
+  });
+
+  it('mantener presionado el saludo pide el PIN y ofrece cambiar de usuario o entrar como administrador', async () => {
+    await handoffActions.setPin('1234');
+    useSession.setState({ status: 'signedIn', user: elderSession() });
+    renderRouter(routes, { initialUrl: '/elder' });
+    fireEvent(screen.getByRole('header', { name: /Rosa/ }), 'longPress');
+    await screen.findByText(strings.adminAccess.pinBody);
+    for (const d of '9999') fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(d) }));
+    await screen.findByText(strings.pin.wrong(4));
+    // renderRouter usa temporizadores simulados: el teclado limpia el PIN tras un breve retraso.
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    for (const d of '1234') fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(d) }));
+    expect(await screen.findByRole('button', { name: strings.adminAccess.switchUser })).toBeTruthy();
+    expect(screen.getByRole('button', { name: strings.adminAccess.enterAdmin })).toBeTruthy();
+  });
+});

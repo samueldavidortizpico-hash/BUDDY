@@ -5,7 +5,7 @@
  * Eliminar cuenta requiere la Edge Function `delete-account` (docs/SUPABASE_PLAN.md): el cliente no puede borrar
  * usuarios de auth sin la clave de servicio.
  */
-import { AuthError, type AuthService, type AuthUser } from '@/domain/auth';
+import { AuthError, roleOf, type AuthService, type AuthUser } from '@/domain/auth';
 import { isAcceptablePassword, isValidEmail, normalizeEmail } from '@/domain/validation';
 import { strings } from '@/i18n';
 
@@ -13,9 +13,17 @@ import { getSupabase, supabaseConfigured } from './client';
 
 const e = strings.auth.errors;
 
-type SbUser = { id: string; email?: string; created_at: string; user_metadata?: { name?: string } };
+type SbUser = { id: string; email?: string; created_at: string; user_metadata?: { name?: string; role?: 'caregiver' | 'elder'; owner_id?: string; elder_id?: string } };
 
-const toUser = (u: SbUser): AuthUser => ({ id: u.id, email: u.email ?? '', name: u.user_metadata?.name ?? '', createdAt: u.created_at });
+const toUser = (u: SbUser): AuthUser => ({
+  id: u.id,
+  email: u.email ?? '',
+  name: u.user_metadata?.name ?? '',
+  createdAt: u.created_at,
+  role: u.user_metadata?.role ?? 'caregiver',
+  ownerId: u.user_metadata?.owner_id ?? null,
+  elderId: u.user_metadata?.elder_id ?? null,
+});
 
 function guard() {
   if (!supabaseConfigured) throw new AuthError('not_configured', e.notConfigured);
@@ -43,10 +51,16 @@ export function createSupabaseAuthProvider(): AuthService {
       return toUser(data.user as SbUser);
     },
 
-    async signIn({ email, password }) {
-      const { data, error } = await guard().auth.signInWithPassword({ email: normalizeEmail(email), password });
+    async signIn({ email, password, role }) {
+      const sb = guard();
+      const { data, error } = await sb.auth.signInWithPassword({ email: normalizeEmail(email), password });
       if (error || !data.user) mapError(error);
-      return toUser(data.user as SbUser);
+      const user = toUser(data.user as SbUser);
+      if (role && roleOf(user) !== role) {
+        await sb.auth.signOut();
+        throw new AuthError('wrong_role', roleOf(user) === 'elder' ? e.wrongRoleElder : e.wrongRoleAdmin);
+      }
+      return user;
     },
 
     async signOut() {
@@ -92,6 +106,21 @@ export function createSupabaseAuthProvider(): AuthService {
       const { error } = await sb.functions.invoke('delete-account', { method: 'POST' });
       if (error) mapError(error);
       await sb.auth.signOut();
+    },
+
+    // Crear o administrar la cuenta de OTRA persona exige la clave de servicio: se hará con la Edge Function
+    // `manage-elder-account` (docs/SUPABASE_PLAN.md). Nunca desde la app.
+    async createManagedAccount() {
+      throw new AuthError('not_configured', e.notConfigured);
+    },
+    async resetManagedPassword() {
+      throw new AuthError('not_configured', e.notConfigured);
+    },
+    async revokeManagedAccount() {
+      throw new AuthError('not_configured', e.notConfigured);
+    },
+    async managedAccount() {
+      return null;
     },
   };
 }

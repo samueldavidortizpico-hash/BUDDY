@@ -51,7 +51,7 @@ it.failing('P3: 14 días de ánimo bajo generan una recomendación con escalada 
   expect(screen.getByText(/consulta con un médico o un profesional de salud mental/)).toBeTruthy();
 });
 
-it.failing('P4: la entrada pregunta si eres administrador o adulto mayor', () => {
+it('P4: la entrada pregunta si eres administrador o adulto mayor', () => {
   useSession.setState({ status: 'signedOut', user: null });
   ui(<Welcome />);
   expect(screen.getByText('Soy adulto mayor')).toBeTruthy();
@@ -85,7 +85,7 @@ it.failing('P10/P11: "Entregar a [nombre]" abre una pantalla propia con flecha a
   expect(mockPush).toHaveBeenCalledWith('/handoff');
 });
 
-it.failing('P12: el onboarding tiene 6 diapositivas que explican qué es BUDDY', () => {
+it('P12: el onboarding tiene 6 diapositivas que explican qué es BUDDY', () => {
   ui(<Onboarding />);
   expect(screen.getByText(/de 6/)).toBeTruthy();
 });

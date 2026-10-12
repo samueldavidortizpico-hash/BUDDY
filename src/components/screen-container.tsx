@@ -97,7 +97,7 @@ export function ScreenContainer({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, overflow: 'hidden' },
   flex: { flex: 1 },
   content: { paddingHorizontal: SCREEN_PADDING },
   header: { paddingHorizontal: SCREEN_PADDING },

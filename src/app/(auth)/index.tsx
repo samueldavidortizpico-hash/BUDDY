@@ -1,4 +1,4 @@
-import { Redirect, useFocusEffect, useIsFocused, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useIsFocused, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
@@ -19,10 +19,12 @@ import Animated, {
 import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
 import { Button } from '@/components/button';
-import { Icon } from '@/components/icon';
+import { Icon, type IconName } from '@/components/icon';
 import { SoftEllipse } from '@/components/robot';
 import { AuthRobot } from '@/components/robot/auth-robot';
+import { PressableScale } from '@/components/pressable-scale';
 import { ScreenContainer } from '@/components/screen-container';
+import type { Role } from '@/domain/types';
 import { strings } from '@/i18n';
 import { useHomeHref } from '@/state/nav';
 import { useSession } from '@/state/session';
@@ -31,7 +33,8 @@ import { makeStyles, useAppearanceStore, useTheme, type AppearanceMode } from '@
 
 /** La coreografía completa solo se ve la primera vez por sesión. */
 let playedThisSession = false;
-const LANDED_AT = 1900;
+const ENTRANCE_DELAY = 300;
+const R = strings.auth.roles;
 const S = strings.welcome;
 const NEXT_MODE: Record<AppearanceMode, AppearanceMode> = { auto: 'light', light: 'dark', dark: 'auto' };
 
@@ -56,6 +59,7 @@ export default function Welcome() {
   const fy = useSharedValue(0);
   const fs = useSharedValue(1);
   const [landing, setLanding] = useState(false);
+  const [role, setRole] = useState<Role | null>(null);
 
   // Al volver a la bienvenida el robot regresa a su sitio (no depende de medidas antiguas).
   useFocusEffect(
@@ -75,13 +79,13 @@ export default function Welcome() {
 
   if (status === 'signedIn') return <Redirect href={home} />;
 
-  const base = first && !skipped ? LANDED_AT : 0;
+  const base = first && !skipped ? ENTRANCE_DELAY : 0;
   const size = Math.round(Math.min(300, Math.max(200, height * 0.33)));
   const words = S.titleLines.flat();
 
   // El robot vuela hacia el botón pulsado, aterriza encima y después se ejecuta la acción.
   // Ambas posiciones se miden en el momento del toque, así que el scroll o el teclado no lo desubican.
-  const go = async (ref: React.RefObject<View | null>, href: '/onboarding' | '/sign-in') => {
+  const go = async (ref: React.RefObject<View | null>, href: Href) => {
     if (landing) return;
     const [from, to] = await Promise.all([rectOf(robotRef), rectOf(ref)]);
     if (reduce || !from || !to) return router.push(href);
@@ -145,16 +149,64 @@ export default function Welcome() {
           </Appear>
         </View>
 
-        <Appear delay={base + 700} style={s.actions}>
-          <View ref={createRef} collapsable={false}>
-            <Button label={S.createAccount} variant="coral" trailing="arrow" haptic shine style={s.cta} onPress={() => go(createRef, '/onboarding')} />
+        <Appear delay={base + 600} style={s.actions}>
+          <AppText variant="h3" accessibilityRole="header">
+            {R.title}
+          </AppText>
+          <View style={s.roles} accessibilityRole="radiogroup">
+            <RoleCard icon="users" title={R.admin} detail={R.adminDetail} selected={role === 'caregiver'} onPress={() => setRole('caregiver')} />
+            <RoleCard icon="heart" title={R.elder} detail={R.elderDetail} selected={role === 'elder'} onPress={() => setRole('elder')} />
           </View>
-          <View ref={signInRef} collapsable={false}>
-            <Button label={S.signIn} variant="ghost" size="md" onPress={() => go(signInRef, '/sign-in')} />
-          </View>
+          {role === 'caregiver' ? (
+            <Appear key="admin" style={s.actions}>
+              <View ref={createRef} collapsable={false}>
+                <Button label={S.createAccount} variant="coral" trailing="arrow" haptic shine style={s.cta} onPress={() => go(createRef, '/onboarding')} />
+              </View>
+              <View ref={signInRef} collapsable={false}>
+                <Button label={S.signIn} variant="ghost" size="md" onPress={() => go(signInRef, { pathname: '/sign-in', params: { role: 'caregiver' } })} />
+              </View>
+            </Appear>
+          ) : null}
+          {role === 'elder' ? (
+            <Appear key="elder" style={s.actions}>
+              <AppText variant="secondary" color={t.c.muted}>
+                {R.elderNote}
+              </AppText>
+              <View ref={signInRef} collapsable={false}>
+                <Button label={S.signIn} variant="primary" size="elder" trailing="arrow" haptic onPress={() => go(signInRef, { pathname: '/sign-in', params: { role: 'elder' } })} />
+              </View>
+            </Appear>
+          ) : null}
         </Appear>
       </View>
     </ScreenContainer>
+  );
+}
+
+/** Opción grande del selector de rol (radio accesible). */
+function RoleCard({ icon, title, detail, selected, onPress }: { icon: IconName; title: string; detail: string; selected: boolean; onPress: () => void }) {
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <PressableScale
+      haptic
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={`${title}. ${detail}`}
+      style={[s.role, selected && s.roleOn]}
+    >
+      <View style={[s.roleIcon, { backgroundColor: selected ? (t.hc ? t.c.text : t.c.mintStrong) : t.c.surface2 }]}>
+        <Icon name={icon} color={selected ? (t.hc ? t.c.bg : '#FFFFFF') : t.c.text} size={26} />
+      </View>
+      <View style={s.flex}>
+        <AppText variant="bodyStrong">{title}</AppText>
+        <AppText variant="caption" color={t.c.muted}>
+          {detail}
+        </AppText>
+      </View>
+      <View style={[s.radio, selected && s.radioOn]}>{selected ? <View style={s.radioDot} /> : null}</View>
+    </PressableScale>
   );
 }
 
@@ -228,5 +280,22 @@ const useStyles = makeStyles((t) =>
     titleRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: type.display.fontSize * 0.28 },
     actions: { gap: spacing.sm, marginTop: spacing.xs },
     cta: { minHeight: touch.primary + 4 },
+    flex: { flex: 1 },
+    roles: { gap: spacing.sm },
+    role: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      minHeight: touch.elderMin + 12,
+      padding: spacing.md,
+      borderRadius: radius.card,
+      backgroundColor: t.c.surface,
+      ...t.hairline,
+    },
+    roleOn: { borderWidth: 2, borderColor: t.hc ? t.c.text : t.c.mintStrong },
+    roleIcon: { width: 48, height: 48, borderRadius: radius.icon, alignItems: 'center', justifyContent: 'center' },
+    radio: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: t.hc ? t.c.text : t.c.muted, alignItems: 'center', justifyContent: 'center' },
+    radioOn: { borderColor: t.hc ? t.c.text : t.c.mintStrong },
+    radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: t.hc ? t.c.text : t.c.mintStrong },
   }),
 );

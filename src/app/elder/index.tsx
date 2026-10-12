@@ -1,8 +1,57 @@
+import { useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
+
+import { AppText } from '@/components/app-text';
+import { Button } from '@/components/button';
+import { BuddyRobot } from '@/components/robot';
+import { ScreenContainer } from '@/components/screen-container';
 import { ElderScreen } from '@/features/elder/screen';
 import { useDb } from '@/infrastructure/local/db';
+import { strings } from '@/i18n';
+import { sessionActions, useSession } from '@/state/session';
+import { spacing } from '@/theme';
+import { useTheme } from '@/theme/provider';
 
-/** Pantalla del adulto mayor mientras el teléfono está entregado (sin pestañas, sin ajustes, sin chat). */
+/**
+ * Pantalla del adulto mayor (sin pestañas, sin ajustes, sin chat). Con su propio acceso muestra SU perfil; con el
+ * teléfono entregado, el de la entrega. Si en este celular aún no hay datos de su perfil, lo dice con honestidad.
+ */
 export default function ElderHome() {
-  const elderId = useDb((x) => x.handoff?.elderId ?? null);
-  return elderId ? <ElderScreen elderId={elderId} /> : null;
+  const user = useSession((s) => s.user);
+  const handoffElder = useDb((x) => x.handoff?.elderId ?? null);
+  const elderId = user?.role === 'elder' ? (user.elderId ?? null) : handoffElder;
+  const exists = useDb((x) => (elderId ? !!x.elders[elderId] && !x.elders[elderId].deletedAt : false));
+  if (elderId && exists) return <ElderScreen elderId={elderId} />;
+  return user?.role === 'elder' ? <NoDataYet /> : null;
 }
+
+function NoDataYet() {
+  const router = useRouter();
+  const t = useTheme();
+  const E = strings.elder;
+  return (
+    <ScreenContainer>
+      <View style={styles.body}>
+        <BuddyRobot size={140} mood="think" />
+        <AppText variant="h1" align="center">
+          {E.noDataTitle}
+        </AppText>
+        <AppText variant="body" color={t.c.muted} align="center">
+          {E.noDataBody}
+        </AppText>
+        <Button
+          label={E.signOut}
+          variant="tonal"
+          tone="mint"
+          size="elder"
+          onPress={async () => {
+            await sessionActions.signOut();
+            router.replace('/');
+          }}
+        />
+      </View>
+    </ScreenContainer>
+  );
+}
+
+const styles = StyleSheet.create({ body: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.xxl } });

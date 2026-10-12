@@ -1,37 +1,29 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
 import { Button } from '@/components/button';
-import { Icon, type IconName } from '@/components/icon';
-import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
+import { SCENES } from '@/features/onboarding/scenes';
 import { strings } from '@/i18n';
-import { motion, radius, spacing, type Domain } from '@/theme';
+import { motion, radius, spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 
 const S = strings.onboarding;
-const ART: { domain: Domain; icon: IconName; align: 'flex-start' | 'center' | 'flex-end' }[] = [
-  { domain: 'activity', icon: 'users', align: 'flex-end' },
-  { domain: 'medication', icon: 'bell', align: 'flex-start' },
-  { domain: 'mood', icon: 'chart', align: 'flex-end' },
-];
 
-/** Tres pasos de la idea central. El robot viaja en arco entre diapositivas. */
+/** Seis diapositivas que explican qué es BUDDY, cada una con su escena animada; al final, crear cuenta o entrar. */
 export default function Onboarding() {
   const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const { height } = useWindowDimensions();
+  const reduce = useReducedMotion();
   const [i, setI] = useState(0);
   const slide = S.slides[i];
-  const art = ART[i];
-  const d = t.domains[art.domain];
+  const Scene = SCENES[i];
   const last = i === S.slides.length - 1;
   const finish = () => router.replace('/sign-up');
 
@@ -53,30 +45,39 @@ export default function Onboarding() {
       footer={
         <View style={s.footer}>
           <Dots count={S.slides.length} index={i} />
-          <Button label={last ? S.start : strings.common.continue} trailing="arrow" variant={last ? 'coral' : 'primary'} haptic onPress={() => (last ? finish() : setI(i + 1))} />
+          {last ? (
+            <>
+              <Button label={S.start} trailing="arrow" variant="coral" haptic onPress={finish} />
+              <Button label={S.signIn} variant="ghost" size="md" onPress={() => router.replace({ pathname: '/sign-in', params: { role: 'caregiver' } })} />
+            </>
+          ) : (
+            <Button label={strings.common.continue} trailing="arrow" haptic onPress={() => setI(i + 1)} />
+          )}
         </View>
       }
     >
-      <View style={[s.art, { minHeight: Math.max(260, height * 0.42) }]}>
-        {t.hc ? null : <LinearGradient colors={d.gradient} start={{ x: 0, y: 0 }} end={{ x: 0.3, y: 1 }} style={[StyleSheet.absoluteFill, s.artFill]} />}
-        <Appear key={`icon-${i}`} style={s.iconWrap}>
-          <View style={[s.iconBubble, { backgroundColor: t.hc ? t.c.bg : t.c.surface }]}>
-            <Icon name={art.icon} size={44} color={t.hc ? t.c.text : d.accent} strokeWidth={2} />
-          </View>
-        </Appear>
-        <View style={[s.perchRow, { justifyContent: art.align }]}>
-          <BuddyRobot key={i} size={120} mood={i === 1 ? 'wave' : i === 2 ? 'look' : 'idle'} />
-        </View>
-      </View>
+      <Animated.View key={`scene-${i}`} entering={reduce ? undefined : FadeIn.duration(260)} exiting={reduce ? undefined : FadeOut.duration(160)} style={s.art}>
+        <Scene />
+      </Animated.View>
 
       <Appear key={`copy-${i}`} style={s.copy}>
         <AppText variant="eyebrow" color={t.ink.mint}>
           {slide.eyebrow}
         </AppText>
-        <AppText variant="display">{slide.title}</AppText>
+        <AppText variant="display" accessibilityRole="header">
+          {slide.title}
+        </AppText>
         <AppText variant="body" color={t.c.muted}>
           {slide.body}
         </AppText>
+        {i === 2 ? (
+          <View style={s.key}>
+            <AppText variant="secondaryStrong">{S.scanKey}</AppText>
+            <View style={s.soon}>
+              <AppText variant="meta" color={t.ink.lavender}>{`${S.pharmaSoon}: ${strings.common.soon}`}</AppText>
+            </View>
+          </View>
+        ) : null}
       </Appear>
     </ScreenContainer>
   );
@@ -105,26 +106,17 @@ function Dot({ on }: { on: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 26, paddingVertical: spacing.xs },
-  dot: { width: 10, height: 10, borderRadius: 5 },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 22, paddingVertical: spacing.xs },
+  dot: { width: 9, height: 9, borderRadius: 5 },
 });
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
     skip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.xs },
-    art: {
-      marginHorizontal: -spacing.screen,
-      marginTop: spacing.xs,
-      paddingHorizontal: spacing.screen,
-      paddingVertical: spacing.xl,
-      justifyContent: 'space-between',
-      ...(t.hc ? { borderTopWidth: 2, borderBottomWidth: 2, borderColor: t.c.text } : {}),
-    },
-    artFill: { borderBottomLeftRadius: radius.hero, borderBottomRightRadius: radius.hero },
-    iconWrap: { alignItems: 'center' },
-    iconBubble: { width: 96, height: 96, borderRadius: 32, alignItems: 'center', justifyContent: 'center', ...t.shadow.elevated, ...(t.hc ? t.hairline : {}) },
-    perchRow: { flexDirection: 'row' },
-    copy: { gap: spacing.sm, marginTop: spacing.section },
-    footer: { gap: spacing.md },
+    art: { marginTop: spacing.xs },
+    copy: { gap: spacing.sm, marginTop: spacing.lg },
+    key: { gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, backgroundColor: t.c.surface, ...t.hairline },
+    soon: { alignSelf: 'flex-start', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: t.c.lavenderPale, ...t.hairline },
+    footer: { gap: spacing.sm },
   }),
 );

@@ -8,14 +8,15 @@ import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
-import { ConfirmDialog, useToast } from '@/components/feedback';
+import { BottomSheet, ConfirmDialog, useToast } from '@/components/feedback';
 import { Chip, Field, Segmented, Stepper } from '@/components/forms';
 import { Icon } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
-import { ALERT_KINDS, type ElderAppearance } from '@/domain/types';
+import { ALERT_KINDS, type Elder, type ElderAppearance } from '@/domain/types';
+import { ElderAccessForm } from '@/features/setup/access';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
@@ -209,6 +210,7 @@ function People() {
   const s = useStyles();
   const elders = useElders();
   const active = useActiveElder();
+  const [accessFor, setAccessFor] = useState<Elder | null>(null);
   return (
     <View style={s.stack}>
       {elders.map((e) => (
@@ -220,8 +222,12 @@ function People() {
           </View>
           {e.id !== active?.id ? <Button label={S.makeActive} size="sm" variant="ghost" onPress={() => elderActions.setActive(e.id)} /> : null}
           <Button label={strings.common.edit} size="sm" variant="ghost" onPress={() => router.push({ pathname: '/setup', params: { elderId: e.id } })} />
+          {e.setupDone ? <Button label={strings.setup.access.manage} icon="lock" size="sm" variant="ghost" onPress={() => setAccessFor(e)} /> : null}
         </Card>
       ))}
+      <BottomSheet visible={!!accessFor} onClose={() => setAccessFor(null)} title={accessFor ? strings.setup.access.title(accessFor.firstName) : ''}>
+        {accessFor ? <ElderAccessForm elder={accessFor} /> : null}
+      </BottomSheet>
       <Button label={S.addPerson} icon="plus" variant="tonal" tone="mint" onPress={() => router.push({ pathname: '/setup', params: { new: '1' } })} />
     </View>
   );

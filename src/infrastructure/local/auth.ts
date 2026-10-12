@@ -7,10 +7,12 @@
  * - Cada cuenta en su propia clave `buddy.account.<sha256(correo)>`; varias cuentas por dispositivo.
  * - Bloqueo tras 5 intentos fallidos: 30 s, y se duplica hasta 15 min.
  * - Los mensajes de error no revelan si el correo existe.
+ * - Cuentas del adulto mayor (rol `elder`): las crea su administrador con `createManagedAccount`, quedan vinculadas a
+ *   su `elderId` (índice `buddy.managed.<elderId>`) y el administrador puede restablecerlas o revocarlas.
  */
 import * as Crypto from 'expo-crypto';
 
-import { AuthError, type AuthService, type AuthUser } from '@/domain/auth';
+import { AuthError, roleOf, type AuthService, type AuthUser } from '@/domain/auth';
 import { isAcceptablePassword, isValidEmail, normalizeEmail } from '@/domain/validation';
 import { strings } from '@/i18n';
 
@@ -24,6 +26,7 @@ const SESSION_KEY = 'buddy.session';
 const INDEX_KEY = 'buddy.accounts';
 
 interface StoredAccount extends AuthUser {
+  revoked?: boolean;
   salt: string;
   hash: string;
   iterations: number;
@@ -68,7 +71,38 @@ async function writeAccount(acc: StoredAccount) {
   await secureStorage.set(await accountKey(acc.email), JSON.stringify(acc));
 }
 
-const publicUser = ({ id, email, name, createdAt }: AuthUser): AuthUser => ({ id, email, name, createdAt });
+const publicUser = ({ id, email, name, createdAt, role, ownerId, elderId }: AuthUser): AuthUser => ({
+  id,
+  email,
+  name,
+  createdAt,
+  role: role ?? 'caregiver',
+  ownerId: ownerId ?? null,
+  elderId: elderId ?? null,
+});
+
+const managedKey = (elderId: string) => `buddy.managed.${elderId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+
+async function newStored(input: { name: string; email: string; password: string } & Partial<AuthUser>): Promise<StoredAccount> {
+  if (!isValidEmail(input.email)) throw new AuthError('invalid_email', e.email);
+  if (!isAcceptablePassword(input.password)) throw new AuthError('weak_password', e.weak);
+  if (await readAccount(input.email)) throw new AuthError('email_taken', e.taken);
+  const salt = await newSalt();
+  return {
+    id: Crypto.randomUUID(),
+    email: normalizeEmail(input.email),
+    name: input.name.trim(),
+    createdAt: new Date().toISOString(),
+    role: input.role ?? 'caregiver',
+    ownerId: input.ownerId ?? null,
+    elderId: input.elderId ?? null,
+    salt,
+    hash: await hashSecret(input.password, salt),
+    iterations: ITERATIONS,
+    failedAttempts: 0,
+    lockedUntil: null,
+  };
+}
 
 export function createLocalAuthProvider(): AuthService {
   const listeners = new Set<(u: AuthUser | null) => void>();
@@ -105,21 +139,7 @@ export function createLocalAuthProvider(): AuthService {
     kind: 'local',
 
     async signUp({ name, email, password }) {
-      if (!isValidEmail(email)) throw new AuthError('invalid_email', e.email);
-      if (!isAcceptablePassword(password)) throw new AuthError('weak_password', e.weak);
-      if (await readAccount(email)) throw new AuthError('email_taken', e.taken);
-      const salt = await newSalt();
-      const acc: StoredAccount = {
-        id: Crypto.randomUUID(),
-        email: normalizeEmail(email),
-        name: name.trim(),
-        createdAt: new Date().toISOString(),
-        salt,
-        hash: await hashSecret(password, salt),
-        iterations: ITERATIONS,
-        failedAttempts: 0,
-        lockedUntil: null,
-      };
+      const acc = await newStored({ name, email, password, role: 'caregiver' });
       await writeAccount(acc);
       const index = JSON.parse((await secureStorage.get(INDEX_KEY)) ?? '[]') as string[];
       await secureStorage.set(INDEX_KEY, JSON.stringify([...new Set([...index, acc.id])]));
@@ -127,8 +147,10 @@ export function createLocalAuthProvider(): AuthService {
       return publicUser(acc);
     },
 
-    async signIn({ email, password }) {
+    async signIn({ email, password, role }) {
       const acc = await verify(email, password);
+      if (role && roleOf(acc) !== role) throw new AuthError('wrong_role', roleOf(acc) === 'elder' ? e.wrongRoleElder : e.wrongRoleAdmin);
+      if (acc.revoked) throw new AuthError('revoked', e.revoked);
       await setSession(acc);
       return publicUser(acc);
     },
@@ -169,5 +191,47 @@ export function createLocalAuthProvider(): AuthService {
       await secureStorage.set(INDEX_KEY, JSON.stringify(index.filter((id) => id !== session.id)));
       await setSession(null);
     },
+
+    async createManagedAccount({ ownerId, elderId, name, email, password }) {
+      await requireOwner(ownerId);
+      if (await secureStorage.get(managedKey(elderId))) throw new AuthError('email_taken', e.taken);
+      const acc = await newStored({ name, email, password, role: 'elder', ownerId, elderId });
+      await writeAccount(acc);
+      await secureStorage.set(managedKey(elderId), acc.email);
+      return publicUser(acc);
+    },
+
+    async resetManagedPassword({ ownerId, elderId, password }) {
+      const acc = await managed(ownerId, elderId);
+      if (!isAcceptablePassword(password)) throw new AuthError('weak_password', e.weak);
+      const salt = await newSalt();
+      await writeAccount({ ...acc, salt, hash: await hashSecret(password, salt), iterations: ITERATIONS, revoked: false, failedAttempts: 0, lockedUntil: null });
+    },
+
+    async revokeManagedAccount({ ownerId, elderId }) {
+      const acc = await managed(ownerId, elderId);
+      await writeAccount({ ...acc, revoked: true });
+    },
+
+    async managedAccount({ ownerId, elderId }) {
+      const email = await secureStorage.get(managedKey(elderId));
+      const acc = email ? await readAccount(email) : null;
+      return acc && acc.ownerId === ownerId ? { email: acc.email, revoked: !!acc.revoked } : null;
+    },
   };
+
+  /** Solo el administrador con sesión iniciada gestiona las cuentas de sus personas. */
+  async function requireOwner(ownerId: string) {
+    const raw = await secureStorage.get(SESSION_KEY);
+    const session = raw ? (JSON.parse(raw) as AuthUser) : null;
+    if (!session || roleOf(session) !== 'caregiver' || session.id !== ownerId) throw new AuthError('forbidden', e.forbidden);
+  }
+
+  async function managed(ownerId: string, elderId: string): Promise<StoredAccount> {
+    await requireOwner(ownerId);
+    const email = await secureStorage.get(managedKey(elderId));
+    const acc = email ? await readAccount(email) : null;
+    if (!acc || acc.ownerId !== ownerId) throw new AuthError('invalid_credentials', e.invalid);
+    return acc;
+  }
 }

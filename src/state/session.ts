@@ -4,8 +4,8 @@
  */
 import { create } from 'zustand';
 
-import { AuthError, type AuthUser } from '@/domain/auth';
-import { ALERT_KINDS, type AccountSettings } from '@/domain/types';
+import { AuthError, dataOwnerId, roleOf, type AuthUser } from '@/domain/auth';
+import { ALERT_KINDS, type AccountSettings, type Role } from '@/domain/types';
 import { getAuthService, syncIfRemote } from '@/infrastructure';
 import { db } from '@/infrastructure/local/db';
 
@@ -39,9 +39,10 @@ export function ensureAccount(user: AuthUser): AccountSettings {
 }
 
 function setUser(user: AuthUser | null) {
-  if (user) ensureAccount(user);
+  // Los ajustes de cuenta (PIN, persona activa, avisos) son del administrador; el adulto mayor usa los de su familiar.
+  if (user && roleOf(user) === 'caregiver') ensureAccount(user);
   useSession.setState({ status: user ? 'signedIn' : 'signedOut', user });
-  if (user) syncIfRemote(user.id).catch(() => undefined);
+  if (user) syncIfRemote(dataOwnerId(user)).catch(() => undefined);
 }
 
 let started = false;
@@ -61,13 +62,19 @@ export async function startSession() {
 
 export const sessionActions = {
   signUp: (input: { name: string; email: string; password: string }) => getAuthService().signUp(input),
-  signIn: (input: { email: string; password: string }) => getAuthService().signIn(input),
+  signIn: (input: { email: string; password: string; role?: Role }) => getAuthService().signIn(input),
   signOut: async () => {
     db.setHandoff(null);
     await getAuthService().signOut();
   },
   resetPassword: (email: string) => getAuthService().resetPassword(email),
   updatePassword: (current: string, next: string) => getAuthService().updatePassword({ current, next }),
+  /** Acceso del adulto mayor creado por su administrador (correo y contraseña que el administrador define). */
+  createElderAccess: (input: { elderId: string; name: string; email: string; password: string }) =>
+    getAuthService().createManagedAccount({ ownerId: currentUserId(), ...input }),
+  resetElderAccess: (elderId: string, password: string) => getAuthService().resetManagedPassword({ ownerId: currentUserId(), elderId, password }),
+  revokeElderAccess: (elderId: string) => getAuthService().revokeManagedAccount({ ownerId: currentUserId(), elderId }),
+  elderAccess: (elderId: string) => getAuthService().managedAccount({ ownerId: currentUserId(), elderId }),
   /** Verifica la contraseña, elimina la cuenta y borra TODOS sus datos locales. */
   deleteAccount: async (password: string) => {
     const user = useSession.getState().user;
@@ -77,8 +84,22 @@ export const sessionActions = {
   },
 };
 
+function sessionUser(): AuthUser {
+  const user = useSession.getState().user;
+  if (!user) throw new Error('Se requiere una sesión iniciada.');
+  return user;
+}
+
+/** Cuenta dueña de los datos (el administrador, también en la sesión del adulto mayor). */
 export function currentUserId(): string {
-  const id = useSession.getState().user?.id;
-  if (!id) throw new Error('Se requiere una sesión iniciada.');
-  return id;
+  return dataOwnerId(sessionUser());
+}
+
+/** Quién hace el cambio (autor real, para el registro de cambios). */
+export function currentAuthorId(): string {
+  return sessionUser().id;
+}
+
+export function currentRole(): Role {
+  return roleOf(useSession.getState().user);
 }

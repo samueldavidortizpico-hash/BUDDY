@@ -17,7 +17,7 @@ import { formatClock, toISODate } from '@/utils/dates';
 
 import { activeElderId, actor, contactActions, routineActions } from './actions';
 import { medicationActions } from './care';
-import { currentUserId } from './session';
+import { currentRole, currentUserId } from './session';
 
 export interface Proposal {
   actions: AssistantAction[];
@@ -113,7 +113,7 @@ export function describe(a: AssistantAction): string {
 }
 
 export function execute(a: AssistantAction): ExecResult {
-  if (!can('caregiver', a.type)) return { ok: false, summary: 'No tienes permiso para esta acción.' };
+  if (!can(currentRole(), a.type)) return { ok: false, summary: 'No tienes permiso para esta acción.' };
   const elderId = elderOrThrow();
   switch (a.type) {
     case 'add_medication': {

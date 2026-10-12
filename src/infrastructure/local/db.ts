@@ -129,8 +129,11 @@ const now = () => new Date().toISOString();
 export type NewRecord<K extends CollectionName> = Omit<Collections[K], keyof SyncMeta> & { id?: string };
 
 export interface Actor {
+  /** Cuenta dueña del dato (administrador). */
   userId: string;
   elderId: string | null;
+  /** Autor real del cambio si no es el dueño (el adulto mayor con su propio acceso). */
+  by?: string;
 }
 
 export const db = {
@@ -152,7 +155,7 @@ export const db = {
       id: data.id ?? newId(),
       ownerUserId: actor.userId,
       elderId: actor.elderId,
-      createdBy: actor.userId,
+      createdBy: actor.by ?? actor.userId,
       createdAt: t,
       updatedAt: t,
       deletedAt: null,
