@@ -61,9 +61,22 @@ describe('elderNow', () => {
     expect(elderNow(base({ meals: [meal], mealLogs: [{ ...meta, id: 'l', mealId: 'b', date: '2026-10-11', answer: 'yes' }] })).now.kind).toBe('done');
   });
 
-  it('agua: pide un vaso si va por detrás de las horas programadas', () => {
+  it('agua: pide un vaso si no tomó ninguno desde la última hora programada', () => {
     const water = { ...meta, id: 'w', glasses: 8, times: ['08:00', '09:30', '11:00'] };
-    expect(elderNow(base({ water, glassesToday: 1 })).now).toEqual({ kind: 'water', glasses: 1, goal: 8 });
-    expect(elderNow(base({ water, glassesToday: 2 })).now.kind).toBe('done');
+    expect(elderNow(base({ water, glassesToday: 1, lastGlassAt: at(8, 15).toISOString() })).now).toEqual({ kind: 'water', glasses: 1, goal: 8 });
+    expect(elderNow(base({ water, glassesToday: 2, lastGlassAt: at(9, 40).toISOString() })).now.kind).toBe('done');
+  });
+
+  // V3.0 (reporte del dueño): a última hora el aviso exigía registrar TODOS los vasos atrasados (hasta 8) para irse.
+  // Un vaso responde el aviso vigente; el siguiente aparece a la siguiente hora programada.
+  it('agua: un solo vaso cierra el aviso aunque vaya atrasado frente a la meta', () => {
+    const water = { ...meta, id: 'w', glasses: 8, times: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '19:00', '20:00'] };
+    const late = at(20, 30);
+    expect(elderNow(base({ now: late, water, glassesToday: 0 })).now.kind).toBe('water');
+    expect(elderNow(base({ now: late, water, glassesToday: 1, lastGlassAt: at(20, 20).toISOString() })).now.kind).toBe('done');
+    // Un vaso de antes de la última hora no responde el aviso de las 8:00 p. m.
+    expect(elderNow(base({ now: late, water, glassesToday: 1, lastGlassAt: at(19, 10).toISOString() })).now.kind).toBe('water');
+    // Meta cumplida: no se pide más.
+    expect(elderNow(base({ now: late, water, glassesToday: 8, lastGlassAt: at(12, 0).toISOString() })).now.kind).toBe('done');
   });
 });

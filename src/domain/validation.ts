@@ -24,6 +24,18 @@ export function isAcceptablePassword(pw: string): boolean {
   return pw.length >= 8 && passwordStrength(pw) >= 2;
 }
 
+/**
+ * Contraseña temporal legible para dictar por teléfono ("Kp7m-r4tw-9xh2"): sin letras o números que se confunden
+ * (0/O, 1/l/I) y siempre aceptable (mayúscula, minúscula, número y guiones). Recibe 12 bytes aleatorios.
+ */
+export function tempPassword(bytes: Uint8Array): string {
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const digits = '23456789';
+  const all = lower + digits;
+  const c = Array.from(bytes.slice(0, 12), (b, i) => (i === 0 ? lower.toUpperCase()[b % lower.length] : i === 2 ? digits[b % digits.length] : all[b % all.length]));
+  return `${c.slice(0, 4).join('')}-${c.slice(4, 8).join('')}-${c.slice(8, 12).join('')}`;
+}
+
 /** Deja solo dígitos y quita el indicativo +57. */
 export function digitsOnly(phone: string): string {
   const d = phone.replace(/\D/g, '');

@@ -65,10 +65,18 @@ export async function startSession() {
 
 export const sessionActions = {
   signUp: (input: { name: string; email: string; password: string }) => getAuthService().signUp(input),
-  signIn: (input: { email: string; password: string; role?: Role }) => getAuthService().signIn(input),
+  signIn: async (input: { email: string; password: string; role?: Role }) => {
+    const user = await getAuthService().signIn(input);
+    // Igual que al salir: la sesión queda fijada aunque el oyente del proveedor aún no haya respondido.
+    if (useSession.getState().user?.id !== user.id) setUser(user);
+    return user;
+  },
   signOut: async () => {
     db.setHandoff(null);
     await getAuthService().signOut();
+    // Sin esperar al oyente del proveedor: al volver a la entrada, la sesión ya está cerrada (si no, la entrada
+    // redirigía de nuevo a la pantalla del adulto mayor).
+    setUser(null);
   },
   resetPassword: (email: string) => getAuthService().resetPassword(email),
   updatePassword: (current: string, next: string) => getAuthService().updatePassword({ current, next }),
@@ -77,6 +85,7 @@ export const sessionActions = {
     getAuthService().createManagedAccount({ ownerId: currentUserId(), ...input }),
   resetElderAccess: (elderId: string, password: string) => getAuthService().resetManagedPassword({ ownerId: currentUserId(), elderId, password }),
   revokeElderAccess: (elderId: string) => getAuthService().revokeManagedAccount({ ownerId: currentUserId(), elderId }),
+  changeElderEmail: (elderId: string, email: string) => getAuthService().changeManagedEmail({ ownerId: currentUserId(), elderId, email }),
   elderAccess: (elderId: string) => getAuthService().managedAccount({ ownerId: currentUserId(), elderId }),
   /** Verifica la contraseña, elimina la cuenta y borra TODOS sus datos locales. */
   deleteAccount: async (password: string) => {

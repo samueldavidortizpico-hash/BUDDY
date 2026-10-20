@@ -4,7 +4,7 @@
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 
-import Buddy from '@/app/(caregiver)/(tabs)/buddy';
+import Buddy from '@/app/(caregiver)/buddy';
 import { db } from '@/infrastructure/local/db';
 import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
 

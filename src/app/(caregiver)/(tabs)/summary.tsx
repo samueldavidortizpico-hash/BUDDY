@@ -54,6 +54,7 @@ export default function Summary() {
             <AppText variant="h1">{strings.brand.name}</AppText>
           )}
         </View>
+        {ready ? <IconButton icon="sparkle" label={strings.brand.name} showLabel={false} onPress={() => router.push('/buddy' as Href)} /> : null}
         <IconButton icon="bell" label={S.alerts} showLabel={false} badge={unread} onPress={() => router.push('/alerts' as Href)} />
       </View>
 

@@ -54,7 +54,8 @@ it('valid handoff enters elder and correct PIN returns to summary without a redi
   handoffActions.start(elderId);
   const routerScreen = renderRouter(routes, { initialUrl: '/summary' });
   await waitFor(() => expect(routerScreen.getPathname()).toBe('/elder'));
-  fireEvent.press(screen.getByRole('button', { name: strings.elder.exit }));
+  fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
+  fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.enterAdmin }));
   await waitFor(() => expect(routerScreen.getPathname()).toBe('/elder/unlock'));
   for (const digit of '1234') fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(digit) }));
   await waitFor(() => expect(routerScreen.getPathname()).toBe('/summary'));

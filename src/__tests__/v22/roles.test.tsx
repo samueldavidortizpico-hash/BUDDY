@@ -2,7 +2,7 @@
  * Paso 2 (v2.2): cuentas y roles. Matriz de permisos, cuentas del adulto mayor creadas por su administrador,
  * dos cuentas en un mismo dispositivo con datos aislados, y acceso del administrador con PIN.
  */
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { act, cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
 import { Text } from 'react-native';
 
@@ -132,11 +132,12 @@ describe('navegación por rol', () => {
     expect(screen.getByRole('button', { name: strings.welcome.createAccount })).toBeTruthy();
   });
 
-  it('mantener presionado el saludo pide el PIN y ofrece cambiar de usuario o entrar como administrador', async () => {
+  it('"Opciones" (visible) → "Entrar como administrador" pide el PIN con límite de intentos y abre el inicio del administrador', async () => {
     await handoffActions.setPin('1234');
     useSession.setState({ status: 'signedIn', user: elderSession() });
-    renderRouter(routes, { initialUrl: '/elder' });
-    fireEvent(screen.getByRole('header', { name: /Rosa/ }), 'longPress');
+    const r = renderRouter(routes, { initialUrl: '/elder' });
+    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
+    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.enterAdmin }));
     await screen.findByText(strings.adminAccess.pinBody);
     for (const d of '9999') fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(d) }));
     await screen.findByText(strings.pin.wrong(4));
@@ -145,7 +146,75 @@ describe('navegación por rol', () => {
       jest.advanceTimersByTime(1000);
     });
     for (const d of '1234') fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(d) }));
-    expect(await screen.findByRole('button', { name: strings.adminAccess.switchUser })).toBeTruthy();
-    expect(screen.getByRole('button', { name: strings.adminAccess.enterAdmin })).toBeTruthy();
+    await waitFor(() => expect(r.getPathname()).toBe('/sign-in'));
+    expect(useSession.getState().user).toBeNull();
+  });
+
+  it('"Opciones" → "Cerrar sesión" confirma con texto claro y vuelve a la elección de rol (sin PIN)', async () => {
+    useSession.setState({ status: 'signedIn', user: elderSession() });
+    const r = renderRouter(routes, { initialUrl: '/elder' });
+    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
+    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.signOut }));
+    expect(screen.getByText(strings.adminAccess.signOutBody)).toBeTruthy();
+    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.signOutConfirm }));
+    await waitFor(() => expect(r.getPathname()).toBe('/'));
+    expect(useSession.getState().user).toBeNull();
+    expect(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.admin) })).toBeTruthy();
+  });
+});
+
+describe('extremo a extremo: entrar como adulto mayor, salir y entrar como administrador (V3.0)', () => {
+  function TestRoot() {
+    return (
+      <RenderProviders>
+        <Stack screenOptions={{ headerShown: false }} />
+      </RenderProviders>
+    );
+  }
+  const routes = {
+    _layout: TestRoot,
+    index: Welcome,
+    'sign-in': SignIn,
+    '(caregiver)/_layout': CaregiverLayout,
+    '(caregiver)/summary': () => <Text>Resumen de prueba</Text>,
+    'elder/_layout': ElderLayout,
+    'elder/index': ElderHome,
+  };
+  afterEach(() => cleanup());
+
+  it('no queda atrapado en la pantalla del adulto mayor', async () => {
+    const auth = getAuthService();
+    const elderId = (await seedRenderData()).id;
+    const adminEmail = unique('admin');
+    const admin = await auth.signUp({ name: 'Laura', email: adminEmail, password: 'Segura123' });
+    useSession.setState({ status: 'signedIn', user: admin });
+    db.putMany('elders', [{ ...db.get('elders', elderId)!, ownerUserId: admin.id }]);
+    const elderEmail = unique('rosa');
+    await sessionActions.createElderAccess({ elderId, name: 'Rosa', email: elderEmail, password: 'Rosa2026!' });
+    await sessionActions.signOut();
+
+    // 1. Entra el adulto mayor con su acceso: solo ve su pantalla.
+    useSession.setState({ status: 'signedIn', user: await sessionActions.signIn({ email: elderEmail, password: 'Rosa2026!', role: 'elder' }) });
+    const r = renderRouter(routes, { initialUrl: '/summary' });
+    await waitFor(() => expect(r.getPathname()).toBe('/elder'));
+
+    // 2. Sale con "Opciones" → "Cerrar sesión".
+    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
+    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.signOut }));
+    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.signOutConfirm }));
+    await waitFor(() => expect(r.getPathname()).toBe('/'));
+
+    // 3. Entra el administrador desde la pantalla de entrada, con su correo y contraseña.
+    fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.admin) }));
+    expect(screen.getByRole('button', { name: strings.welcome.signIn })).toBeTruthy();
+    // El botón navega tras el vuelo del robot, que mide con measureInWindow (en Jest no responde): se abre la ruta
+    // a la que lleva ese botón.
+    act(() => router.push({ pathname: '/sign-in', params: { role: 'caregiver' } }));
+    await waitFor(() => expect(r.getPathname()).toBe('/sign-in'));
+    fireEvent.changeText(screen.getByLabelText(strings.auth.email), adminEmail);
+    fireEvent.changeText(screen.getByLabelText(strings.auth.password), 'Segura123');
+    fireEvent.press(screen.getByRole('button', { name: strings.auth.enter }));
+    await waitFor(() => expect(useSession.getState().user?.role ?? 'caregiver').toBe('caregiver'));
+    await waitFor(() => expect(r.getPathname()).toBe('/summary'));
   });
 });

@@ -13,7 +13,6 @@ const ROOTS = new Set<string>([
   '(auth)/index.tsx',
   '(caregiver)/(tabs)/summary.tsx',
   '(caregiver)/(tabs)/routine.tsx',
-  '(caregiver)/(tabs)/buddy.tsx',
   '(caregiver)/(tabs)/health.tsx',
   '(caregiver)/(tabs)/settings.tsx',
   'elder/index.tsx',

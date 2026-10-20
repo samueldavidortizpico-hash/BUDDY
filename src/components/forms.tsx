@@ -392,7 +392,9 @@ const useStyles = makeStyles((t) =>
       backgroundColor: t.c.surface,
     },
     multiBox: { alignItems: 'flex-start', paddingVertical: spacing.sm },
-    input: { flex: 1, fontFamily: 'Manrope_600SemiBold', minHeight: touch.min, paddingVertical: spacing.xs },
+    // minWidth 0: en web un TextInput no se encoge por debajo de su ancho propio y con texto grande empujaba el ojo de
+    // la contraseña fuera de la pantalla.
+    input: { flex: 1, minWidth: 0, fontFamily: 'Manrope_600SemiBold', minHeight: touch.min, paddingVertical: spacing.xs },
     multi: { minHeight: 96, textAlignVertical: 'top' },
     eye: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center', marginRight: -spacing.xs },
     errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xxs },

@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
@@ -13,7 +13,7 @@ import { Icon } from '@/components/icon';
 import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
-import { AdminAccessSheet } from '@/features/elder/admin-access';
+import { ElderOptionsSheet } from '@/features/elder/admin-access';
 import { ElderLocation } from '@/features/elder/location';
 import { planNotifications } from '@/domain/notifications';
 import { estimateStock } from '@/domain/stock';
@@ -74,7 +74,6 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const { height } = useWindowDimensions();
   const userId = useUserId() ?? '';
   const caregiver = useSession((x) => (x.user?.role === 'elder' ? '' : (x.user?.name.split(' ')[0] ?? '')));
-  const role = useSession((x) => x.user?.role ?? 'caregiver');
   const testMode = useDb((x) => x.handoff?.mode === 'test' && x.handoff.elderId === elderId);
   const elder = useDb((x) => (elderId ? x.elders[elderId] : undefined));
   const scope = { elderId };
@@ -139,6 +138,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
     activityLogs: activityLogs.filter((l) => l.date === today),
     water,
     glassesToday: waterEntries.filter((w) => w.date === today).length,
+    lastGlassAt: waterEntries.filter((w) => w.date === today).reduce<string | null>((m, w) => (!m || w.at > m ? w.at : m), null),
     reminders,
     seenReminders: seen,
     appointments,
@@ -185,6 +185,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
             <Button
               label={strings.handoff.testExit}
               accessibilityHint={strings.handoff.testExitHint}
+              style={s.testExit}
               icon="close"
               size="sm"
               variant="white"
@@ -229,23 +230,10 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
           <AppText variant="eyebrow" color={t.ink.mint}>
             {formatLongDate(now)}
           </AppText>
-          <Pressable
-            disabled={preview}
-            delayLongPress={2000}
-            onLongPress={() => setAdmin(true)}
-            accessibilityRole="header"
-            accessibilityHint={preview ? undefined : strings.adminAccess.hint}
-            accessibilityActions={preview ? undefined : [{ name: 'longpress', label: strings.adminAccess.enterAdmin }]}
-            onAccessibilityAction={() => setAdmin(true)}
-          >
-            <AppText variant="h1" accessibilityRole="none">{E.greeting(greetingFor(now), elder.firstName)}</AppText>
-          </Pressable>
+          <AppText variant="h1" accessibilityRole="header">{E.greeting(greetingFor(now), elder.firstName)}</AppText>
         </View>
-        {preview || role === 'elder' || testMode ? null : (
-          <Pressable onPress={() => router.push('/elder/unlock')} accessibilityRole="button" accessibilityLabel={E.exit} hitSlop={6} style={s.lock}>
-            <Icon name="lock" color={t.c.muted} size={22} />
-          </Pressable>
-        )}
+        {/* Visible y etiquetado (antes: gesto oculto de 2 s). Pequeño para no competir con la tarea del momento. */}
+        {preview ? null : <Button label={strings.adminAccess.button} icon="menu" size="sm" variant="ghost" onPress={() => setAdmin(true)} style={s.options} />}
       </View>
 
       <ElderLocation elder={elder} caregiver={caregiver} preview={preview} />
@@ -288,7 +276,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
         )}
       </View>
 
-      {preview ? null : <AdminAccessSheet visible={admin} onClose={() => setAdmin(false)} />}
+      {preview ? null : <ElderOptionsSheet visible={admin} onClose={() => setAdmin(false)} />}
 
       <BottomSheet visible={help} onClose={() => setHelp(false)} title={E.helpTitle}>
         <AppText variant="body">{E.helpBody}</AppText>
@@ -509,7 +497,7 @@ const useStyles = makeStyles((t) =>
     tabular: { fontVariant: ['tabular-nums'] },
     round: { borderRadius: radius.hero },
     top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.section + spacing.xxl },
-    lock: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.surface, ...t.hairline },
+    options: { marginTop: -spacing.xs },
     card: { borderRadius: radius.hero, padding: spacing.xl, backgroundColor: t.c.surface },
     robot: { position: 'absolute', top: -72, right: -18 },
     cardBody: { gap: spacing.sm },
@@ -525,7 +513,9 @@ const useStyles = makeStyles((t) =>
     chip: { flexDirection: 'row', gap: spacing.sm, padding: spacing.sm, paddingRight: spacing.lg, borderRadius: radius.button, backgroundColor: t.c.surface, ...t.hairline, ...t.shadow.soft },
     bar: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
     help: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-    testBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.xs, paddingLeft: spacing.sm, marginBottom: spacing.xs, borderRadius: radius.pill, backgroundColor: t.hc ? t.c.text : '#5B4BD0' },
+    // Dos líneas: "Volver a administrador" no cabe junto al texto a 360 px con la letra grande del adulto mayor.
+    testBanner: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, padding: spacing.xs, paddingLeft: spacing.sm, marginBottom: spacing.xs, borderRadius: radius.card, backgroundColor: t.hc ? t.c.text : '#5B4BD0' },
+    testExit: { flexBasis: '100%' },
     helpBtn: { flexGrow: 1, flexBasis: 140, minHeight: touch.elderMin + 8 },
   }),
 );

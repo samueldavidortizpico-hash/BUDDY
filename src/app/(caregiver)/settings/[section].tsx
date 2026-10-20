@@ -8,15 +8,14 @@ import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
-import { BottomSheet, ConfirmDialog, useToast } from '@/components/feedback';
+import { ConfirmDialog, useToast } from '@/components/feedback';
 import { Chip, Field, Segmented, Stepper } from '@/components/forms';
 import { Icon } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
-import { ALERT_KINDS, type Elder, type ElderAppearance } from '@/domain/types';
-import { ElderAccessForm } from '@/features/setup/access';
+import { ALERT_KINDS, type ElderAppearance } from '@/domain/types';
 import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
 import { feedActions } from '@/state/feed';
 import { isHiddenToday, useLauncherStore } from '@/state/launcher';
@@ -307,24 +306,26 @@ function People() {
   const s = useStyles();
   const elders = useElders();
   const active = useActiveElder();
-  const [accessFor, setAccessFor] = useState<Elder | null>(null);
   return (
     <View style={s.stack}>
       {elders.map((e) => (
-        <Card key={e.id} style={s.personRow}>
-          <Icon name="user" color={t.ink.lavender} />
-          <View style={s.flex}>
-            <AppText variant="bodyStrong">{`${e.firstName} ${e.lastName}`.trim()}</AppText>
-            <AppText variant="caption" color={t.c.muted}>{e.id === active?.id ? S.active : e.setupDone ? '' : strings.summary.resume}</AppText>
+        // Nombre arriba y acciones debajo (con salto de línea): en una sola fila los botones aplastaban el nombre a
+        // una letra por línea y "Acceso" se salía de la pantalla (V3.0, docs/AUDITORIA_V3_0.md).
+        <Card key={e.id} style={s.stack}>
+          <View style={s.personHead}>
+            <Icon name="user" color={t.ink.lavender} />
+            <View style={s.flex}>
+              <AppText variant="bodyStrong">{`${e.firstName} ${e.lastName}`.trim()}</AppText>
+              {e.id === active?.id || !e.setupDone ? <AppText variant="caption" color={t.c.muted}>{e.id === active?.id ? S.active : strings.summary.resume}</AppText> : null}
+            </View>
           </View>
-          {e.id !== active?.id ? <Button label={S.makeActive} size="sm" variant="ghost" onPress={() => elderActions.setActive(e.id)} /> : null}
-          <Button label={strings.common.edit} size="sm" variant="ghost" onPress={() => router.push({ pathname: '/setup', params: { elderId: e.id } })} />
-          {e.setupDone ? <Button label={strings.setup.access.manage} icon="lock" size="sm" variant="ghost" onPress={() => setAccessFor(e)} /> : null}
+          <View style={s.wrapRow}>
+            {e.id !== active?.id ? <Button label={S.makeActive} size="sm" variant="ghost" onPress={() => elderActions.setActive(e.id)} /> : null}
+            <Button label={strings.common.edit} size="sm" variant="ghost" onPress={() => router.push({ pathname: '/setup', params: { elderId: e.id } })} />
+            {e.setupDone ? <Button label={strings.setup.access.manage} icon="lock" size="sm" variant="ghost" onPress={() => router.push({ pathname: '/settings/access/[elderId]', params: { elderId: e.id } } as unknown as Href)} /> : null}
+          </View>
         </Card>
       ))}
-      <BottomSheet visible={!!accessFor} onClose={() => setAccessFor(null)} title={accessFor ? strings.setup.access.title(accessFor.firstName) : ''}>
-        {accessFor ? <ElderAccessForm elder={accessFor} /> : null}
-      </BottomSheet>
       <Button label={S.addPerson} icon="plus" variant="tonal" tone="mint" onPress={() => router.push({ pathname: '/setup', params: { new: '1' } })} />
     </View>
   );
@@ -475,6 +476,8 @@ const useStyles = makeStyles((t) =>
     center: { alignItems: 'center', gap: spacing.xs },
     previewCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     personRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md },
+    personHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     switchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.timeRow, padding: spacing.md, borderRadius: radius.input, backgroundColor: t.c.surface, ...t.hairline },
   }),
 );

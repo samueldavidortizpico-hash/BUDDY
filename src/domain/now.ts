@@ -31,6 +31,8 @@ export interface ElderInput {
   activityLogs: ActivityLog[];
   water: WaterPlan | null;
   glassesToday: number;
+  /** Hora del último vaso registrado hoy: un vaso responde el aviso de agua vigente. */
+  lastGlassAt?: string | null;
   reminders: Reminder[];
   seenReminders: string[];
   /** Citas: se avisan el día anterior desde `apptNoticeTime` (18:00 por defecto) y el mismo día desde 3 h antes. */
@@ -89,9 +91,13 @@ export function elderNow(i: ElderInput): { now: ElderItem; later: { time: ClockT
     if (onDay(a.days, i.now) && due(a.time) && !i.activityLogs.some((l) => l.activityId === a.id && l.done)) queue.push({ kind: 'activity', activity: a });
   }
 
-  if (i.water) {
-    const shouldHave = i.water.times.filter((t) => toMinutes(t) <= nowMin).length;
-    if (i.glassesToday < Math.min(shouldHave, i.water.glasses)) queue.push({ kind: 'water', glasses: i.glassesToday, goal: i.water.glasses });
+  // Agua: un aviso por hora programada. Se responde con UN vaso tomado desde esa hora (antes se exigía ponerse al
+  // día con todos los vasos atrasados y el aviso no se iba hasta registrar hasta 8 seguidos).
+  if (i.water && i.glassesToday < i.water.glasses) {
+    const lastDue = i.water.times.map(toMinutes).filter((m) => m <= nowMin).sort((a, b) => b - a)[0];
+    const last = i.lastGlassAt ? new Date(i.lastGlassAt) : null;
+    const answered = last && localDate(last) === localDate(i.now) && last.getHours() * 60 + last.getMinutes() >= (lastDue ?? 0);
+    if (lastDue !== undefined && !answered) queue.push({ kind: 'water', glasses: i.glassesToday, goal: i.water.glasses });
   }
 
   const today = localDate(i.now);

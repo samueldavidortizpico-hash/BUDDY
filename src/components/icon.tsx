@@ -11,7 +11,7 @@ export type IconName =
   | 'mic' | 'phone' | 'plus' | 'search' | 'settings' | 'shield' | 'user' | 'warning'
   | 'sun' | 'moon' | 'contrast' | 'drop' | 'food' | 'walk' | 'eye' | 'eyeOff' | 'lock' | 'mail'
   | 'trash' | 'pause' | 'play' | 'watch' | 'image' | 'flash' | 'send' | 'sparkle' | 'minus'
-  | 'box' | 'list' | 'bed' | 'smile' | 'users' | 'logout' | 'download' | 'info' | 'pencil' | 'chart';
+  | 'box' | 'list' | 'bed' | 'smile' | 'users' | 'logout' | 'download' | 'info' | 'pencil' | 'chart' | 'copy';
 
 const PATHS: Record<IconName, ReactNode> = {
   arrow: (<><Path d="M5 12h14" /><Path d="m14 7 5 5-5 5" /></>),
@@ -60,6 +60,7 @@ const PATHS: Record<IconName, ReactNode> = {
   eye: (<><Path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><Circle cx="12" cy="12" r="3" /></>),
   eyeOff: (<><Path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-2.8 3.7M6.6 6.6C3.7 8.5 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6" /><Path d="m3 3 18 18M9.9 9.9a3 3 0 0 0 4.2 4.2" /></>),
   lock: (<><Rect x="4" y="11" width="16" height="10" rx="2.5" /><Path d="M8 11V7a4 4 0 0 1 8 0v4" /></>),
+  copy: (<><Rect x="8" y="8" width="13" height="13" rx="2.5" /><Path d="M16 8V5.5A2.5 2.5 0 0 0 13.5 3h-8A2.5 2.5 0 0 0 3 5.5v8A2.5 2.5 0 0 0 5.5 16H8" /></>),
   mail: (<><Rect x="3" y="5" width="18" height="14" rx="2.5" /><Path d="m3.5 7 8.5 6 8.5-6" /></>),
   trash: (<><Path d="M4 7h16M10 11v6M14 11v6" /><Path d="M6 7l1 13h10l1-13M9 7V4h6v3" /></>),
   pause: (<><Rect x="6" y="5" width="4" height="14" rx="1" /><Rect x="14" y="5" width="4" height="14" rx="1" /></>),

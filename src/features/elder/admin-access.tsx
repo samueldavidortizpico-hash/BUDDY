@@ -1,9 +1,12 @@
 /**
- * Acceso discreto del administrador desde la pantalla del adulto mayor (mantener presionado el saludo 2 s).
- * Pide el PIN de 4 dígitos (límite de intentos y espera creciente) y ofrece:
- * - "Cambiar de usuario": cierra la sesión y vuelve a la entrada.
- * - "Entrar como administrador": con el teléfono entregado, lo desbloquea; con el acceso propio del adulto mayor,
- *   cierra su sesión y abre el inicio de sesión del administrador (su contraseña nunca se guarda en este teléfono).
+ * "Opciones" de la pantalla del adulto mayor (V3.0): un botón pequeño pero visible y etiquetado en la esquina superior
+ * (antes era un gesto oculto de 2 s sobre el saludo y no había forma evidente de salir). Ofrece:
+ * - "Cerrar sesión": con confirmación clara ("Vas a salir de BUDDY en este celular") y vuelve a la entrada con la
+ *   elección de rol. Sirve para cambiar de celular o de usuario.
+ * - "Entrar como administrador": con el teléfono entregado, abre el PIN (/elder/unlock, con "olvidé el PIN"). Con el
+ *   acceso propio del adulto mayor pide el PIN del administrador (límite de intentos y espera creciente) o, sin PIN o a
+ *   elección, su correo y contraseña en el inicio de sesión (que tiene su propio límite). La contraseña del
+ *   administrador nunca se guarda en este teléfono.
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -23,11 +26,13 @@ import { successHaptic, warningHaptic } from '@/utils/haptics';
 const A = strings.adminAccess;
 const P = strings.pin;
 
-export function AdminAccessSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+type Step = 'menu' | 'signOut' | 'pin';
+
+export function ElderOptionsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const router = useRouter();
   const t = useTheme();
   const role = useSession((s) => s.user?.role ?? 'caregiver');
-  const [unlocked, setUnlocked] = useState(false);
+  const [step, setStep] = useState<Step>('menu');
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const mounted = useRef(true);
@@ -37,25 +42,39 @@ export function AdminAccessSheet({ visible, onClose }: { visible: boolean; onClo
       mounted.current = false;
     };
   }, []);
-  const hasPin = handoffActions.hasPin();
-  const open = unlocked || !hasPin;
 
   const close = () => {
-    setUnlocked(false);
+    setStep('menu');
     setMessage(null);
     onClose();
+  };
+
+  const signOutTo = async (href: Parameters<typeof router.replace>[0]) => {
+    close();
+    await sessionActions.signOut();
+    router.replace(href);
+  };
+
+  const enterAdmin = () => {
+    if (role !== 'elder') {
+      // Teléfono del administrador entregado: se vuelve con su PIN.
+      close();
+      router.push('/elder/unlock');
+      return;
+    }
+    if (handoffActions.hasPin()) setStep('pin');
+    else signOutTo({ pathname: '/sign-in', params: { role: 'caregiver' } });
   };
 
   const submit = async (pin: string) => {
     setBusy(true);
     setMessage(null);
     try {
-      // Con el teléfono entregado, el PIN correcto también cierra la entrega.
-      const r = role === 'elder' ? await handoffActions.verifyAdminPin(pin) : await handoffActions.unlock(pin);
+      const r = await handoffActions.verifyAdminPin(pin);
       if (!mounted.current) return;
       if (r.result === 'ok') {
         successHaptic();
-        setUnlocked(true);
+        await signOutTo({ pathname: '/sign-in', params: { role: 'caregiver' } });
       } else {
         warningHaptic();
         setMessage(r.result === 'wrong' ? P.wrong(r.left) : P.locked(r.seconds));
@@ -67,32 +86,18 @@ export function AdminAccessSheet({ visible, onClose }: { visible: boolean; onClo
     }
   };
 
-  const switchUser = async () => {
-    close();
-    await sessionActions.signOut();
-    router.replace('/');
-  };
-  const enterAdmin = async () => {
-    close();
-    if (role === 'elder') {
-      await sessionActions.signOut();
-      router.replace({ pathname: '/sign-in', params: { role: 'caregiver' } });
-    } else {
-      router.replace('/summary');
-    }
-  };
-
   return (
-    <BottomSheet visible={visible} onClose={close} title={open ? A.title : P.title}>
-      {open ? (
+    <BottomSheet visible={visible} onClose={close} title={step === 'pin' ? P.title : step === 'signOut' ? A.signOutTitle : A.title}>
+      {step === 'menu' ? (
         <View style={styles.body}>
-          {!hasPin ? (
-            <AppText variant="secondary" color={t.c.muted}>
-              {A.noPin}
-            </AppText>
-          ) : null}
           <Button label={A.enterAdmin} icon="lock" size="elder" onPress={enterAdmin} />
-          <Button label={A.switchUser} icon="users" variant="tonal" tone="mint" size="elder" onPress={switchUser} />
+          <Button label={A.signOut} icon="logout" variant="tonal" tone="mint" size="elder" onPress={() => setStep('signOut')} />
+        </View>
+      ) : step === 'signOut' ? (
+        <View style={styles.body}>
+          <AppText variant="body">{A.signOutBody}</AppText>
+          <Button label={A.signOutConfirm} icon="logout" size="elder" onPress={() => signOutTo('/')} />
+          <Button label={strings.common.cancel} variant="ghost" size="md" onPress={() => setStep('menu')} />
         </View>
       ) : (
         <View style={styles.body}>
@@ -100,6 +105,7 @@ export function AdminAccessSheet({ visible, onClose }: { visible: boolean; onClo
             {A.pinBody}
           </AppText>
           <PinPad onComplete={submit} disabled={busy} error={message} />
+          <Button label={A.usePassword} variant="ghost" size="md" disabled={busy} onPress={() => signOutTo({ pathname: '/sign-in', params: { role: 'caregiver' } })} />
         </View>
       )}
     </BottomSheet>

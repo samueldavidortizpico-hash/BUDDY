@@ -4,7 +4,7 @@
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 
-import Buddy from '@/app/(caregiver)/(tabs)/buddy';
+import Buddy from '@/app/(caregiver)/buddy';
 import Routine from '@/app/(caregiver)/(tabs)/routine';
 import RoutineSection from '@/app/(caregiver)/routine/[section]';
 import { ElderScreen } from '@/features/elder/screen';

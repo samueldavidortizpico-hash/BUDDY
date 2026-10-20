@@ -1,6 +1,6 @@
 import { useRouter, type Href } from 'expo-router';
-import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, type ReactNode } from 'react';
+import { BackHandler, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { strings } from '@/i18n';
 import { radius, spacing, touch } from '@/theme';
@@ -39,6 +39,17 @@ export function ScreenHeader({
   const t = useTheme();
   const s = useStyles();
   const back = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace(fallback)));
+  // Botón atrás de Android sin historial (pantalla abierta por enlace o tras un replace): va a `fallback` en vez de
+  // cerrar la app. Con historial, el comportamiento nativo ya equivale a la flecha.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !showBack) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (router.canGoBack()) return false;
+      router.replace(fallback);
+      return true;
+    });
+    return () => sub.remove();
+  }, [router, fallback, showBack]);
   return (
     <View style={s.row}>
       {showBack ? <Pressable
@@ -51,11 +62,12 @@ export function ScreenHeader({
         <Icon name="back" size={28} color={t.c.text} strokeWidth={2.2} />
       </Pressable> : <View style={s.spacer} />}
       <View style={s.center}>
-        <AppText variant="h3" align="center" accessibilityRole="header" numberOfLines={2}>
+        {/* Tope ×1.5: con texto al 200 % el título partía palabras y quedaba cortado ("Mis…"). */}
+        <AppText variant="h3" align="center" accessibilityRole="header" numberOfLines={2} maxScale={1.5}>
           {title}
         </AppText>
         {subtitle ? (
-          <AppText variant="caption" color={t.c.muted} align="center" numberOfLines={1}>
+          <AppText variant="caption" color={t.c.muted} align="center" numberOfLines={1} maxScale={1.5}>
             {subtitle}
           </AppText>
         ) : null}

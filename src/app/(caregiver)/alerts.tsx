@@ -1,8 +1,9 @@
+import { useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
-import { Button } from '@/components/button';
+import { Button, IconButton } from '@/components/button';
 import { Card } from '@/components/card';
 import { Segmented } from '@/components/forms';
 import { Icon } from '@/components/icon';
@@ -26,6 +27,7 @@ type Tab = 'all' | 'alert' | 'recommendation' | 'attended';
  * observaciones), por prioridad. Abrir el feed marca como leído lo que se ve.
  */
 export default function Alerts() {
+  const router = useRouter();
   const t = useTheme();
   const s = useStyles();
   const [tab, setTab] = useState<Tab>('all');
@@ -42,7 +44,9 @@ export default function Alerts() {
   const list = tab === 'all' ? items : items.filter((f) => f.kind === tab);
 
   return (
-    <ScreenContainer header={<ScreenHeader title={F.title} fallback="/summary" />}>
+    <ScreenContainer
+      header={<ScreenHeader title={F.title} fallback="/summary" right={<IconButton icon="sparkle" label={strings.brand.name} showLabel={false} onPress={() => router.push('/buddy' as Href)} />} />}
+    >
       <Segmented
         label={F.title}
         value={tab}

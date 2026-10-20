@@ -119,6 +119,9 @@ export function createSupabaseAuthProvider(): AuthService {
     async revokeManagedAccount() {
       throw new AuthError('not_configured', e.notConfigured);
     },
+    async changeManagedEmail() {
+      throw new AuthError('not_configured', e.notConfigured);
+    },
     async managedAccount() {
       return null;
     },

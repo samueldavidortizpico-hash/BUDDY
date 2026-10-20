@@ -7,10 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { tabBarSpace } from '@/components/bottom-tab-bar';
 import { BottomSheet } from '@/components/feedback';
 import { Icon } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
+import { ScreenHeader } from '@/components/screen-header';
 import type { MenuKey } from '@/domain/assistant/draft';
 import type { AssistantMessage } from '@/domain/types';
 import { ActionMenu, TaskCard } from '@/features/chat/task-card';
@@ -31,9 +31,11 @@ const B = strings.buddy;
 const VISIBLE = 10;
 
 /**
- * BUDDY: centro de mando del cuidador (V2.4). Cuatro regiones: encabezado compacto, historial breve y plegable,
- * tarjeta de tarea activa FIJA sobre el compositor (pregunta, respuestas tocables, confirmación) y compositor.
- * Escribir es opcional: todo se puede hacer con el menú de 8 acciones y las respuestas predeterminadas.
+ * BUDDY: asistente del administrador para configurar (V3.0). Pantalla completa del stack, SIN barra de pestañas (antes
+ * era una pestaña y la barra flotante tapaba el compositor). Regiones: encabezado con "Volver" (≤ 64 de alto), historial
+ * breve y plegable, tarjeta de tarea activa FIJA sobre el compositor, y compositor anclado: sobre la safe area con el
+ * teclado cerrado y justo encima del teclado al abrirlo. Escribir es opcional: todo se puede hacer con el menú de
+ * 8 acciones y las respuestas predeterminadas.
  */
 export default function Buddy() {
   const router = useRouter();
@@ -53,10 +55,13 @@ export default function Buddy() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [atEnd, setAtEnd] = useState(true);
   const [listH, setListH] = useState(0);
-  // La barra flota sobre el contenido: el chat reserva su alto, salvo con el teclado abierto (lo tapa o se oculta).
+  // Con el teclado abierto el compositor va pegado a él (sin la safe area inferior) y la lista baja al último mensaje.
   const [keyboard, setKeyboard] = useState(false);
   useEffect(() => {
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setKeyboard(true));
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => {
+      setKeyboard(true);
+      setAtEnd(true);
+    });
     const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKeyboard(false));
     return () => {
       show.remove();
@@ -77,16 +82,19 @@ export default function Buddy() {
     primary: primary ? { name: primary.name, phone: primary.phone } : undefined,
   });
 
-  // Al final con cada mensaje nuevo (salvo que el cuidador esté leyendo arriba).
+  // Al final con cada mensaje nuevo, al enviar y al abrir el teclado (salvo que el cuidador esté leyendo arriba).
   useEffect(() => {
     if (!atEnd) return;
     const id = setTimeout(() => list.current?.scrollToEnd({ animated: !reduce }), 80);
     return () => clearTimeout(id);
-  }, [messages.length, chat.typing, atEnd, reduce]);
+  }, [messages.length, chat.typing, atEnd, reduce, keyboard, bump]);
 
   if (!elder?.setupDone) {
     return (
-      <View style={[s.root, { paddingTop: insets.top + spacing.xl }]}>
+      <View style={[s.root, { paddingTop: insets.top }]}>
+        <View style={s.header}>
+          <ScreenHeader title={strings.brand.name} fallback="/summary" />
+        </View>
         <View style={s.emptyWrap}>
           <BuddyRobot size={120} mood="wave" />
           <AppText variant="h2" align="center">{strings.summary.emptyTitle}</AppText>
@@ -129,21 +137,25 @@ export default function Buddy() {
 
   return (
     <View style={s.root}>
-      <View style={[s.header, { paddingTop: insets.top + spacing.xs }]}>
-        <BuddyRobot size={56} compact mood={chat.mood} bump={bump} shadow={false} flying={false} />
-        <View style={s.flex}>
-          <AppText variant="h3" maxScale={1.4} numberOfLines={1}>{strings.brand.name}</AppText>
-          <AppText variant="caption" color={t.c.muted} numberOfLines={1} maxScale={1.4}>{strings.summary.caring(elder.firstName)}</AppText>
-        </View>
-        <PreviewSheetButton compact />
-        {messages.length ? (
-          <Pressable onPress={() => conversation.clear()} accessibilityRole="button" accessibilityLabel={B.clear} style={s.headerBtn}>
-            <Icon name="trash" color={t.c.muted} size={20} />
-          </Pressable>
-        ) : null}
+      <View style={[s.header, { paddingTop: insets.top }]}>
+        <ScreenHeader
+          title={strings.brand.name}
+          subtitle={strings.summary.caring(elder.firstName)}
+          fallback="/summary"
+          right={
+            <>
+              <PreviewSheetButton compact />
+              {messages.length ? (
+                <Pressable onPress={() => conversation.clear()} accessibilityRole="button" accessibilityLabel={B.clear} style={s.headerBtn}>
+                  <Icon name="trash" color={t.c.muted} size={20} />
+                </Pressable>
+              ) : null}
+            </>
+          }
+        />
       </View>
 
-      <KeyboardAvoidingView style={[s.flex, { paddingBottom: keyboard ? 0 : tabBarSpace(insets.bottom) }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView style={[s.flex, { paddingBottom: keyboard ? 0 : insets.bottom }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={s.flex}>
           <FlatList
             ref={list}
@@ -213,8 +225,8 @@ export default function Buddy() {
             placeholder={B.placeholder}
             placeholderTextColor={t.dark ? '#7F99A0' : '#7A8797'}
             accessibilityLabel={B.placeholder}
-            // Tope ×1.5: con más, el texto no cabe en el compositor junto a sus botones.
-            style={[s.input, { fontSize: type.secondary.fontSize * Math.min(scale, 1.5), color: t.c.text }]}
+            // Tope ×1.5: con más, el texto no cabe en el compositor junto a sus botones. Hasta 4 líneas, luego desplaza.
+            style={[s.input, { fontSize: type.secondary.fontSize * Math.min(scale, 1.5), maxHeight: 4 * type.secondary.lineHeight * Math.min(scale, 1.5) + spacing.sm * 2, color: t.c.text }]}
             multiline
             onSubmitEditing={() => send(text)}
             returnKeyType="send"
@@ -332,7 +344,7 @@ const useStyles = makeStyles((t) =>
   StyleSheet.create({
     flex: { flex: 1 },
     root: { flex: 1, backgroundColor: t.c.bg },
-    header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.screen, paddingBottom: spacing.xs, backgroundColor: t.c.glass, borderBottomWidth: t.borderWidth, borderBottomColor: t.c.border },
+    header: { paddingHorizontal: spacing.screen, backgroundColor: t.c.glass, borderBottomWidth: t.borderWidth, borderBottomColor: t.c.border },
     headerBtn: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center' },
     list: { padding: spacing.screen, paddingBottom: spacing.md, flexGrow: 1, gap: spacing.sm },
     older: { alignSelf: 'center' },
@@ -349,9 +361,10 @@ const useStyles = makeStyles((t) =>
     action: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, borderLeftWidth: 4, borderWidth: t.hc ? 2 : 0 },
     quick: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
     toEnd: { position: 'absolute', bottom: spacing.sm, alignSelf: 'center' },
-    composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, marginHorizontal: spacing.md, marginBottom: spacing.xs, padding: spacing.xs, minHeight: touch.timeRow, borderRadius: 28, backgroundColor: t.c.surface },
+    composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, marginHorizontal: spacing.md, marginTop: spacing.xs, marginBottom: spacing.sm, padding: 2, minHeight: touch.secondary, borderRadius: 28, backgroundColor: t.c.surface },
     tool: { width: touch.min - 4, height: touch.min, alignItems: 'center', justifyContent: 'center' },
-    input: { flex: 1, minHeight: touch.min, maxHeight: 120, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, fontFamily: 'Manrope_600SemiBold' },
+    // minWidth 0: sin él, en web el campo no se encoge y empuja el botón enviar fuera del compositor.
+    input: { flex: 1, minWidth: 0, minHeight: touch.min, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, fontFamily: 'Manrope_600SemiBold' },
     send: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.hc ? t.c.text : t.c.primary },
     disabled: { opacity: 0.4 },
   }),

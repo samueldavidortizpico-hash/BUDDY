@@ -6,7 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 
-import Buddy from '@/app/(caregiver)/(tabs)/buddy';
+import Buddy from '@/app/(caregiver)/buddy';
 import { GENERAL_INFO_NOTICE } from '@/domain/knowledge';
 import { db } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';

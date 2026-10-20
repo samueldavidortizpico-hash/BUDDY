@@ -52,8 +52,7 @@ export function BottomTabBar({
   descriptors,
   navigation,
   icons,
-  featured,
-}: BottomTabBarProps & { icons: Record<string, IconName>; featured?: string }) {
+}: BottomTabBarProps & { icons: Record<string, IconName> }) {
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const s = useStyles();
@@ -67,7 +66,6 @@ export function BottomTabBar({
   const stretch = useSharedValue(1);
   const hover = useSharedValue(state.index);
   const dragging = useSharedValue(0);
-  const featuredActive = state.routes[state.index]?.name === featured;
   // En Android (edge-to-edge) la barra quedaría flotando sobre el teclado y taparía el compositor del chat: se oculta
   // mientras el teclado está abierto (como tabBarHideOnKeyboard). En iOS el teclado ya la cubre.
   const [keyboard, setKeyboard] = useState(false);
@@ -137,7 +135,6 @@ export function BottomTabBar({
     });
 
   const pill = useAnimatedStyle(() => ({
-    opacity: featuredActive && !dragging.get() ? 0 : 1,
     transform: [{ translateX: x.get() }, { scaleX: stretch.get() }],
   }));
   if (keyboard) return null;
@@ -170,7 +167,6 @@ export function BottomTabBar({
             const { options } = descriptors[route.key];
             const label = options.title ?? route.name;
             const focused = state.index === index;
-            const isFeatured = route.name === featured;
             const onPress = () => {
               const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
               if (!focused && !event.defaultPrevented) {
@@ -190,14 +186,7 @@ export function BottomTabBar({
                 onPress={onPress}
                 style={s.item}
               >
-                {isFeatured ? (
-                  <View style={[s.featured, focused && s.featuredOn]}>
-                    {t.hc ? null : <LinearGradient colors={[t.c.mint, t.c.mintStrong]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, s.round]} />}
-                    <Icon name="sparkle" size={26} color={t.hc ? t.c.bg : '#0D3946'} strokeWidth={2.2} />
-                  </View>
-                ) : (
-                  <TabIcon name={icons[route.name] ?? 'home'} focused={focused} />
-                )}
+                <TabIcon name={icons[route.name] ?? 'home'} focused={focused} />
                 <AppText variant="meta" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1.1} style={styles.label}>
                   {label}
                 </AppText>
@@ -255,20 +244,5 @@ const useStyles = makeStyles((t) =>
       borderColor: t.c.text,
     },
     item: { flex: 1, alignItems: 'center', gap: 2, minHeight: touch.tabBar - 8, paddingTop: 8, paddingBottom: 6, paddingHorizontal: 2 },
-    featured: {
-      width: 56,
-      height: 56,
-      marginTop: -22,
-      marginBottom: -4,
-      borderRadius: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: t.hc ? t.c.text : t.c.mint,
-      ...t.shadow.glow.mint,
-      borderWidth: 3,
-      borderColor: t.c.bg,
-    },
-    featuredOn: { transform: [{ scale: 1.06 }] },
-    round: { borderRadius: 28 },
   }),
 );

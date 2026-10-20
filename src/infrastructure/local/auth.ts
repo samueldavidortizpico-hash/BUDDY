@@ -213,6 +213,17 @@ export function createLocalAuthProvider(): AuthService {
       await writeAccount({ ...acc, revoked: true });
     },
 
+    /** El hash y la sal no cambian: la cuenta se mueve a la clave del correo nuevo y se borra la del anterior. */
+    async changeManagedEmail({ ownerId, elderId, email }) {
+      const acc = await managed(ownerId, elderId);
+      if (!isValidEmail(email)) throw new AuthError('invalid_email', e.email);
+      if (normalizeEmail(email) === acc.email) return;
+      if (await readAccount(email)) throw new AuthError('email_taken', e.taken);
+      await writeAccount({ ...acc, email: normalizeEmail(email) });
+      await secureStorage.remove(await accountKey(acc.email));
+      await secureStorage.set(managedKey(elderId), normalizeEmail(email));
+    },
+
     async managedAccount({ ownerId, elderId }) {
       const email = await secureStorage.get(managedKey(elderId));
       const acc = email ? await readAccount(email) : null;

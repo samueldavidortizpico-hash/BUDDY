@@ -64,5 +64,6 @@ export interface AuthService {
   createManagedAccount(input: { ownerId: string; elderId: string; name: string; email: string; password: string }): Promise<AuthUser>;
   resetManagedPassword(input: { ownerId: string; elderId: string; password: string }): Promise<void>;
   revokeManagedAccount(input: { ownerId: string; elderId: string }): Promise<void>;
+  changeManagedEmail(input: { ownerId: string; elderId: string; email: string }): Promise<void>;
   managedAccount(input: { ownerId: string; elderId: string }): Promise<{ email: string; revoked: boolean } | null>;
 }
