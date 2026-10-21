@@ -81,3 +81,17 @@ otro). Hoy se demuestra en el mismo celular con "Probar como". Verificación: ts
 Prueba de los 3 segundos (revisión de las 6 capturas `hito5-summary-*`): la palabra del nivel es el texto más grande, es
 lo primero bajo el nombre y queda arriba del pliegue en 390×844 y 360×740 en los tres temas; su color va siempre con
 icono y texto. Verificación: tsc 0, lint 0, jest 678/678, reversa OK, desbordes OK, `v30-hito1.mjs` OK.
+
+## Hito 6: adulto mayor sin fricción, primeros cinco minutos e invitación
+
+| # | Problema | Evidencia antes | Causa raíz | Corrección | Evidencia después |
+|---|---|---|---|---|---|
+| 17 | Registrar a la persona exigía 9 pantallas antes del primer estado | `setup/index.tsx`: `TOTAL = 9` | Un solo asistente para registrar y para completar todo | Registro rápido de 5 pantallas; el resto en "Primeros pasos" | `hito6.test.tsx`; captura `hito6-setup_new_1-*` ("Paso 1 de 5") |
+| 18 | Respuestas secundarias del adulto mayor de 52–56 de alto | `screen.tsx`: `size="md"` con `minHeight: 56` | Tamaños mezclados | Todas `size="elder"` (72) | `hito6.test.tsx` (las tres respuestas de una toma ≥ 72) |
+| 19 | No había forma de invitar a otro familiar | — | No existía | Pantalla `settings/invite` con código, permiso, vencimiento y revocación | `hito6.test.tsx`; capturas `hito6-settings_invite-*` |
+| 20 | Al crear la invitación la pantalla se desmontaba en Jest | "Unable to find node on an unmounted component" | `expo-linking.createURL` lanza sin manifiesto de Expo (en pruebas) | El enlace se arma en el dominio con el esquema de app.json | Prueba verde |
+
+Medición del registro: pantallas 9 → 5. Toques mínimos hasta el Inicio con el primer estado (escribir nombre,
+"Guardar y continuar" ×1, "Escribirlo a mano" + campos + guardar del medicamento, contacto con nombre y celular +
+guardar, hora del chequeo + guardar, "Ir al Resumen"): de unos 30 toques con los 9 pasos (4 pasos extra de "Completar
+después") a unos 20. Verificación: tsc 0, lint 0, jest 684/684, reversa OK (29 rutas), desbordes OK.

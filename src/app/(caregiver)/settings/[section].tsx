@@ -364,6 +364,7 @@ function People() {
         </Card>
       ))}
       <Button label={S.addPerson} icon="plus" variant="tonal" tone="mint" onPress={() => router.push({ pathname: '/setup', params: { new: '1' } })} />
+      {active?.setupDone ? <Button label={strings.invite.button} icon="users" variant="tonal" tone="mint" onPress={() => router.push('/settings/invite' as Href)} /> : null}
     </View>
   );
 }

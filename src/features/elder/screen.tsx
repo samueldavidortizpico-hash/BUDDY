@@ -390,8 +390,8 @@ function ItemView({
             </AppText>
           ) : null}
           <Button label={E.taken} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; doseActions.confirm(dose.id, 'elder'); onThanks(); }} />
-          {snoozesLeft ? <Button label={E.snooze} icon="clock" variant="white" size="md" style={s.min56} disabled={preview} onPress={() => !preview && doseActions.snooze(dose.id, 'elder')} /> : null}
-          <Button label={E.notTaken} variant="ghost" size="md" textColor={d.text} disabled={preview} onPress={() => !preview && doseActions.skip(dose.id, 'elder')} />
+          {snoozesLeft ? <Button label={E.snooze} icon="clock" variant="white" size="elder" disabled={preview} onPress={() => !preview && doseActions.snooze(dose.id, 'elder')} /> : null}
+          <Button label={E.notTaken} variant="ghost" size="elder" textColor={d.text} disabled={preview} onPress={() => !preview && doseActions.skip(dose.id, 'elder')} />
         </View>
       );
     }
@@ -427,7 +427,7 @@ function ItemView({
             {formatClock(item.meal.time)}
           </AppText>
           <Button label={E.yes} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; elderAnswers.meal(item.meal.id, 'yes', elderId); onThanks(); }} />
-          <Button label={E.notYet} variant="white" size="md" style={s.min56} disabled={preview} onPress={() => !preview && elderAnswers.meal(item.meal.id, 'no', elderId)} />
+          <Button label={E.notYet} variant="white" size="elder" disabled={preview} onPress={() => !preview && elderAnswers.meal(item.meal.id, 'no', elderId)} />
         </View>
       );
     case 'activity':
@@ -440,7 +440,7 @@ function ItemView({
             </AppText>
           ) : null}
           <Button label={E.yes} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; elderAnswers.activity(item.activity.id, true, elderId); onThanks(); }} />
-          <Button label={E.notYet} variant="white" size="md" style={s.min56} disabled={preview} onPress={() => !preview && elderAnswers.activity(item.activity.id, false, elderId)} />
+          <Button label={E.notYet} variant="white" size="elder" disabled={preview} onPress={() => !preview && elderAnswers.activity(item.activity.id, false, elderId)} />
         </View>
       );
     case 'water':
@@ -468,8 +468,8 @@ function ItemView({
             </AppText>
           ) : null}
           <Button label={E.ok} size="elder" disabled={preview} onPress={() => !preview && onSeen(appointmentSeenKey(ap.id, item.when))} />
-          {where ? <Button label={AP.directions} icon="location" variant="white" size="md" style={s.min56} disabled={preview} onPress={() => !preview && Linking.openURL(directionsUrl(where))} /> : null}
-          {ap.phone ? <Button label={AP.callOffice} icon="phone" variant="ghost" size="md" textColor={d.text} disabled={preview} onPress={() => !preview && Linking.openURL(`tel:${ap.phone}`)} /> : null}
+          {where ? <Button label={AP.directions} icon="location" variant="white" size="elder" disabled={preview} onPress={() => !preview && Linking.openURL(directionsUrl(where))} /> : null}
+          {ap.phone ? <Button label={AP.callOffice} icon="phone" variant="ghost" size="elder" textColor={d.text} disabled={preview} onPress={() => !preview && Linking.openURL(`tel:${ap.phone}`)} /> : null}
         </View>
       );
     }
@@ -518,7 +518,6 @@ const useStyles = makeStyles((t) =>
     robot: { position: 'absolute', top: -72, right: -18 },
     cardBody: { gap: spacing.sm },
     itemBody: { gap: spacing.md },
-    min56: { minHeight: 56 },
     twoCol: { flexDirection: 'row', gap: spacing.sm },
     faces: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.xs },
     faceBtn: { alignItems: 'center', gap: spacing.xs, flexGrow: 1, flexBasis: 90 },

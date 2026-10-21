@@ -29,7 +29,7 @@ try {
           if (await test.count()) await test.first().click();
         } else await page.goto(`${base}${route}`);
         await page.waitForTimeout(1800);
-        const id = `${hito}-${route.replace(/\//g, '_').replace(/^_/, '') || 'root'}-${w}x${h}-${name}`;
+        const id = `${hito}-${route.replace(/[/?=]/g, '_').replace(/^_/, '') || 'root'}-${w}x${h}-${name}`;
         if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) fail.push(`${id}: desplazamiento horizontal`);
         await page.screenshot({ path: `${out}/${id}.png`, fullPage: false });
       }

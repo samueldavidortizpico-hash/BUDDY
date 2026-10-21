@@ -304,6 +304,29 @@ export function useMedsStep(elder: Elder): StepHandle & { view: React.ReactNode 
   return { save: () => true, dirty: false, view };
 }
 
+// ── Registro rápido: solo la hora del chequeo (V3.0) ─────────
+
+/** Paso corto del registro rápido: la hora del chequeo diario (agua y actividades quedan en "Primeros pasos"). */
+export function useCheckinStep(elder: Elder): StepHandle & { view: React.ReactNode } {
+  const R = S.routine;
+  const t = useTheme();
+  const [d, set, dirty] = useDraft(`${elder.id}.checkin`, () => ({ checkin: elder.checkinTime ?? '10:00' }));
+  const save = () => {
+    routineActions.setCheckinTime(d.checkin, elder.id);
+    clearDraft(`${elder.id}.checkin`);
+    return true;
+  };
+  const view = (
+    <View style={styles.stack}>
+      <TimeField label={R.checkin} value={d.checkin} onChange={(v) => set({ checkin: v })} />
+      <AppText variant="caption" color={t.c.muted}>
+        {R.checkinHint}
+      </AppText>
+    </View>
+  );
+  return { save, dirty, view };
+}
+
 // ── 5. Contactos ─────────────────────────────────────────────
 
 export function useContactsStep(elder: Elder): StepHandle & { view: React.ReactNode } {

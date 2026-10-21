@@ -14,6 +14,7 @@ import { ScreenHeader } from '@/components/screen-header';
 import type { Elder } from '@/domain/types';
 import {
   useAlertsStep,
+  useCheckinStep,
   useContactsStep,
   useFoodStep,
   useHealthStep,
@@ -32,19 +33,32 @@ import { formatClock } from '@/utils/dates';
 import { successHaptic } from '@/utils/haptics';
 
 const S = strings.setup;
-const TOTAL = 9;
-const ACCESS = 8;
-const ROBOT_MOOD = ['wave', 'think', 'idle', 'look', 'idle', 'wave', 'look', 'happy', 'celebrate'] as const;
 
-/** Asistente de registro del adulto mayor (9 pasos, incluido su acceso). Se puede salir y retomar: cada paso guarda un borrador. */
+export type StepKey = 'who' | 'health' | 'food' | 'meds' | 'contacts' | 'routine' | 'checkin' | 'alerts' | 'access' | 'done';
+/**
+ * Registro RÁPIDO (V3.0, primeros cinco minutos del hijo): lo mínimo para el primer valor (persona, un medicamento, un
+ * contacto y la hora del chequeo) y al Inicio. Lo demás (salud, alimentación, agua y actividades, avisos, acceso) queda
+ * en "Primeros pasos" y se abre en el asistente COMPLETO (`?step=`), que es también el de editar a la persona.
+ */
+export const QUICK: StepKey[] = ['who', 'meds', 'contacts', 'checkin', 'done'];
+export const FULL: StepKey[] = ['who', 'health', 'food', 'meds', 'contacts', 'routine', 'alerts', 'access', 'done'];
+const MOOD: Record<StepKey, 'wave' | 'think' | 'idle' | 'look' | 'happy' | 'celebrate'> = { who: 'wave', health: 'think', food: 'idle', meds: 'look', contacts: 'idle', routine: 'wave', checkin: 'wave', alerts: 'look', access: 'happy', done: 'celebrate' };
+
+/** Asistente de registro del adulto mayor. Se puede salir y retomar: cada paso guarda un borrador. */
 export default function ElderSetup() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ elderId?: string; new?: string }>();
+  const params = useLocalSearchParams<{ elderId?: string; new?: string; step?: StepKey }>();
   const elders = useElders();
   const pendingElder = params.new ? null : (elders.find((e) => e.id === params.elderId) ?? elders.find((e) => !e.setupDone) ?? null);
   const [elderId, setElderId] = useState<string | null>(pendingElder?.id ?? null);
   const elder = elders.find((e) => e.id === elderId) ?? null;
-  const [step, setStep] = useState(() => (pendingElder && !pendingElder.setupDone ? Math.min(pendingElder.setupStep, TOTAL) : 1));
+  // Rápido al registrar por primera vez; completo al editar a alguien ya registrado o al abrir un paso concreto.
+  const [order] = useState<StepKey[]>(() => (pendingElder?.setupDone || params.step ? FULL : QUICK));
+  const TOTAL = order.length;
+  const [step, setStep] = useState(() =>
+    params.step && order.includes(params.step) ? order.indexOf(params.step) + 1 : pendingElder && !pendingElder.setupDone ? Math.min(Math.max(1, pendingElder.setupStep), TOTAL) : 1,
+  );
+  const key = order[step - 1];
   const [leaving, setLeaving] = useState(false);
 
   const exit = () => (router.canGoBack() ? router.back() : router.replace(elders.some((e) => e.setupDone) ? '/summary' : '/'));
@@ -74,27 +88,27 @@ export default function ElderSetup() {
       header={
         <>
           <ScreenHeader
-            title={S.stepNames[step - 1]}
+            title={S.stepTitles[key]}
             subtitle={S.title(step, TOTAL)}
             onBack={() => (step > 1 ? goto(step - 1) : setLeaving(true))}
             onClose={() => setLeaving(true)}
           />
-          <Progress step={step} />
+          <Progress step={step} total={TOTAL} />
         </>
       }
     >
       <View style={styles.robotRow}>
-        <BuddyRobot size={96} mood={ROBOT_MOOD[step - 1]} shadow={false} />
+        <BuddyRobot size={96} mood={MOOD[key]} shadow={false} />
         <AppText variant="h2" style={styles.flex}>
-          {step === 1 ? S.who.title : step === TOTAL && elder ? S.done.title(elder.firstName) : step === ACCESS && elder ? S.access.title(elder.firstName) : S.stepNames[step - 1]}
+          {key === 'who' ? S.who.title : key === 'done' && elder ? S.done.title(elder.firstName) : key === 'access' && elder ? S.access.title(elder.firstName) : S.stepTitles[key]}
         </AppText>
       </View>
 
-      <Appear key={step}>
-        {step === 1 ? <WhoStep elder={elder} onNext={next} /> : null}
-        {step === ACCESS && elder ? <ElderAccessForm elder={elder} onDone={next} onLater={() => goto(step + 1)} /> : null}
-        {step > 1 && step < ACCESS && elder ? <MiddleStep step={step} elder={elder} onNext={next} onSkip={() => goto(step + 1)} /> : null}
-        {step === TOTAL && elder ? <DoneStep elder={elder} onFinish={finish} /> : null}
+      <Appear key={key}>
+        {key === 'who' ? <WhoStep elder={elder} onNext={next} /> : null}
+        {key === 'access' && elder ? <ElderAccessForm elder={elder} onDone={next} onLater={() => goto(step + 1)} /> : null}
+        {key !== 'who' && key !== 'access' && key !== 'done' && elder ? <MiddleStep step={key} elder={elder} onNext={next} onSkip={() => goto(step + 1)} /> : null}
+        {key === 'done' && elder ? <DoneStep elder={elder} onFinish={finish} /> : null}
       </Appear>
 
       <ConfirmDialog
@@ -113,11 +127,11 @@ export default function ElderSetup() {
   );
 }
 
-function Progress({ step }: { step: number }) {
+function Progress({ step, total }: { step: number; total: number }) {
   const t = useTheme();
   return (
-    <View style={styles.progress} accessible accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: TOTAL, now: step }}>
-      {Array.from({ length: TOTAL }, (_, i) => (
+    <View style={styles.progress} accessible accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: total, now: step }}>
+      {Array.from({ length: total }, (_, i) => (
         <View key={i} style={[styles.seg, { backgroundColor: i < step ? (t.hc ? t.c.text : t.c.mintStrong) : t.c.surface2 }]} />
       ))}
     </View>
@@ -145,8 +159,8 @@ function WhoStep({ elder, onNext }: { elder: Elder | null; onNext: () => void })
   );
 }
 
-function MiddleStep({ step, elder, onNext, onSkip }: { step: number; elder: Elder; onNext: () => void; onSkip: () => void }) {
-  const Step = [HealthStep, FoodStep, MedsStep, ContactsStep, RoutineStep, AlertsStep][step - 2];
+function MiddleStep({ step, elder, onNext, onSkip }: { step: Exclude<StepKey, 'who' | 'access' | 'done'>; elder: Elder; onNext: () => void; onSkip: () => void }) {
+  const Step = { health: HealthStep, food: FoodStep, meds: MedsStep, contacts: ContactsStep, routine: RoutineStep, checkin: CheckinStep, alerts: AlertsStep }[step];
   return <Step elder={elder} onNext={onNext} onSkip={onSkip} />;
 }
 
@@ -157,6 +171,7 @@ const MedsStep = (p: StepProps) => <Wrap p={p} h={useMedsStep(p.elder)} />;
 const ContactsStep = (p: StepProps) => <Wrap p={p} h={useContactsStep(p.elder)} />;
 const RoutineStep = (p: StepProps) => <Wrap p={p} h={useRoutineStep(p.elder)} />;
 const AlertsStep = (p: StepProps) => <Wrap p={p} h={useAlertsStep(p.elder)} />;
+const CheckinStep = (p: StepProps) => <Wrap p={p} h={useCheckinStep(p.elder)} />;
 
 function Wrap({ p, h }: { p: StepProps; h: StepHandle & { view: ReactNode } }) {
   return (

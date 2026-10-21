@@ -1,5 +1,5 @@
 import { useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -18,8 +18,11 @@ import { DailySummaryCard, StatusHero } from '@/features/summary/status';
 import { TodayPanel } from '@/features/summary/today';
 import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
-import { useActiveElder, useElders, useRecords } from '@/state/data';
-import { useSession } from '@/state/session';
+import type { Invite } from '@/domain/invites';
+import { useDb } from '@/infrastructure/local/db';
+import { useActiveElder, useElders, useRecords, useUserId } from '@/state/data';
+import { invites } from '@/state/invites';
+import { sessionActions, useSession } from '@/state/session';
 import { radius, spacing, touch } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 
@@ -167,12 +170,27 @@ function FirstSteps() {
   const meds = useRecords('medications');
   const contacts = useRecords('contacts');
   const water = useRecords('waterPlans');
+  const userId = useUserId() ?? '';
+  const invited = useDb((x) => ((x.drafts[userId]?.[invites.key] as Invite[] | undefined) ?? []).some((i) => i.elderId === elder?.id));
+  const [hasAccess, setHasAccess] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    if (elder?.setupDone) sessionActions.elderAccess(elder.id).then((a) => alive && setHasAccess(!!a && !a.revoked)).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [elder?.id, elder?.setupDone]);
+  const full = (step: string): Href => ({ pathname: '/setup', params: { elderId: elder?.id ?? '', step } }) as unknown as Href;
+  // Lo mínimo va en el registro rápido; lo demás queda aquí y abre el paso del asistente completo (V3.0, Hito 6).
   const items: { label: string; done: boolean; href: Href }[] = [
     { label: S.steps.register, done: !!elder?.setupDone, href: '/setup' },
     { label: S.steps.medication, done: meds.length > 0, href: '/medication/new' as Href },
     { label: S.steps.contacts, done: contacts.length > 0, href: '/routine/contacts' as Href },
-    { label: S.steps.water, done: water.length > 0, href: '/routine/water' as Href },
     { label: S.steps.checkin, done: !!elder?.checkinTime, href: '/routine/checkin' as Href },
+    { label: S.steps.health, done: !!elder && elder.allergies.length + elder.conditions.length > 0, href: full('health') },
+    { label: S.steps.routine, done: water.length > 0, href: full('routine') },
+    { label: S.steps.access(elder?.firstName ?? ''), done: hasAccess, href: { pathname: '/settings/access/[elderId]', params: { elderId: elder?.id ?? '' } } as unknown as Href },
+    { label: S.steps.invite, done: invited, href: '/settings/invite' as Href },
   ];
   const doneCount = items.filter((i) => i.done).length;
   if (doneCount === items.length) return null;
