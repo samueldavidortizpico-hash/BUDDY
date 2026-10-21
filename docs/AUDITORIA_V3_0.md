@@ -60,3 +60,12 @@ Pendiente de comprobar en celular (no medible en web): el compositor justo encim
 | 12 | Revisión: con muchas tomas en un día el planificador nuevo no programaba ninguna, y un medicamento semanal quedaba sin avisos | Encontrado al escribir las pruebas | Corte por presupuesto antes de agregar el primer día; ventana de 7 días | El primer día siempre entra hasta el límite; ventana de 8 días | Pruebas "nunca deja el día sin avisos" y "con días concretos" |
 
 Verificación: tsc 0, lint 0, jest 649/649, zonas horarias (Bogotá, Madrid, UTC) 35/35 en las suites de horarios.
+
+## Hito 4: detección de silencio
+
+| # | Problema | Evidencia antes | Causa raíz | Corrección | Evidencia después |
+|---|---|---|---|---|---|
+| 13 | Si el celular del adulto mayor dejaba de funcionar (apagado, sin batería, avisos desactivados), el administrador veía "Hoy va según lo programado" | Feed: la tarjeta positiva salía sin ninguna señal del otro celular | No existía ninguna señal de vida ni regla de verificación | Señales de vida + regla `verify` + alerta "No puedo verificar: …" con "Llamar"; la tarjeta positiva exige verificación `ok` | `verification.test.ts` (14), incluida la prueba de extremo a extremo de 13 h sin señal |
+
+Límite honesto: entre dos celulares esto solo funciona con backend (el celular del hijo no puede leer las señales del
+otro). Hoy se demuestra en el mismo celular con "Probar como". Verificación: tsc 0, lint 0, jest 663/663.

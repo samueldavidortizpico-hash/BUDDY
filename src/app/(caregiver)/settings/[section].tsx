@@ -17,6 +17,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
 import { escalationOf } from '@/domain/schedule';
+import { DEFAULT_SILENCE_HOURS } from '@/domain/verification';
 import { ALERT_KINDS, type ElderAppearance } from '@/domain/types';
 import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
 import { feedActions } from '@/state/feed';
@@ -249,6 +250,16 @@ function EscalationPrefs() {
       <Stepper label={E.remind} value={e.remindAfterMin} min={5} max={e.unconfirmedAfterMin - 5} step={5} onChange={(v) => set({ remindAfterMin: v })} format={min} />
       <Stepper label={E.unconfirmed} value={e.unconfirmedAfterMin} min={e.remindAfterMin + 5} max={120} step={5} onChange={(v) => set({ unconfirmedAfterMin: v })} format={min} />
       <AppText variant="caption" color={t.c.muted}>{E.note}</AppText>
+      <Stepper
+        label={E.silence(elder.firstName)}
+        value={elder.screen.silenceHours ?? DEFAULT_SILENCE_HOURS}
+        min={4}
+        max={48}
+        step={2}
+        onChange={(v) => elderActions.update(elder.id, { screen: { ...elder.screen, silenceHours: v } })}
+        format={E.hours}
+      />
+      <AppText variant="caption" color={t.c.muted}>{E.silenceNote}</AppText>
     </Card>
   );
 }

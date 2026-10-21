@@ -24,7 +24,7 @@ import { dayDoses, doseText, effectiveTime, escalationOf } from '@/domain/schedu
 import { appointmentAddress, type Answer3 } from '@/domain/types';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
-import { doseActions, elderAnswers, notifyLog } from '@/state/care';
+import { beat, doseActions, elderAnswers, notifyLog } from '@/state/care';
 import { handoffActions } from '@/state/handoff';
 import { useRecords, useUserId } from '@/state/data';
 import { useSession } from '@/state/session';
@@ -105,6 +105,11 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
     if (elderId && !preview) doseActions.sync(elderId, now);
   }, [elderId, now, preview]);
 
+  // Señal de vida: la pantalla del adulto mayor está abierta (como mucho una cada 5 min).
+  useEffect(() => {
+    if (elderId && !preview) beat(elderId, 'app_open');
+  }, [elderId, now, preview]);
+
   // NotificationScheduler: este teléfono programa sus avisos locales con los datos del perfil y los reprograma cuando
   // cambian (applyPlan no hace nada si el plan es el mismo). La vista previa del administrador no programa nada.
   const lowStock = useMemo(() => meds.filter((m) => ['low', 'out'].includes(estimateStock(m, today).level)), [meds, today]);
@@ -127,7 +132,11 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
     // Qué aceptó el sistema del celular (aviso "entregado al sistema", que no es "visto" ni "tomado"). Sin permiso o en
     // web no se programa nada y la app lo dice; todo sigue visible dentro de BUDDY.
     applyPlan(plan)
-      .then((r) => notifyLog.record(elder.id, r.state, r.state === 'granted' ? plan.map((n) => n.key) : []))
+      .then((r) => {
+        notifyLog.record(elder.id, r.state, r.state === 'granted' ? plan.map((n) => n.key) : []);
+        // Señal de vida con el permiso leído en este celular (detección de silencio).
+        beat(elder.id, 'permissions', r.state);
+      })
       .catch(() => undefined);
   }, [preview, elder, meds, water, meals, appointments, lowStock, doses, today]);
 

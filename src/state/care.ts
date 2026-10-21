@@ -6,7 +6,9 @@ import { reviewMedication, type ReviewFinding } from '@/domain/review';
 import { displayStatus, escalationOf, missingDoses, snoozeTarget } from '@/domain/schedule';
 import { afterDose, afterPurchase, estimateStock } from '@/domain/stock';
 import type { Alert, AlertKind, Answer3, DoseEvent, Medication, MealLog, Role } from '@/domain/types';
+import type { HeartbeatKind, NotificationPermission } from '@/domain/verification';
 import { db } from '@/infrastructure/local/db';
+import { createLocalHeartbeats } from '@/infrastructure/local/heartbeats';
 import { strings } from '@/i18n';
 import { toISODate } from '@/utils/dates';
 
@@ -147,6 +149,7 @@ export const doseActions = {
   },
   confirm(doseId: string, by: Role) {
     const before = db.get('doses', doseId);
+    if (by === 'elder' && before?.elderId) beat(before.elderId, 'answer');
     const dose = db.update('doses', doseId, { status: 'taken', respondedAt: new Date().toISOString(), answeredBy: by });
     const med = dose ? db.get('medications', dose.medicationId) : undefined;
     // Idempotente: una toma ya descontada no vuelve a descontar (dos confirmaciones = una sola salida de existencias).
@@ -162,9 +165,12 @@ export const doseActions = {
   snooze(doseId: string, by: Role) {
     const dose = db.get('doses', doseId);
     if (!dose) return undefined;
+    if (by === 'elder' && dose.elderId) beat(dose.elderId, 'answer');
     return db.update('doses', doseId, { status: 'snoozed', snoozedTo: snoozeTarget(new Date()), snoozeCount: dose.snoozeCount + 1, answeredBy: by, respondedAt: new Date().toISOString() });
   },
   skip(doseId: string, by: Role) {
+    const dose = db.get('doses', doseId);
+    if (by === 'elder' && dose?.elderId) beat(dose.elderId, 'answer');
     return db.update('doses', doseId, { status: 'skipped', respondedAt: new Date().toISOString(), answeredBy: by });
   },
   /** El cuidador corrige una respuesta (vuelve a pendiente). Si la toma había descontado, se devuelve (asiento auditable). */
@@ -201,12 +207,14 @@ export function evaluateAlerts(elderId: string, now: Date) {
 export const elderAnswers = {
   addWater(elderId?: string) {
     const id = elderOrActive(elderId);
+    beat(id, 'answer');
     const now = new Date();
     return db.insert('water', { date: toISODate(now), at: now.toISOString() }, actor(id));
   },
   undoWater: (entryId: string) => db.remove('water', entryId),
   meal(mealId: string, answer: MealLog['answer'], elderId?: string) {
     const id = elderOrActive(elderId);
+    beat(id, 'answer');
     const date = toISODate(new Date());
     const prev = db.list('mealLogs', currentUserId(), id).find((m) => m.mealId === mealId && m.date === date);
     if (prev) return db.update('mealLogs', prev.id, { answer });
@@ -214,6 +222,7 @@ export const elderAnswers = {
   },
   activity(activityId: string, done: boolean, elderId?: string) {
     const id = elderOrActive(elderId);
+    beat(id, 'answer');
     const date = toISODate(new Date());
     const prev = db.list('activityLogs', currentUserId(), id).find((m) => m.activityId === activityId && m.date === date);
     if (prev) return db.update('activityLogs', prev.id, { done });
@@ -221,6 +230,7 @@ export const elderAnswers = {
   },
   checkin(patch: { mood?: Answer3; sleep?: Answer3; unwell?: boolean }, elderId?: string) {
     const id = elderOrActive(elderId);
+    beat(id, 'checkin');
     const date = toISODate(new Date());
     const prev = db.list('checkins', currentUserId(), id).find((c) => c.date === date);
     const rec = prev ? db.update('checkins', prev.id, patch)! : db.insert('checkins', { date, mood: null, sleep: null, unwell: null, ...patch }, actor(id));
@@ -232,6 +242,7 @@ export const elderAnswers = {
   },
   requestHelp(elderId?: string) {
     const id = elderOrActive(elderId);
+    beat(id, 'answer');
     const elder = db.get('elders', id);
     return alertActions.raise('help_requested', `${elder?.firstName ?? 'Tu familiar'} tocó "Pedir ayuda" a las ${new Date().toTimeString().slice(0, 5)}.`, `help-${Date.now()}`, id);
   },
@@ -263,3 +274,28 @@ export const notifyLog = {
 /** ¿El aviso a la hora de esta toma quedó entregado al sistema del celular? (No significa que lo vio.) */
 export const doseDelivered = (log: NotifyLog | null, d: Pick<DoseEvent, 'medicationId' | 'date' | 'time'>) =>
   !!log && log.state === 'granted' && log.keys.includes(`med-${d.medicationId}-${d.date}-${d.time}`);
+
+// ── Señales de vida (detección de silencio, V3.0) ───────────────
+
+/** Repositorio de señales de vida del celular del adulto mayor (local; servidor en la fase de backend). */
+export const heartbeats = createLocalHeartbeats(currentUserId);
+
+const OPEN_EVERY_MS = 5 * 60_000;
+
+/**
+ * Registra una señal de vida. Aperturas: como mucho una cada 5 minutos. Permisos: solo si cambió el estado o pasó una
+ * hora (no se llena el registro con lo mismo cada vez que se reprograma).
+ */
+export function beat(elderId: string, kind: HeartbeatKind, notifications?: NotificationPermission) {
+  const now = Date.now();
+  const list = heartbeats.recent(elderId);
+  if (kind === 'app_open') {
+    const last = [...list].reverse().find((b) => b.kind === 'app_open');
+    if (last && now - Date.parse(last.at) < OPEN_EVERY_MS) return;
+  }
+  if (kind === 'permissions') {
+    const last = [...list].reverse().find((b) => b.notifications);
+    if (last && last.notifications === notifications && now - Date.parse(last.at) < 60 * 60_000) return;
+  }
+  heartbeats.record(elderId, { at: new Date(now).toISOString(), kind, ...(notifications ? { notifications } : {}) });
+}

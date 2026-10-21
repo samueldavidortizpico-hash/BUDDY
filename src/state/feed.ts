@@ -7,7 +7,9 @@ import { useMemo } from 'react';
 
 import { DEFAULT_THRESHOLDS, EMPTY_PREFS, buildFeed, itemVersion, unreadCount, visibleFeed, type FeedAction, type FeedItem, type FeedPrefs, type Thresholds } from '@/domain/recommendations/engine';
 import { useNow } from '@/hooks/use-now';
+import { verify, type Heartbeat } from '@/domain/verification';
 import { db, useDb } from '@/infrastructure/local/db';
+import { heartbeatKey } from '@/infrastructure/local/heartbeats';
 import { toISODate } from '@/utils/dates';
 
 import { activeElderId, routineActions } from './actions';
@@ -20,6 +22,7 @@ import { currentUserId } from './session';
 const prefsKey = (elderId: string) => `feed.prefs.${elderId}`;
 const thresholdsKey = (elderId: string) => `reco.thresholds.${elderId}`;
 const EMPTY_THRESHOLDS = DEFAULT_THRESHOLDS;
+const NO_BEATS: Heartbeat[] = [];
 
 /** Feed calculado desde la base (sin hooks): lo usa el chat ("¿alguna recomendación hoy?"). */
 export function computeFeed(now = new Date()): FeedItem[] {
@@ -45,6 +48,7 @@ export function computeFeed(now = new Date()): FeedItem[] {
     since: elder.createdAt.slice(0, 10),
     thresholds: feedActions.thresholds(elderId),
     escalation: elder.screen,
+    verification: verify({ heartbeats: db.draft<Heartbeat[]>(userId, heartbeatKey(elderId)) ?? [], now, elderName: elder.firstName, maxSilenceHours: elder.screen.silenceHours }),
   });
   return visibleFeed(items, feedActions.prefs(elderId), now);
 }
@@ -66,6 +70,7 @@ export function useFeed(): { items: FeedItem[]; unread: number; alarm: boolean; 
   const appointments = useRecords('appointments');
   const prefs = useDb((s) => (userId && elder ? (s.drafts[userId]?.[prefsKey(elder.id)] as FeedPrefs | undefined) : undefined)) ?? EMPTY_PREFS;
   const thresholds = useDb((s) => (userId && elder ? (s.drafts[userId]?.[thresholdsKey(elder.id)] as Thresholds | undefined) : undefined)) ?? EMPTY_THRESHOLDS;
+  const beats = useDb((s) => (userId && elder ? (s.drafts[userId]?.[heartbeatKey(elder.id)] as Heartbeat[] | undefined) : undefined)) ?? NO_BEATS;
   return useMemo(() => {
     if (!elder?.setupDone) return { items: [], unread: 0, alarm: false, unreadItems: [] };
     const all = buildFeed({
@@ -85,10 +90,11 @@ export function useFeed(): { items: FeedItem[]; unread: number; alarm: boolean; 
       since: elder.createdAt.slice(0, 10),
       thresholds,
       escalation: elder.screen,
+      verification: verify({ heartbeats: beats, now, elderName: elder.firstName, maxSilenceHours: elder.screen.silenceHours }),
     });
     const items = visibleFeed(all, prefs, now);
     return { items, unread: unreadCount(items, prefs), alarm: items.some((f) => f.severity === 'alarm'), unreadItems: items.filter((f) => prefs.read[f.key] !== itemVersion(f)) };
-  }, [now, elder, meds, doses, checkins, water, plans, meals, mealLogs, activities, alerts, appointments, prefs, thresholds]);
+  }, [now, elder, meds, doses, checkins, water, plans, meals, mealLogs, activities, alerts, appointments, prefs, thresholds, beats]);
 }
 
 export const feedActions = {

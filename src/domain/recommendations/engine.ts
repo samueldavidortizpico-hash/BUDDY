@@ -14,6 +14,7 @@ import { addDays, lastDays } from '@/utils/dates';
 import { displayStatus, effectiveTime, escalationOf, type Escalation } from '../schedule';
 import { estimateStock } from '../stock';
 import type { Activity, Alert, Appointment, CheckinAnswer, DoseEvent, ISODate, Meal, MealLog, Medication, WaterEntry } from '../types';
+import type { Verification } from '../verification';
 
 export type Severity = 'info' | 'attention' | 'alarm';
 export type FeedKind = 'alert' | 'recommendation';
@@ -87,6 +88,8 @@ export interface RecoInput {
   thresholds?: Thresholds;
   /** Aviso escalonado de la persona (Ajustes > Mis avisos). */
   escalation?: Partial<Escalation>;
+  /** Detección de silencio (src/domain/verification). Sin ella no se afirma que el día va bien. */
+  verification?: Verification;
 }
 
 const RANK: Record<Severity, number> = { alarm: 0, attention: 1, info: 2 };
@@ -176,6 +179,25 @@ export function buildFeed(i: RecoInput): FeedItem[] {
       count: 1,
       expiresAt: endOfDay(today),
       actions: [{ type: 'call' }, { type: 'confirm_dose', doseId: d.id }],
+    });
+  }
+
+  // "No puedo verificar": sin señal del celular del adulto mayor o con sus avisos desactivados. No es "sin confirmar".
+  if (i.verification?.state === 'cannot_verify') {
+    out.push({
+      key: `verify-${i.verification.reason}`,
+      kind: 'alert',
+      severity: 'attention',
+      title: `No puedo verificar: ${i.verification.text.charAt(0).toLowerCase()}${i.verification.text.slice(1)}`,
+      reason:
+        i.verification.reason === 'silence'
+          ? `BUDDY no sabe si los recordatorios le están llegando a ${name}. Llama para saber cómo está.`
+          : `Sin avisos, ${name} no recibe los recordatorios a la hora. Llama y pídele activarlos, o actívalos cuando estés con ${name}.`,
+      support: [],
+      at: nowIso,
+      count: 1,
+      expiresAt: null,
+      actions: [{ type: 'call' }],
     });
   }
 
@@ -372,8 +394,9 @@ export function buildFeed(i: RecoInput): FeedItem[] {
     });
   }
 
-  // Con todo en orden: tarjetas informativas útiles (nunca un panel vacío).
-  if (!out.some((x) => x.severity !== 'info' || x.kind === 'alert')) {
+  // Con todo en orden: tarjetas informativas útiles (nunca un panel vacío). Si se conoce la verificación, solo con señal
+  // reciente: sin datos BUDDY no dice que el día va bien.
+  if (!out.some((x) => x.severity !== 'info' || x.kind === 'alert') && (!i.verification || i.verification.state === 'ok')) {
     const next = i.doses
       .filter((d) => d.date === today && medsById.has(d.medicationId) && (d.status === 'pending' || d.status === 'snoozed') && minutesOf(effectiveTime(d)) >= nowMin)
       .sort((a, b) => minutesOf(effectiveTime(a)) - minutesOf(effectiveTime(b)))[0];

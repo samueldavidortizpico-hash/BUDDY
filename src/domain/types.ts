@@ -51,6 +51,8 @@ export interface ElderScreenPrefs {
   /** Aviso escalonado (V3.0): segundo aviso a T+N min y "sin confirmar" a T+M min. Lo define el administrador. */
   remindAfterMin?: number;
   unconfirmedAfterMin?: number;
+  /** Detección de silencio: horas sin señal del celular del adulto mayor para "No puedo verificar" (12 por defecto). */
+  silenceHours?: number;
 }
 
 /** Consentimiento de ubicación del adulto mayor (solo él decide; revocable en cualquier momento). */
