@@ -95,3 +95,19 @@ Medición del registro: pantallas 9 → 5. Toques mínimos hasta el Inicio con e
 "Guardar y continuar" ×1, "Escribirlo a mano" + campos + guardar del medicamento, contacto con nombre y celular +
 guardar, hora del chequeo + guardar, "Ir al Resumen"): de unos 30 toques con los 9 pasos (4 pasos extra de "Completar
 después") a unos 20. Verificación: tsc 0, lint 0, jest 684/684, reversa OK (29 rutas), desbordes OK.
+
+## Verificación final (2026-10-20)
+
+| Comprobación | Resultado |
+|---|---|
+| `npx tsc --noEmit` | 0 errores |
+| `npx expo lint` | 0 errores, 0 avisos |
+| `npx jest` | 684/684 (35 → 41 suites; incluye aviso escalonado, verificación, estado de un segundo, salida del adulto mayor y rutas de Ajustes) |
+| Zonas horarias (Bogotá, Madrid, UTC) en las suites de horarios | 35/35 en cada una |
+| `npm run check:headers` (reversa) | OK: 29 rutas, todas las no raíz con "Volver" |
+| `scripts/check-overflow.mjs` (desbordes) | OK: 11 pantallas × 2 tamaños × texto normal y 200 % × 3 temas |
+| `scripts/capture/v30-hito1.mjs` | OK (antes: 31 fallas) |
+| `npx expo-doctor` | 21/21 comprobaciones |
+| `npx expo export --platform android` | OK (bundle Hermes de 8,1 MB) |
+| Recorrido completo en web (`scripts/capture/v30-recorrido.mjs`, reloj simulado) | OK: cuenta → registro rápido (5 pantallas) → medicamento → "Probar como" → segundo aviso a las 8:11 → "Atención / sin confirmar" a las 8:31 → "Ya lo confirmé por teléfono" → resumen diario → chat con teclado simulado. Capturas en `docs/capturas/v30/recorrido/` |
+| Código muerto tras el recorte | Se eliminó `SuggestsPanel` (sin uso al salir del Inicio) y sus estilos; `/food` y `/health/watch` se conservan a propósito (Futuro, apagados) |

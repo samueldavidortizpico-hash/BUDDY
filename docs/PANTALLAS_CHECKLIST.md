@@ -1,5 +1,22 @@
 # BUDDY — Checklist de pantallas
 
+## V3.0 (2026-10-20)
+
+"Web" = Playwright a 390×844 y 360×740 (360×640 y 480 de alto con teclado simulado donde aplica), claro, oscuro y alto
+contraste; "Jest" = prueba automática; "Dispositivo" = `docs/PRUEBAS_EN_DISPOSITIVO.md` § 0.
+
+| Pantalla | Estado | Validación |
+|---|---|---|
+| Inicio (vista de un segundo, tomas de hoy con su etapa, resumen diario) | Hecho | Web `hito5-summary-*`, recorrido; Jest `status.test.ts`; dispositivo 0.4 |
+| Chat de BUDDY a pantalla completa con "Volver" y compositor anclado | Hecho | Web `v30-hito1.mjs` (12 combinaciones), recorrido con alto 480; Jest `hito1.test.tsx`; dispositivo 0.1 |
+| Ajustes: 10 opciones como rutas completas | Hecho | Web `v30-hito1.mjs` (360×640 al 200 % en 3 temas y 390×844); Jest; dispositivo 0.2 |
+| Ajustes > Mis personas > Acceso (pantalla) | Hecho | Web; Jest (contraseña temporal, correo, revocar) |
+| Ajustes > Mis avisos (aviso escalonado, silencio, resumen) | Hecho | Web `hito5-settings_alerts-*`; dispositivo 0.2.5 |
+| Invitar a un familiar | Hecho en local; aceptar requiere servidor | Web `hito6-settings_invite-*`; Jest `hito6.test.tsx` |
+| Registro rápido (5 pantallas) | Hecho | Web `hito6-setup_new_1-*`, recorrido; Jest |
+| Pantalla del adulto mayor (Opciones, respuestas de 72, modo prueba) | Hecho | Web `hito6-elder-*`, `despues-adulto-*`; Jest `roles.test.tsx`, `hito6.test.tsx`; dispositivo 0.3 y 0.5 |
+| Nutrición (`/food`) y reloj (`/health/watch`) | Futuro: fuera de la navegación | `src/config/features.ts` |
+
 ## Adenda de diseño v2 — verificación cruzada (2026-10-11)
 
 Estado: **Hecho** (implementado y revisado con captura), **Heredado** (tiene tokens v2 y modo oscuro, falta la recomposición

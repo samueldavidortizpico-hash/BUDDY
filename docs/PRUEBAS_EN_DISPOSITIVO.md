@@ -4,6 +4,59 @@ Lista para una persona con un iPhone y un Android reales y Expo Go (SDK 57). El 
 
 Lo que **no** se puede comprobar en web y por eso está aquí: teclado real, gestos, hápticos, notificaciones, permisos, efecto glass, splash nativo, lector de pantalla y rendimiento.
 
+## 0. Ronda V3.0 (2026-10-20): empieza por aquí
+
+En V3.0 el chat dejó de ser una pestaña (las pruebas 1.1 y 1.5 de V2.4 que hablan de la "pestaña BUDDY" o de la barra
+con el teclado ya no aplican: el chat se abre desde el robot, el botón ✦ del Inicio o Novedades y no tiene barra).
+
+### 0.1 Chat con flecha y teclado
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 0.1.1 | En el Inicio toca el botón ✦ (BUDDY) de arriba. | Se abre el chat a pantalla completa, sin barra de pestañas, con la flecha "Volver" arriba a la izquierda. | ☐ | ☐ |
+| 0.1.2 | Toca el campo "Escríbele a BUDDY…". | El compositor queda justo encima del teclado, sin saltos; la lista baja al último mensaje. Nada lo tapa. | ☐ | ☐ |
+| 0.1.3 | Escribe 5 líneas seguidas. | El campo crece hasta 4 líneas y luego desplaza por dentro; el botón enviar (redondo, 48) sigue visible. | ☐ | ☐ |
+| 0.1.4 | Cierra el teclado. | El compositor queda sobre la zona segura inferior (no pegado al borde ni bajo la barra de gestos). | ☐ | ☐ |
+| 0.1.5 | Toca "Volver"; repite y usa el gesto de iOS / el botón atrás de Android. | Los tres vuelven al Inicio. Abriendo el chat desde una notificación o enlace sin historial, atrás lleva al Inicio y no cierra la app. | ☐ | ☐ |
+
+### 0.2 Ajustes
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 0.2.1 | Abre cada opción de Ajustes (Cuenta, Apariencia, Pantalla de…, Mis avisos, Notificaciones, Mis personas, Dispositivos, Legal, Avanzado, Acerca de). | Cada una es una pantalla completa con "Volver", empieza arriba y se puede bajar hasta el final sin cortes. | ☐ | ☐ |
+| 0.2.2 | Repite con el texto del sistema en el tamaño más grande. | Nada se sale por los lados; en Mis personas el nombre se lee completo y los botones bajan a otra línea. | ☐ | ☐ |
+| 0.2.3 | Mis personas > Acceso. | Pantalla completa (no hoja) con el correo, "Copiar correo", el estado y "Restablecer contraseña", "Cambiar correo", "Revocar acceso". | ☐ | ☐ |
+| 0.2.4 | "Restablecer contraseña" > confirmar. | Muestra una contraseña temporal una sola vez; con "Ya la anoté" desaparece y la anterior deja de servir. | ☐ | ☐ |
+| 0.2.5 | Mis avisos: cambia "Segundo aviso" a 15 y "Sin confirmar" a 45, y la hora del resumen. | Se guardan; el segundo aviso nunca puede quedar después del "sin confirmar". | ☐ | ☐ |
+
+### 0.3 Salir del modo adulto mayor
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 0.3.1 | Entra con la cuenta del adulto mayor. | Arriba a la derecha hay un botón "Opciones" visible. | ☐ | ☐ |
+| 0.3.2 | Opciones > Cerrar sesión. | Pide confirmar ("Vas a salir de BUDDY en este celular…"); al confirmar vuelve a la entrada con la elección de rol. | ☐ | ☐ |
+| 0.3.3 | Entra de nuevo como adulto mayor > Opciones > Entrar como administrador. | Pide el PIN (con 5 errores, espera creciente) o "Usar correo y contraseña del administrador"; termina en el inicio de sesión del administrador. | ☐ | ☐ |
+| 0.3.4 | Como administrador, Entregar > "Probar como". | Banner "Modo prueba" arriba con "Volver a administrador" (sin PIN), que vuelve a Entregar. | ☐ | ☐ |
+
+### 0.4 Aviso escalonado y silencio (requiere notificaciones activadas)
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 0.4.1 | Programa un medicamento a 3 minutos y abre "Probar como" una vez (para que el celular programe sus avisos). Cierra la app. | A la hora llega "Hora de tu medicamento"; a los 10 minutos, "¿Ya tomaste tu medicamento?". | ☐ | ☐ |
+| 0.4.2 | Repite y toca "Ya lo tomé" antes del segundo aviso. | El segundo aviso NO llega. | ☐ | ☐ |
+| 0.4.3 | Repite sin responder y espera 30 minutos; abre la app como administrador. | El Inicio dice "Atención" con la toma sin confirmar; en Novedades, "Llamar a [nombre]" y "Ya lo confirmé por teléfono". | ☐ | ☐ |
+| 0.4.4 | Desactiva las notificaciones de Expo Go en el sistema y abre "Probar como". | El Inicio pasa a "Atención: No puedo verificar: Las notificaciones están desactivadas en el celular de…". | ☐ | ☐ |
+| 0.4.5 | Samsung (ahorro de energía) y Xiaomi (sin "Inicio automático"): repite 0.4.1. | Anota si el aviso llega a tiempo, tarde o no llega (ver `docs/NOTIFICACIONES.md`). | ☐ | ☐ |
+| 0.4.6 | Deja la hora del resumen 2 minutos después y espera con la app cerrada. | Llega "Resumen de hoy en BUDDY" con "datos hasta las…" y la línea del día. | ☐ | ☐ |
+
+### 0.5 Adulto mayor e invitación
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 0.5.1 | Con la voz activada (Ajustes > Pantalla de…), abre "Probar como". | Lee en voz alta el aviso del momento; todos los botones de respuesta son grandes (72). | ☐ | ☐ |
+| 0.5.2 | Mis personas > Invitar a un familiar > Administrar > Crear invitación > Compartir. | Se abre la hoja de compartir del sistema con el código y el enlace. | ☐ | ☐ |
+| 0.5.3 | Registra a una persona nueva desde cero y cronometra. | 5 pantallas ("Paso 1 de 5"…); al terminar, el Inicio muestra "Aún no hay registros" hasta que su celular dé señales. | ☐ | ☐ |
+
 ## 1. Chat guiado y teclado (V2.4, Hito 1)
 
 | # | Pasos | Resultado esperado | iOS | Android |

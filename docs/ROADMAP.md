@@ -1,6 +1,6 @@
 # Hoja de ruta de BUDDY
 
-Estado real al 2026-10-20 (ronda V3.0 en curso). Desde V3.0 la hoja de ruta se ordena por la definición del producto
+Estado real al 2026-10-20 (ronda V3.0 completada: Hitos 1 a 6 y verificación final). Desde V3.0 la hoja de ruta se ordena por la definición del producto
 (`docs/PRODUCTO.md`): **Núcleo**, **Valor añadido** y **Futuro**. "Hecho" significa implementado y probado en web y con
 Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`; lo que necesita backend se marca como tal.
 
@@ -9,19 +9,19 @@ Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`; 
 | Función | Estado | Falta |
 |---|---|---|
 | Medicamentos con horarios, confirmación ("tomé / no tomé / en 10 minutos") | Hecho | — |
-| Aviso escalonado (T, T+10, "sin confirmar" a T+30, alerta de seguimiento) | V3.0 Hito 3 | Alerta en el celular del hijo con la app del adulto mayor cerrada: **backend** |
+| Aviso escalonado (T, T+10, "sin confirmar" a T+30, alerta de seguimiento) | Hecho (V3.0) | Alerta en el celular del hijo con la app del adulto mayor cerrada: **backend** |
 | Existencias exactas con aviso a 3 días | Hecho (V2.4) | — |
 | Chequeo diario corto (ánimo, sueño, "me siento mal") | Hecho | — |
 | Botón de ayuda | Hecho | Aviso remoto al hijo: **backend** |
-| Vista de un segundo y resumen diario para el hijo | V3.0 Hito 5 | — |
-| Detección de silencio ("No puedo verificar") | V3.0 Hito 4 (mismo celular) | Entre dos celulares: **backend** (`HeartbeatRepository`) |
+| Vista de un segundo y resumen diario para el hijo | Hecho (V3.0) | Resumen generado en el servidor: **backend** |
+| Detección de silencio ("No puedo verificar") | Hecho en el mismo celular (V3.0) | Entre dos celulares: **backend** (`HeartbeatRepository`) |
 | Cuentas y seguridad (administrador, acceso del adulto mayor, PIN, salir del modo adulto mayor) | Hecho (V3.0 Hito 1) | Cuentas en servidor: **backend** |
 
 ## Valor añadido (encendido lo construido)
 
 | Función | Estado | Falta |
 |---|---|---|
-| Varios cuidadores (invitación familiar con permisos) | V3.0 Hito 6 (local, contrato listo) | Aceptar la invitación en otro celular: **backend** |
+| Varios cuidadores (invitación familiar con permisos) | Hecho en local (V3.0); contrato `InviteRepository` | Aceptar la invitación en otro celular: **backend** |
 | Citas con dirección y preguntas | Hecho | — |
 | Reporte para el médico | Parcial (Salud) | Exportar PDF |
 | Mensajes de la familia | Parcial (chat del administrador) | Entrega remota: **backend** |

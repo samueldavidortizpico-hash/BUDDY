@@ -13,11 +13,10 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { useToast } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
-import { BuddyRobot } from '@/components/robot';
 import type { FeedItem } from '@/domain/recommendations/engine';
 import { strings } from '@/i18n';
 import { useActiveElder } from '@/state/data';
-import { feedActions, useFeed } from '@/state/feed';
+import { feedActions } from '@/state/feed';
 import { radius, spacing, type Tone } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 import { successHaptic } from '@/utils/haptics';
@@ -106,33 +105,6 @@ export function FeedCard({ item, index = 0 }: { item: FeedItem; index?: number }
   );
 }
 
-/** Panel "BUDDY te sugiere" del Resumen: siempre visible; con todo en orden muestra tarjetas informativas. */
-export function SuggestsPanel({ max = 4 }: { max?: number }) {
-  const router = useRouter();
-  const t = useTheme();
-  const s = useStyles();
-  const { items } = useFeed();
-  return (
-    <View style={s.panel}>
-      <View style={s.panelHead}>
-        <BuddyRobot size={56} compact mood={items.some((f) => f.severity === 'alarm') ? 'worry' : 'happy'} shadow={false} flying={false} />
-        <AppText variant="h2" style={s.panelTitle} accessibilityRole="header">
-          {F.suggests}
-        </AppText>
-        {items.length > max ? <Button label={F.seeAll(items.length)} size="sm" variant="ghost" onPress={() => router.push('/alerts' as Href)} /> : null}
-      </View>
-      {items.slice(0, max).map((f, i) => (
-        <FeedCard key={f.key} item={f} index={i} />
-      ))}
-      {!items.length ? (
-        <AppText variant="secondary" color={t.c.muted}>
-          {F.noneToday}
-        </AppText>
-      ) : null}
-    </View>
-  );
-}
-
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
     flex: { flex: 1 },
@@ -141,8 +113,5 @@ const useStyles = makeStyles((t) =>
     iconBox: { width: 44, height: 44, borderRadius: radius.icon, alignItems: 'center', justifyContent: 'center' },
     support: { gap: 2, padding: spacing.sm, borderRadius: radius.md, backgroundColor: t.c.surface, ...t.hairline },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    panel: { gap: spacing.sm },
-    panelHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs },
-    panelTitle: { flexGrow: 1, flexShrink: 1, flexBasis: 140 },
   }),
 );
