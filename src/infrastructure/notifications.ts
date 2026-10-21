@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import { planSignature, type PlannedNotification } from '@/domain/notifications';
 
 const CHANNEL = 'recordatorios';
+const SUMMARY_ID = 'admin-daily-summary';
 export const notificationsSupported = Platform.OS === 'ios' || Platform.OS === 'android';
 
 let handlerSet = false;
@@ -60,7 +61,9 @@ export async function applyPlan(plan: PlannedNotification[]): Promise<{ state: P
   if (state !== 'granted') return { state, scheduled: 0 };
   const sig = planSignature(plan);
   if (sig === lastSignature) return { state, scheduled: plan.length };
-  await Notifications.cancelAllScheduledNotificationsAsync();
+  // Se cancelan solo los avisos del adulto mayor: el resumen diario del administrador (mismo celular en la demo) se queda.
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  await Promise.all(scheduled.filter((n) => n.identifier !== SUMMARY_ID).map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)));
   for (const n of plan) {
     await Notifications.scheduleNotificationAsync({ identifier: n.key, content: { title: n.title, body: n.body, sound: true }, trigger: toTrigger(n.trigger) });
   }
@@ -84,4 +87,22 @@ export async function clearScheduled() {
   if (!notificationsSupported) return;
   lastSignature = '';
   await Notifications.cancelAllScheduledNotificationsAsync();
+}
+
+/**
+ * Resumen diario del administrador (V3.0): una notificación local hoy a la hora elegida con el resumen calculado AHORA
+ * (el texto dice hasta qué hora son los datos). Se reemplaza cada vez que cambian los datos con la app abierta. Sin texto
+ * (sin registros reales) o con la hora ya pasada, no se programa. No pide permiso.
+ */
+export async function scheduleDailySummary(text: string | null, when: Date | null): Promise<PermissionState> {
+  const state = await notificationPermission(false);
+  if (state !== 'granted') return state;
+  await Notifications.cancelScheduledNotificationAsync(SUMMARY_ID).catch(() => undefined);
+  if (!text || !when || when.getTime() <= Date.now()) return state;
+  await Notifications.scheduleNotificationAsync({
+    identifier: SUMMARY_ID,
+    content: { title: 'Resumen de hoy en BUDDY', body: text, sound: false },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when, channelId: CHANNEL },
+  });
+  return state;
 }

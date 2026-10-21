@@ -94,6 +94,8 @@ export interface Elder extends SyncMeta {
   foodAllergies: string[];
   checkinTime: ClockTime | null;
   summaries: SummaryFrequency;
+  /** Hora del resumen diario de una línea para el administrador (20:00 por defecto). */
+  summaryTime?: ClockTime;
   alertPrefs: Record<AlertKind, boolean>;
   screen: ElderScreenPrefs;
   /** Equivalencias editables para la revisión de alergias: { "penicilina": ["amoxicilina", …] }. */

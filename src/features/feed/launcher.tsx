@@ -32,6 +32,8 @@ import { Icon, type IconName } from '@/components/icon';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { itemVersion, type FeedItem } from '@/domain/recommendations/engine';
 import { strings } from '@/i18n';
+import { dayStatus } from '@/domain/status';
+import { useStatusInput } from '@/features/summary/status';
 import { useActiveElder } from '@/state/data';
 import { feedActions, useFeed } from '@/state/feed';
 import { bounds, bubbleSide, clampPos, isHiddenToday, sizeKey, snapX, useLauncherStore, type Pos } from '@/state/launcher';
@@ -58,6 +60,9 @@ export function BuddyLauncher() {
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
   const { unreadItems, unread, alarm } = useFeed();
+  const homeElder = useActiveElder();
+  const statusInput = useStatusInput(homeElder?.setupDone ? homeElder : undefined);
+  const level = statusInput ? dayStatus(statusInput).level : null;
   const key = sizeKey(width, height);
   const saved = useLauncherStore((s) => s.positions[key]);
   const magnet = useLauncherStore((s) => s.magnet);
@@ -159,7 +164,10 @@ export function BuddyLauncher() {
 
   // Burbujas solo en el Inicio (V3.0): en Rutina, Salud y Ajustes tapaban filas y botones (auditoría V3.0 #8). En las
   // demás pestañas queda el robot con su contador, que abre el chat.
-  const pending = pathname === '/summary' ? unreadItems.filter((f) => !f.positive && dismissed[f.key] !== itemVersion(f)) : [];
+  // Y si el estado del Inicio ya dice "Atención" o "Acción necesaria", ese es el mensaje: la burbuja lo repetía tapando
+  // los datos de hoy (V3.0, decisión 113).
+  const quiet = pathname !== '/summary' || level === 'attention' || level === 'action';
+  const pending = quiet ? [] : unreadItems.filter((f) => !f.positive && dismissed[f.key] !== itemVersion(f));
   const mood: RobotMood = alarm ? 'worry' : unread ? 'wave' : love ? 'love' : 'idle';
   const open = () => {
     if (dragged.get()) return;

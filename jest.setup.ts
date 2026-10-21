@@ -53,6 +53,10 @@ jest.mock('expo-notifications', () => {
     cancelAllScheduledNotificationsAsync: jest.fn(async () => {
       scheduled.length = 0;
     }),
+    getAllScheduledNotificationsAsync: jest.fn(async () => scheduled.map((n) => ({ ...n, identifier: n.identifier ?? '' }))),
+    cancelScheduledNotificationAsync: jest.fn(async (id: string) => {
+      for (let i = scheduled.length - 1; i >= 0; i--) if (scheduled[i].identifier === id) scheduled.splice(i, 1);
+    }),
     scheduleNotificationAsync: jest.fn(async (req: { identifier?: string; content: unknown; trigger: unknown }) => {
       scheduled.push(req);
       return req.identifier ?? String(scheduled.length);

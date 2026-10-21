@@ -10,11 +10,11 @@ import { BottomSheet } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
-import { SuggestsPanel } from '@/features/feed/feed-card';
 import { useFeed } from '@/state/feed';
 import { locationView } from '@/domain/location';
 import { useNow } from '@/hooks/use-now';
 import { formatAgo } from '@/utils/dates';
+import { DailySummaryCard, StatusHero } from '@/features/summary/status';
 import { TodayPanel } from '@/features/summary/today';
 import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
@@ -80,6 +80,9 @@ export default function Summary() {
         </Appear>
       ) : (
         <>
+          {/* Vista de un segundo (V3.0): el estado es lo primero; las novedades viven en la campana y en el robot. */}
+          <StatusHero elder={ready} phone={ready.phone} />
+          <DailySummaryCard elder={ready} />
           <FirstSteps />
           <Card variant="tint" tone="mint" style={s.elderPreview}>
             <AppText variant="h3">{S.elderScreenTitle}</AppText>
@@ -95,7 +98,6 @@ export default function Summary() {
             />
           </Card>
           <WhereCard name={ready.firstName} consent={ready.locationConsent} onPress={() => router.push('/location' as Href)} />
-          <SuggestsPanel />
           <TodayPanel elder={ready} />
         </>
       )}

@@ -10,6 +10,7 @@ import Onboarding from '@/app/(auth)/onboarding';
 import SignIn from '@/app/(auth)/sign-in';
 import Routine from '@/app/(caregiver)/(tabs)/routine';
 import Summary from '@/app/(caregiver)/(tabs)/summary';
+import Alerts from '@/app/(caregiver)/alerts';
 import RoutineSection from '@/app/(caregiver)/routine/[section]';
 import { db, useDb } from '@/infrastructure/local/db';
 import { execute } from '@/state/assistant';
@@ -49,7 +50,8 @@ it('P2: lo que agrega BUDDY aparece en Rutina marcado "Nuevo"', () => {
 
 it('P3: 14 días de ánimo bajo generan una recomendación con escalada para el administrador', () => {
   for (let i = 0; i < 14; i++) db.insert('checkins', { date: daysAgo(i), mood: 'bad', sleep: 'good', unwell: false }, { userId: testUser.id, elderId });
-  ui(<Summary />);
+  // V3.0: las recomendaciones viven en Novedades (campana del Inicio); el Inicio muestra el estado de un segundo.
+  ui(<Alerts />);
   expect(screen.getByText(/consulta con un médico o un profesional de salud mental/)).toBeTruthy();
 });
 
@@ -100,7 +102,7 @@ it('P13: el robot lanzador (en todas las pestañas salvo el chat) muestra las no
   expect(screen.getByText('2')).toBeTruthy();
 });
 
-it('P14: con todo en orden, "BUDDY te sugiere" muestra tarjetas útiles', () => {
-  ui(<Summary />);
+it('P14: con todo en orden, Novedades muestra tarjetas útiles (V3.0: fuera del Inicio)', () => {
+  ui(<Alerts />);
   expect(screen.getAllByTestId('reco-card').length).toBeGreaterThan(0);
 });

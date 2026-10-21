@@ -130,7 +130,7 @@ export function Button({
             color={v.text}
             align="center"
             numberOfLines={stacked ? 2 : undefined}
-            style={trailing && !stacked ? s.grow : undefined}
+            style={s.grow}
           >
             {label}
           </AppText>
@@ -230,7 +230,10 @@ export const buttonStyles = { row: { flexDirection: 'row', gap: spacing.sm } as 
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
+    // maxWidth + texto que se encoge: en filas que se parten (acciones de tarjetas), una etiqueta larga con texto al
+    // 200 % salía de la pantalla ("Ya lo confirmé por teléfono", V3.0); ahora parte la línea dentro del botón.
     base: {
+      maxWidth: '100%',
       borderRadius: radius.button,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.xs,

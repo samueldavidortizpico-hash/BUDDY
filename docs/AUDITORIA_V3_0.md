@@ -69,3 +69,15 @@ Verificación: tsc 0, lint 0, jest 649/649, zonas horarias (Bogotá, Madrid, UTC
 
 Límite honesto: entre dos celulares esto solo funciona con backend (el celular del hijo no puede leer las señales del
 otro). Hoy se demuestra en el mismo celular con "Probar como". Verificación: tsc 0, lint 0, jest 663/663.
+
+## Hito 5: vista de un segundo y resumen diario
+
+| # | Problema | Evidencia antes | Causa raíz | Corrección | Evidencia después |
+|---|---|---|---|---|---|
+| 14 | El Inicio no respondía "¿está bien?" de un vistazo: arriba iban tarjetas de recomendaciones y el robot con burbujas | `hito3-summary-*.png` | No había un estado del día; el Inicio sumaba paneles | Estado como héroe (`dayStatus`) y resumen de una línea (`dailySummary`) | `hito5-summary-*.png` (6 capturas); `status.test.ts` (13) |
+| 15 | La burbuja del robot repetía el aviso del estado y tapaba los datos de hoy | Primera captura `hito5-summary-390x844-claro.png` (burbuja sobre "Existencias") | Las burbujas no conocían el estado | Sin burbujas con "Atención" o "Acción necesaria" | `launcher.test.tsx` (8); capturas sin burbuja |
+| 16 | "Ya lo confirmé por teléfono" salía de la pantalla con texto al 200 % | `check-overflow`: `/alerts 360x740 texto max contraste` | El texto de `Button` no se encogía | `maxWidth` y `flexShrink` en `Button` | `check-overflow` OK (11 pantallas) |
+
+Prueba de los 3 segundos (revisión de las 6 capturas `hito5-summary-*`): la palabra del nivel es el texto más grande, es
+lo primero bajo el nombre y queda arriba del pliegue en 390×844 y 360×740 en los tres temas; su color va siempre con
+icono y texto. Verificación: tsc 0, lint 0, jest 678/678, reversa OK, desbordes OK, `v30-hito1.mjs` OK.

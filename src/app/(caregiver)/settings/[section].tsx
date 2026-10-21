@@ -260,6 +260,8 @@ function EscalationPrefs() {
         format={E.hours}
       />
       <AppText variant="caption" color={t.c.muted}>{E.silenceNote}</AppText>
+      <TimeField label={E.summaryTime} value={elder.summaryTime ?? '20:00'} onChange={(v) => elderActions.update(elder.id, { summaryTime: v })} />
+      <AppText variant="caption" color={t.c.muted}>{E.summaryNote}</AppText>
     </Card>
   );
 }
