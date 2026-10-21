@@ -149,7 +149,7 @@ export const esCO = {
     },
   },
   answers: { good: 'Bien', regular: 'Regular', bad: 'Mal' } as Record<'good' | 'regular' | 'bad', string>,
-  tabs: { summary: 'Resumen', routine: 'Rutina', buddy: 'BUDDY', health: 'Salud', settings: 'Ajustes' },
+  tabs: { summary: 'Inicio', routine: 'Rutina', health: 'Salud', settings: 'Ajustes' },
   time: {
     hint: 'Abre el selector de hora',
     hour: 'Hora',
@@ -725,6 +725,7 @@ export const esCO = {
     active: 'Activa',
     makeActive: 'Ver a esta persona',
     devicesBody: 'Relojes y sensores llegarán con la versión instalable. Esta app guarda los datos en este teléfono.',
+    watchSoon: 'Pronto: reloj y datos de salud del reloj.',
     thisDevice: 'Este teléfono',
     permissions: 'Permisos',
     camera: 'Cámara (fotos de envases)',

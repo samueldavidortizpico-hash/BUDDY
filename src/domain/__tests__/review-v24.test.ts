@@ -15,7 +15,9 @@ function med(over: Partial<Medication> = {}): Medication {
 const elder = (allergies: string[] = [], avoid: string[] = []) => ({ allergies, avoid, equivalences: {} });
 
 describe('revisión por perfil (V2.4)', () => {
+  // El nivel 2 está apagado por defecto (V3.0); estas pruebas lo encienden para verificar sus reglas.
   const level2 = FEATURES.level2Review;
+  beforeEach(() => { FEATURES.level2Review = true; });
   afterEach(() => { FEATURES.level2Review = level2; });
 
   it('alergia a "penicilina" coincide con amoxicilina por su clase ATC (J01C), con la fuente de la regla', () => {

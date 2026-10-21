@@ -63,12 +63,7 @@ try {
       if (name !== 'claro' && w === 390) continue;
       const page = await browser.newPage({ viewport: { width: w, height: h } });
       await seed(page, base, seedState({ days: 2, full: true }), { ...a, textScale: scale, barGestures: true });
-      // Las burbujas del robot pueden tapar filas (hallazgo aparte): aquí se oculta "por hoy" para medir Ajustes.
-      await page.evaluate(() => {
-        const d = new Date();
-        const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        localStorage.setItem('buddy.launcher', JSON.stringify({ state: { positions: {}, magnet: true, hiddenOn: today, dismissed: {} }, version: 1 }));
-      });
+      // Con el robot visible (V3.0 #8: sus burbujas ya no salen fuera del Inicio y no deben tapar ninguna fila).
       for (const sec of SECTIONS) {
         const id = `ajustes-${sec}-${w}x${h}-${name}-${scale}`;
         await page.goto(`${base}/settings`);

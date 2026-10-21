@@ -1,23 +1,71 @@
 # Hoja de ruta de BUDDY
 
-Estado real al 2026-10-12 (ronda V2.4 completada). "Hecho" significa implementado y probado en web y con Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`.
+Estado real al 2026-10-20 (ronda V3.0 en curso). Desde V3.0 la hoja de ruta se ordena por la definición del producto
+(`docs/PRODUCTO.md`): **Núcleo**, **Valor añadido** y **Futuro**. "Hecho" significa implementado y probado en web y con
+Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`; lo que necesita backend se marca como tal.
 
-## Hecho
+## Núcleo (encendido)
+
+| Función | Estado | Falta |
+|---|---|---|
+| Medicamentos con horarios, confirmación ("tomé / no tomé / en 10 minutos") | Hecho | — |
+| Aviso escalonado (T, T+10, "sin confirmar" a T+30, alerta de seguimiento) | V3.0 Hito 3 | Alerta en el celular del hijo con la app del adulto mayor cerrada: **backend** |
+| Existencias exactas con aviso a 3 días | Hecho (V2.4) | — |
+| Chequeo diario corto (ánimo, sueño, "me siento mal") | Hecho | — |
+| Botón de ayuda | Hecho | Aviso remoto al hijo: **backend** |
+| Vista de un segundo y resumen diario para el hijo | V3.0 Hito 5 | — |
+| Detección de silencio ("No puedo verificar") | V3.0 Hito 4 (mismo celular) | Entre dos celulares: **backend** (`HeartbeatRepository`) |
+| Cuentas y seguridad (administrador, acceso del adulto mayor, PIN, salir del modo adulto mayor) | Hecho (V3.0 Hito 1) | Cuentas en servidor: **backend** |
+
+## Valor añadido (encendido lo construido)
+
+| Función | Estado | Falta |
+|---|---|---|
+| Varios cuidadores (invitación familiar con permisos) | V3.0 Hito 6 (local, contrato listo) | Aceptar la invitación en otro celular: **backend** |
+| Citas con dirección y preguntas | Hecho | — |
+| Reporte para el médico | Parcial (Salud) | Exportar PDF |
+| Mensajes de la familia | Parcial (chat del administrador) | Entrega remota: **backend** |
+| Ubicación compartida con consentimiento | Hecho (V2.4, primer plano) | Segundo plano: build instalable |
+| Chat de BUDDY como asistente del administrador para configurar | Hecho (pantalla completa desde V3.0) | — |
+
+## Futuro (apagado en `src/config/features.ts`, fuera de la navegación)
+
+| Función | Interruptor | Requisitos para encenderla |
+|---|---|---|
+| Revisión farmacológica avanzada (nivel 2, clases ATC) | `level2Review` (apagado; `EXPO_PUBLIC_LEVEL2_REVIEW=on`) | Revisión de un profesional de salud (`docs/BASE_FARMACOLOGICA.md`) |
+| Análisis farmacológico verificado (interacciones, nivel 3) | — | Base con licencia comercial y revisión profesional |
+| IA conversacional real | — | Edge Function con la clave en el servidor (`docs/IA_BUDDY.md`) |
+| Nutrición (análisis de etiquetas de alimentos) | `foodAnalysis` | Decisión del dueño; el evaluador queda en `/food` |
+| Reloj y datos de salud | `watch` | Build instalable, HealthKit / Health Connect |
+| Zonas seguras | — | Ubicación en segundo plano y consentimiento revocable |
+
+## Fases técnicas siguientes
+
+| Fase | Contenido | Requisitos |
+|---|---|---|
+| Backend (Supabase o AWS, por decidir) | Cuentas del adulto mayor creadas por el administrador en el servidor, sincronización entre los dos celulares, **envío de señales de vida (`HeartbeatRepository`)**, alertas remotas al hijo, invitaciones familiares | Decisión del dueño, RLS o equivalente probado, `docs/SUPABASE_PLAN.md` |
+| Notificaciones remotas | Aviso al hijo cuando el adulto mayor no responde, con la app cerrada | Backend y build instalable |
+| Seguridad y legal | Antes de la beta (`docs/SECURITY.md`) | Revisión legal en Colombia |
+| Piloto con familias | Metas a validar de `docs/PRODUCTO.md` | Lo anterior |
+
+## Historial
+
+### Hasta V2.4
 
 - **Fase 1 (prototipo local):** cuentas locales del administrador y del adulto mayor, rutina completa, chat de BUDDY con borrador y confirmación, pantalla del adulto mayor, vista previa y entrega con PIN, feed de alertas y recomendaciones con escalada, notificaciones locales.
 - **V2.4 Hito 1:** chat guiado (tarjeta fija, respuestas tocables, menú de 8 acciones), comprensión del español medida con corpus (100 %) y conjunto reservado (95,8 %).
 - **V2.4 Hito 2:** índice sin conexión del INVIMA, "agrega dolex" con presentaciones y fuente, "Para qué se usa" desde MedlinePlus en español, revisión por perfil con fuente (nivel 2 detrás de un indicador).
 
-## V2.4 completada (2026-10-12)
+### V2.4 completada (2026-10-12)
 
 Hitos 3 a 8: existencias exactas e idempotentes con avisos a 3 días, evaluador de alimentos con la norma vigente, robot arrastrable con burbujas, barra Liquid Glass con gesto, ubicación con consentimiento y mapa, portada de carga. Todo verificado en web y con Jest; lo nativo (teclado, vidrio de iOS 26, mapa, permisos, hápticos, splash) está en `docs/PRUEBAS_EN_DISPOSITIVO.md`.
 
-## Pendiente antes de la Fase 2
+### Pendiente antes de la Fase 2
 
 - Ronda V2.3 (no ejecutada): persistencia cifrada, cola de sincronización visible, configuración nativa segura, minimización de datos.
 - Splash nativo de marca: falta un PNG transparente de alta resolución.
 
-## Fases siguientes
+### Fases previstas en V2.4 (sustituidas por las tablas de arriba)
 
 | Fase | Contenido | Requisitos |
 |---|---|---|

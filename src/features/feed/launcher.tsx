@@ -1,5 +1,5 @@
 /**
- * BuddyLauncher (V2.4): el robot flotante (~72 dp) de todas las pestañas del administrador salvo el chat.
+ * BuddyLauncher (V2.4): el robot flotante (~72 dp) de las pestañas del administrador (el chat ya no es pestaña).
  * - Se arrastra libremente con el dedo (Gesture Handler + Reanimated, en el hilo de UI): no sale de la pantalla ni tapa
  *   la barra de pestañas, se va al borde más cercano si el imán está activo, recuerda su posición por tamaño de pantalla
  *   y se oculta con el teclado. Mientras se arrastra mira hacia donde va; al soltar da un saltito. Tocarlo abre el chat.
@@ -155,9 +155,11 @@ export function BuddyLauncher() {
   // Lado de las burbujas: se deriva de la posición guardada (se actualiza al soltar el robot).
   const side = bubbleSide(clampPos(saved ?? { x: 0, y: 0 }, b), b);
 
-  if (pathname === '/buddy' || keyboard || isHiddenToday(hiddenOn)) return null;
+  if (keyboard || isHiddenToday(hiddenOn)) return null;
 
-  const pending = unreadItems.filter((f) => !f.positive && dismissed[f.key] !== itemVersion(f));
+  // Burbujas solo en el Inicio (V3.0): en Rutina, Salud y Ajustes tapaban filas y botones (auditoría V3.0 #8). En las
+  // demás pestañas queda el robot con su contador, que abre el chat.
+  const pending = pathname === '/summary' ? unreadItems.filter((f) => !f.positive && dismissed[f.key] !== itemVersion(f)) : [];
   const mood: RobotMood = alarm ? 'worry' : unread ? 'wave' : love ? 'love' : 'idle';
   const open = () => {
     if (dragged.get()) return;

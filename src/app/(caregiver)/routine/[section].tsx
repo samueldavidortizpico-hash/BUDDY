@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import { FEATURES } from '@/config/features';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { BottomSheet, ConfirmDialog, useToast } from '@/components/feedback';
@@ -119,8 +120,8 @@ function Meals() {
           onChange={(time) => { routineActions.addMeal(adding, time); setAdding(null); }}
         />
       ) : null}
-      {/* Etiqueta nutricional de un producto envasado (V2.4): evaluador descriptivo con la norma colombiana. */}
-      <Button label={strings.food.open} icon="food" variant="tonal" onPress={() => router.push('/food' as Href)} />
+      {/* Etiqueta nutricional (V2.4): nutrición es Futuro en V3.0 (FEATURES.foodAnalysis), fuera de la navegación. */}
+      {FEATURES.foodAnalysis ? <Button label={strings.food.open} icon="food" variant="tonal" onPress={() => router.push('/food' as Href)} /> : null}
     </View>
   );
 }

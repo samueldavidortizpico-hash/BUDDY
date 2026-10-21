@@ -25,7 +25,7 @@ Reproducción del Hito 1: `npx expo export --platform web && node scripts/captur
 | 6 | No se puede salir de la cuenta del adulto mayor | 3 fallas: "no hay botón Opciones visible (solo un gesto oculto de 2 s)" (`antes-adulto-*.png`) | La única salida era mantener presionado el saludo 2 s (no descubrible) y, con la entrega del teléfono, un candado sin texto | Botón "Opciones" etiquetado arriba a la derecha → hoja con "Entrar como administrador" (PIN con 5 intentos y espera creciente, o correo y contraseña) y "Cerrar sesión" con confirmación "Vas a salir de BUDDY en este celular…". En modo prueba, el banner fijo "Modo prueba" con "Volver a administrador" sin PIN | 0 fallas (`despues-adulto-*.png`); Jest: PIN y "Cerrar sesión" en `v22/roles.test.tsx` y prueba de extremo a extremo (entrar como adulto mayor → salir → entrar como administrador) |
 | 7 | Tras "Cerrar sesión" la entrada volvía a mandar a la pantalla del adulto mayor (encontrado al escribir la prueba de extremo a extremo) | La prueba se quedaba en `/elder` | `sessionActions.signOut/signIn` dependían solo del oyente del proveedor de autenticación para actualizar la sesión; si aún no respondía, la entrada veía la sesión vieja y redirigía | `signOut` y `signIn` fijan la sesión al terminar (sin duplicar si el oyente ya lo hizo) | Prueba de extremo a extremo verde |
 | 7b | Modo prueba: "Volver a administrador" se salía del banner (regresión de la corrección #6, encontrada por `scripts/check-overflow.mjs`) | `FALLA_elder-*.png` en 5 combinaciones | Etiqueta más larga en una fila sin salto | El banner pasa a dos líneas (texto arriba, botón a todo el ancho) | `check-overflow`: OK en 11 pantallas |
-| 8 | Las burbujas del robot tapan filas de Ajustes (360×640, texto al 200 %) y bloquean el toque | Playwright: "subtree intercepts pointer events" sobre "Cuenta"; ver Hito 2 | El robot y sus burbujas flotan sobre todas las pestañas | Se corrige en el Hito 2 (las novedades viven en el Inicio) | Hito 2 |
+| 8 | Las burbujas del robot tapan filas de Ajustes (360×640, texto al 200 %) y bloquean el toque | Playwright: "subtree intercepts pointer events" sobre "Cuenta"; ver Hito 2 | El robot y sus burbujas flotan sobre todas las pestañas | Las burbujas solo aparecen en el Inicio (decisión 105); en las demás pestañas queda el robot con su contador | Hito 2: `v30-hito1.mjs` ya no oculta el robot y todas las opciones de Ajustes se tocan (0 fallas) |
 
 Además (pedido del dueño en esta ronda):
 
@@ -41,3 +41,12 @@ que se muestra **una sola vez**.
 
 Pendiente de comprobar en celular (no medible en web): el compositor justo encima del teclado real en iOS y Android
 (`docs/PRUEBAS_EN_DISPOSITIVO.md`).
+
+## Hito 2: definición en el repositorio y recorte
+
+- `docs/PRODUCTO.md` (definición, ciclo, principios, alcance, metas y decisiones pendientes), resumen en `CLAUDE.md` y
+  `docs/ROADMAP.md` reorganizado en Núcleo, Valor añadido y Futuro.
+- Recorte (decisiones 102 a 105): nutrición (`/food`) y reloj (`/health/watch`) fuera de la navegación con su código
+  intacto; revisión de nivel 2 apagada por defecto; pestañas Inicio, Rutina, Salud y Ajustes.
+- Verificación: tsc 0, lint 0, jest 634/634, reversa OK (28 rutas), desbordes OK (11 pantallas), `v30-hito1.mjs` OK
+  con el robot visible.

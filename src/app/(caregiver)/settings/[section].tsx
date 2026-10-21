@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import { FEATURES } from '@/config/features';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { ConfirmDialog, useToast } from '@/components/feedback';
@@ -343,7 +344,7 @@ function Devices() {
         <AppText variant="bodyStrong" style={s.flex}>{S.thisDevice}</AppText>
       </Card>
       <AppText variant="secondary" color={t.c.muted}>{S.devicesBody}</AppText>
-      <Button label={strings.health.watch} icon="watch" variant="ghost" size="md" onPress={() => router.push('/health/watch' as Href)} />
+      {FEATURES.watch ? <Button label={strings.health.watch} icon="watch" variant="ghost" size="md" onPress={() => router.push('/health/watch' as Href)} /> : <AppText variant="caption" color={t.c.muted}>{S.watchSoon}</AppText>}
     </View>
   );
 }

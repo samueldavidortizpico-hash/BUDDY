@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
+import { FEATURES } from '@/config/features';
 import { Appear } from '@/components/appear';
 import { Card } from '@/components/card';
 import { Segmented } from '@/components/forms';
@@ -59,6 +60,8 @@ export default function Health() {
           </Appear>
         ))}
       </View>
+      {/* Reloj: Futuro en V3.0 (FEATURES.watch). */}
+      {FEATURES.watch ? (
       <Card style={s.watch} onPress={() => router.push('/health/watch')} accessibilityLabel={H.watch}>
         <Icon name="watch" color={t.ink.lavender} size={28} />
         <View style={s.flex}>
@@ -73,6 +76,7 @@ export default function Health() {
           </AppText>
         </View>
       </Card>
+      ) : null}
       <AppText variant="caption" color={t.c.muted} align="center" style={s.note}>
         {H.disclaimer}
       </AppText>

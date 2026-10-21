@@ -5,6 +5,7 @@
  * - Al confirmar ejecuta por el mismo camino que Rutina y deja una sola línea "✓ … · Ver · Deshacer".
  * - Si no entiende, o le preguntan qué sabe hacer, responde con el menú de acciones.
  */
+import { FEATURES } from '@/config/features';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { menuTemplate, type Draft, type MenuKey } from '@/domain/assistant/draft';
@@ -231,7 +232,7 @@ export function useBuddyChat(h: ChatHandlers) {
     (key: MenuKey) => {
       const tpl = menuTemplate(key);
       if (tpl) return startDraft([tpl]);
-      if (key === 'meal') return reply(B.whichMeal, { quickReplies: [...B.mealOptions.map((m) => `Programa ${m.toLowerCase()}`), strings.food.open] });
+      if (key === 'meal') return reply(B.whichMeal, { quickReplies: [...B.mealOptions.map((m) => `Programa ${m.toLowerCase()}`), ...(FEATURES.foodAnalysis ? [strings.food.open] : [])] });
       if (key === 'day') return reply(answerQuery('day', null));
       awaitingMed.current = true;
       reply(B.whichMed, { quickReplies: context().medicationNames.slice(0, 4) });

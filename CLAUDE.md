@@ -1,5 +1,13 @@
 @AGENTS.md
 
+## Producto (V3.0, detalle en docs/PRODUCTO.md)
+
+BUDDY cuida a adultos mayores que viven solos, para los hijos que los cuidan a distancia. **Promesa:** "Aunque no estés a su lado, sabes que está bien. Y si algo no lo está, te enteras a tiempo." Vende tranquilidad y aviso temprano, no recordatorios. Paga el hijo; usa el adulto mayor.
+
+- **Ciclo central:** configurar → recordar → confirmar → verificar → avisar → tranquilizar. Lo que no sirva a este ciclo se recorta o se pospone (Núcleo, Valor añadido y Futuro en `docs/ROADMAP.md`; interruptores en `src/config/features.ts`).
+- **Principios:** nunca falla en silencio (si no puede verificar, lo dice); cero fricción para el adulto mayor; pocas alertas y con sentido; vista de un segundo para el hijo; registro útil para el médico; respeto y consentimiento del adulto mayor; BUDDY informa y nunca receta, diagnostica ni cambia dosis; calidad en celulares reales; invitación familiar como crecimiento.
+- Sin registros, los estados lo dicen ("Aún no hay registros"); nunca "Todo bien" sin datos. Nunca "emergencia" para una toma sin confirmar. Nombre siempre BUDDY.
+
 ## Skills del proyecto
 
 BUDDY es una app de cuidado del adulto mayor (React Native + Expo SDK 57 + TypeScript + Supabase). Usa estas Skills de `.claude/skills/`:
