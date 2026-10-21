@@ -13,12 +13,13 @@ import { Card } from '@/components/card';
 import { Face, ProgressRing, WaterFill } from '@/components/charts';
 import { Icon, type IconName } from '@/components/icon';
 import { adherence, answersBy } from '@/domain/health';
-import { dayDoses, effectiveTime, stockUnit } from '@/domain/schedule';
+import { dayDoses, doseStage, effectiveTime, escalationOf, stockUnit, type DoseStage } from '@/domain/schedule';
 import { estimateStock } from '@/domain/stock';
 import { appointmentAddress, type Elder } from '@/domain/types';
 import { strings } from '@/i18n';
-import { doseActions, evaluateAlerts } from '@/state/care';
-import { useRecords } from '@/state/data';
+import { doseActions, doseDelivered, evaluateAlerts, notifyLog, type NotifyLog } from '@/state/care';
+import { useDb } from '@/infrastructure/local/db';
+import { useRecords, useUserId } from '@/state/data';
 import { useNow } from '@/hooks/use-now';
 import { radius, spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
@@ -55,7 +56,10 @@ export function TodayPanel({ elder }: { elder: Elder }) {
     evaluateAlerts(elder.id, now);
   }, [elder.id, now]);
 
-  const items = useMemo(() => dayDoses(meds, doses, today, now), [meds, doses, today, now]);
+  const esc = escalationOf(elder.screen);
+  const items = useMemo(() => dayDoses(meds, doses, today, now, esc.unconfirmedAfterMin), [meds, doses, today, now, esc.unconfirmedAfterMin]);
+  const userId = useUserId() ?? '';
+  const log = useDb((x) => x.drafts[userId]?.[notifyLog.key(elder.id)] as NotifyLog | undefined) ?? null;
   const adh = adherence(doses, [today], now);
   const glasses = water.filter((w) => w.date === today).length;
   const goal = plan?.glasses ?? 0;
@@ -84,7 +88,6 @@ export function TodayPanel({ elder }: { elder: Elder }) {
     .map((m) => ({ m, e: estimateStock(m, today) }))
     .filter((x) => x.e.level !== 'none')
     .sort((a, b) => (a.e.daysLeft ?? 999) - (b.e.daysLeft ?? 999));
-  const next = items.find((i) => i.status === 'pending' || i.status === 'snoozed');
   const nextAppt = appointments.filter((a) => a.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
 
   return (
@@ -136,11 +139,23 @@ export function TodayPanel({ elder }: { elder: Elder }) {
         </View>
       </View>
 
-      {/* Próxima toma */}
-      {next ? (
-        <Card variant="tint" tone="coral" style={s.nextCard}>
-          <Icon name="clock" color={t.ink.coral} />
-          <AppText variant="secondaryStrong" style={s.flex}>{`Próxima toma: ${next.medication.name} a las ${formatClock(effectiveTime(next.dose))}`}</AppText>
+      {/* Tomas de hoy con su etapa real: programada ≠ aviso entregado ≠ respondida (V3.0, aviso escalonado). */}
+      {items.length ? (
+        <Card style={s.doses}>
+          <AppText variant="h3">{S.dosesToday}</AppText>
+          {items.map((it) => {
+            const st = doseStage(it.dose, now, esc, doseDelivered(log, it.dose));
+            return (
+              <View key={it.dose.id} style={s.doseRow} accessible accessibilityLabel={`${formatClock(effectiveTime(it.dose))}, ${it.medication.name}: ${stageText(st, elder.firstName, it.dose.snoozedTo)}`}>
+                <AppText variant="secondaryStrong" style={s.doseTime}>{formatClock(effectiveTime(it.dose))}</AppText>
+                <View style={s.flex}>
+                  <AppText variant="secondaryStrong">{it.medication.name}</AppText>
+                  <AppText variant="caption" color={st.stage === 'unconfirmed' ? t.ink.coral : t.c.muted}>{stageText(st, elder.firstName, it.dose.snoozedTo)}</AppText>
+                </View>
+              </View>
+            );
+          })}
+          {log && log.state !== 'granted' ? <AppText variant="caption" color={t.ink.coral}>{S.stage.noPermission(elder.firstName)}</AppText> : null}
         </Card>
       ) : null}
 
@@ -199,6 +214,15 @@ export function TodayPanel({ elder }: { elder: Elder }) {
   );
 }
 
+/** Texto de la etapa de una toma para el administrador. */
+function stageText(st: DoseStage, name: string, snoozedTo: string | null): string {
+  const T = strings.summary.stage;
+  if (st.stage !== 'answered') return T[st.stage];
+  if (st.answer === 'snoozed') return T.snoozed(snoozedTo ? formatClock(snoozedTo) : '');
+  const who = st.by === 'caregiver' ? T.byYou : T.byElder(name);
+  return `${st.answer === 'taken' ? T.taken : T.skipped} · ${who}`;
+}
+
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
     flex: { flex: 1 },
@@ -213,6 +237,9 @@ const useStyles = makeStyles((t) =>
     smallCard: { flex: 1, padding: spacing.md, gap: spacing.xs, justifyContent: 'center', alignItems: 'flex-start' },
     sleepCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg, borderRadius: radius.card, backgroundColor: t.c.night, overflow: 'hidden' },
     nextCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md },
+    doses: { gap: spacing.sm },
+    doseRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+    doseTime: { minWidth: 76, fontVariant: ['tabular-nums'] },
     timeline: { gap: spacing.sm },
     event: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 32 },
     dot: { width: 10, height: 10, borderRadius: 5 },

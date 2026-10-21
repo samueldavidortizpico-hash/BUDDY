@@ -20,11 +20,11 @@ import { estimateStock } from '@/domain/stock';
 import { applyPlan } from '@/infrastructure/notifications';
 import { appointmentSeenKey, elderNow, reminderSeenKey, type ElderItem } from '@/domain/now';
 import { directionsUrl } from '@/utils/maps';
-import { dayDoses, doseText, effectiveTime } from '@/domain/schedule';
+import { dayDoses, doseText, effectiveTime, escalationOf } from '@/domain/schedule';
 import { appointmentAddress, type Answer3 } from '@/domain/types';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
-import { doseActions, elderAnswers } from '@/state/care';
+import { doseActions, elderAnswers, notifyLog } from '@/state/care';
 import { handoffActions } from '@/state/handoff';
 import { useRecords, useUserId } from '@/state/data';
 import { useSession } from '@/state/session';
@@ -120,11 +120,18 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
       lowStock,
       apptNoticeTime: elder.screen.apptNoticeTime,
       showMedName: elder.screen.showMedName,
+      // Las tomas respondidas salen del plan: al reprogramar se cancelan sus avisos pendientes (aviso escalonado).
+      doses: doses.filter((d) => d.date >= today),
+      escalation: elder.screen,
     });
-    applyPlan(plan).catch(() => undefined); // sin permiso o en web: la app sigue mostrando todo dentro de BUDDY
-  }, [preview, elder, meds, water, meals, appointments, lowStock]);
+    // Qué aceptó el sistema del celular (aviso "entregado al sistema", que no es "visto" ni "tomado"). Sin permiso o en
+    // web no se programa nada y la app lo dice; todo sigue visible dentro de BUDDY.
+    applyPlan(plan)
+      .then((r) => notifyLog.record(elder.id, r.state, r.state === 'granted' ? plan.map((n) => n.key) : []))
+      .catch(() => undefined);
+  }, [preview, elder, meds, water, meals, appointments, lowStock, doses, today]);
 
-  const items = useMemo(() => dayDoses(meds, doses, today, now), [meds, doses, today, now]);
+  const items = useMemo(() => dayDoses(meds, doses, today, now, escalationOf(elder?.screen).unconfirmedAfterMin), [meds, doses, today, now, elder?.screen]);
   const { now: item, later } = elderNow({
     now,
     doses: items,

@@ -3,9 +3,9 @@
  * Los avisos son idempotentes: no se repite uno pendiente del mismo tipo para el mismo registro.
  */
 import { reviewMedication, type ReviewFinding } from '@/domain/review';
-import { displayStatus, missingDoses, snoozeTarget } from '@/domain/schedule';
+import { displayStatus, escalationOf, missingDoses, snoozeTarget } from '@/domain/schedule';
 import { afterDose, afterPurchase, estimateStock } from '@/domain/stock';
-import type { Alert, AlertKind, Answer3, Medication, MealLog, Role } from '@/domain/types';
+import type { Alert, AlertKind, Answer3, DoseEvent, Medication, MealLog, Role } from '@/domain/types';
 import { db } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { toISODate } from '@/utils/dates';
@@ -186,9 +186,10 @@ export function evaluateAlerts(elderId: string, now: Date) {
   const userId = currentUserId();
   const date = toISODate(now);
   const meds = new Map(db.list('medications', userId, elderId).map((m) => [m.id, m]));
+  const { unconfirmedAfterMin } = escalationOf(db.get('elders', elderId)?.screen);
   for (const d of db.list('doses', userId, elderId).filter((x) => x.date === date)) {
     const med = meds.get(d.medicationId);
-    if (med && displayStatus(d, now) === 'unconfirmed') {
+    if (med && displayStatus(d, now, unconfirmedAfterMin) === 'unconfirmed') {
       alertActions.raise('dose_unconfirmed', `${med.name} de las ${d.time} sigue sin confirmar.`, d.id, elderId);
     }
   }
@@ -235,3 +236,30 @@ export const elderAnswers = {
     return alertActions.raise('help_requested', `${elder?.firstName ?? 'Tu familiar'} tocó "Pedir ayuda" a las ${new Date().toTimeString().slice(0, 5)}.`, `help-${Date.now()}`, id);
   },
 };
+
+// ── Avisos entregados al sistema (aviso escalonado, V3.0) ───────
+
+/** Último plan que aceptó el sistema del celular del adulto mayor: estado del permiso y claves programadas. */
+export interface NotifyLog {
+  at: string;
+  /** 'granted' | 'denied' | 'undetermined' | 'unsupported' (web). */
+  state: string;
+  keys: string[];
+}
+
+const notifyKey = (elderId: string) => `notify.log.${elderId}`;
+
+export const notifyLog = {
+  record(elderId: string, state: string, keys: string[]) {
+    const prev = notifyLog.get(elderId);
+    // Solo escribe si cambió: escribir recalcula las pantallas que lo leen.
+    if (prev && prev.state === state && prev.keys.join('|') === keys.join('|')) return;
+    db.setDraft(currentUserId(), notifyKey(elderId), { at: new Date().toISOString(), state, keys } satisfies NotifyLog);
+  },
+  get: (elderId: string) => db.draft<NotifyLog>(currentUserId(), notifyKey(elderId)) ?? null,
+  key: notifyKey,
+};
+
+/** ¿El aviso a la hora de esta toma quedó entregado al sistema del celular? (No significa que lo vio.) */
+export const doseDelivered = (log: NotifyLog | null, d: Pick<DoseEvent, 'medicationId' | 'date' | 'time'>) =>
+  !!log && log.state === 'granted' && log.keys.includes(`med-${d.medicationId}-${d.date}-${d.time}`);

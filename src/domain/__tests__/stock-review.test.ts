@@ -81,10 +81,11 @@ describe('horarios (schedule.ts)', () => {
     expect(timesOn(med({ endDate: '2026-10-10' }), '2026-10-11')).toEqual([]);
   });
 
-  it('una toma pasa a "sin confirmar" una hora después', () => {
+  it('una toma pasa a "sin confirmar" a los 30 minutos (V3.0; antes una hora), o al margen que defina el administrador', () => {
     const dose = { date: '2026-10-11', time: '08:00', status: 'pending' as const, snoozedTo: null };
-    expect(displayStatus(dose, new Date(2026, 9, 11, 8, 30))).toBe('pending');
-    expect(displayStatus(dose, new Date(2026, 9, 11, 9, 5))).toBe('unconfirmed');
+    expect(displayStatus(dose, new Date(2026, 9, 11, 8, 29))).toBe('pending');
+    expect(displayStatus(dose, new Date(2026, 9, 11, 8, 30))).toBe('unconfirmed');
+    expect(displayStatus(dose, new Date(2026, 9, 11, 8, 30), 60)).toBe('pending');
   });
 
   it('ordena las tomas del día', () => {

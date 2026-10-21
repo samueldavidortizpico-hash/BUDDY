@@ -294,7 +294,7 @@ function Bubble({ item, index, compact }: { item: FeedItem; index: number; compa
         </Pressable>
         {compact ? null : (
         <View style={s.actions}>
-          <Button label={action ? F.actions[action.type] : F.actions.open} size="sm" variant="tonal" onPress={act} />
+          <Button label={action ? (action.type === 'call' && elder ? F.callName(elder.firstName) : F.actions[action.type]) : F.actions.open} size="sm" variant="tonal" onPress={act} />
           {action?.type === 'purchase' ? <Button label={F.snooze} size="sm" variant="ghost" onPress={snooze} /> : null}
           <Pressable onPress={close} accessibilityRole="button" accessibilityLabel={F.dismissBubble} hitSlop={8} style={s.close}>
             <Icon name="close" color={t.c.muted} size={18} />

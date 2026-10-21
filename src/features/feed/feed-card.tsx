@@ -86,7 +86,7 @@ export function FeedCard({ item, index = 0 }: { item: FeedItem; index?: number }
         ) : null}
         <View style={s.actions}>
           {item.actions.map((a, k) => (
-            <Button key={`${a.type}-${k}`} label={F.actions[a.type]} size="sm" variant={k === 0 ? (item.help ? 'danger' : 'tonal') : 'ghost'} tone={tone} icon={a.type === 'call' ? 'phone' : a.type === 'confirm_dose' ? 'check' : undefined} onPress={() => act(a)} />
+            <Button key={`${a.type}-${k}`} label={a.type === 'call' && elder ? F.callName(elder.firstName) : F.actions[a.type]} size="sm" variant={k === 0 ? (item.help ? 'danger' : 'tonal') : 'ghost'} tone={tone} icon={a.type === 'call' ? 'phone' : a.type === 'confirm_dose' ? 'check' : undefined} onPress={() => act(a)} />
           ))}
           {item.support.length ? <Button label={why ? strings.common.close : F.actions.open} size="sm" variant="ghost" onPress={() => setWhy(!why)} /> : null}
           {!item.help ? (

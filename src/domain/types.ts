@@ -48,6 +48,9 @@ export interface ElderScreenPrefs {
   apptNoticeTime?: ClockTime;
   /** Mostrar el nombre del medicamento en las notificaciones (pantalla de bloqueo). Apagado por defecto. */
   showMedName?: boolean;
+  /** Aviso escalonado (V3.0): segundo aviso a T+N min y "sin confirmar" a T+M min. Lo define el administrador. */
+  remindAfterMin?: number;
+  unconfirmedAfterMin?: number;
 }
 
 /** Consentimiento de ubicación del adulto mayor (solo él decide; revocable en cualquier momento). */

@@ -50,3 +50,13 @@ Pendiente de comprobar en celular (no medible en web): el compositor justo encim
   intacto; revisión de nivel 2 apagada por defecto; pestañas Inicio, Rutina, Salud y Ajustes.
 - Verificación: tsc 0, lint 0, jest 634/634, reversa OK (28 rutas), desbordes OK (11 pantallas), `v30-hito1.mjs` OK
   con el robot visible.
+
+## Hito 3: aviso escalonado
+
+| # | Problema | Evidencia antes | Causa raíz | Corrección | Evidencia después |
+|---|---|---|---|---|---|
+| 10 | Confirmar una toma no cancelaba su aviso pendiente (p. ej. "Ya lo tomé" a las 7:55 y el aviso de las 8:00 sonaba igual) y no había segundo aviso | Por diseño anterior: avisos `daily` repetidos por hora (prueba "un tratamiento sin fecha de fin programa un aviso diario por hora") | Un aviso diario repetido no se puede quitar solo para hoy | Avisos por toma y por fecha (T y T+10) que salen del plan al responder; ventana de 8 días con aviso final "Abre BUDDY" | `notifications.test.ts` (17) y `escalation.test.ts` (11) verdes en 3 zonas horarias |
+| 11 | "Sin confirmar" a la hora (60 min fijos) sin estados intermedios; "programada" y "aviso entregado" se mostraban igual | `stock-review.test.ts` fijaba 60 min | Constante fija y un solo estado de pantalla | `escalationOf` (10 y 30 por defecto, configurables), `doseStage` con 5 etapas y `notifyLog` con lo que aceptó el sistema | `escalation.test.ts`; capturas `hito3-summary-*`, `hito3-settings_alerts-*` |
+| 12 | Revisión: con muchas tomas en un día el planificador nuevo no programaba ninguna, y un medicamento semanal quedaba sin avisos | Encontrado al escribir las pruebas | Corte por presupuesto antes de agregar el primer día; ventana de 7 días | El primer día siempre entra hasta el límite; ventana de 8 días | Pruebas "nunca deja el día sin avisos" y "con días concretos" |
+
+Verificación: tsc 0, lint 0, jest 649/649, zonas horarias (Bogotá, Madrid, UTC) 35/35 en las suites de horarios.

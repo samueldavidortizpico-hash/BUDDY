@@ -7,9 +7,26 @@ import { atClock, daysBetween, parseISODate } from '@/utils/dates';
 import { intervalTimes, onDay, sortTimes, toMinutes } from './time';
 import type { ClockTime, DisplayDoseStatus, DoseEvent, ISODate, Medication, MedSchedule, Weekday } from './types';
 
-/** Margen tras la hora programada para mostrar una toma como "sin confirmar" (no es omisión ni emergencia). */
-export const UNCONFIRMED_AFTER_MIN = 60;
+/**
+ * Aviso escalonado (V3.0): aviso a la hora T, segundo aviso a T+10 si no respondió y estado "sin confirmar" a T+30, que
+ * genera una alerta de seguimiento al administrador. Ambos márgenes los define el administrador (Ajustes > Mis avisos).
+ * "Sin confirmar" no es omisión ni emergencia: puede que la haya tomado y no lo marcó.
+ */
+export const REMIND_AFTER_MIN = 10;
+export const UNCONFIRMED_AFTER_MIN = 30;
 export const SNOOZE_MINUTES = 10;
+
+export interface Escalation {
+  remindAfterMin: number;
+  unconfirmedAfterMin: number;
+}
+
+/** Márgenes de la persona (con los valores por defecto). El segundo aviso siempre va antes del "sin confirmar". */
+export function escalationOf(prefs?: { remindAfterMin?: number; unconfirmedAfterMin?: number } | null): Escalation {
+  const unconfirmedAfterMin = Math.max(5, prefs?.unconfirmedAfterMin ?? UNCONFIRMED_AFTER_MIN);
+  const remindAfterMin = Math.min(Math.max(1, prefs?.remindAfterMin ?? REMIND_AFTER_MIN), unconfirmedAfterMin - 1);
+  return { remindAfterMin, unconfirmedAfterMin };
+}
 
 export function scheduleTimes(s: MedSchedule): ClockTime[] {
   return s.kind === 'times' ? sortTimes(s.times) : intervalTimes(s.everyHours, s.from);
@@ -55,10 +72,31 @@ export function effectiveTime(dose: Pick<DoseEvent, 'status' | 'snoozedTo' | 'ti
   return dose.status === 'snoozed' && dose.snoozedTo ? dose.snoozedTo : dose.time;
 }
 
-export function displayStatus(dose: Pick<DoseEvent, 'status' | 'snoozedTo' | 'time' | 'date'>, now: Date): DisplayDoseStatus {
+export function displayStatus(dose: Pick<DoseEvent, 'status' | 'snoozedTo' | 'time' | 'date'>, now: Date, unconfirmedAfterMin = UNCONFIRMED_AFTER_MIN): DisplayDoseStatus {
   if (dose.status === 'taken' || dose.status === 'skipped') return dose.status;
   const due = atClock(dose.date, effectiveTime(dose)).getTime();
-  return now.getTime() - due > UNCONFIRMED_AFTER_MIN * 60_000 ? 'unconfirmed' : dose.status;
+  return now.getTime() - due >= unconfirmedAfterMin * 60_000 ? 'unconfirmed' : dose.status;
+}
+
+/**
+ * Etapa de una toma, separando lo que se suele confundir: "programada" (existe la hora), "aviso entregado al sistema"
+ * (el celular del adulto mayor aceptó la notificación local; NO significa que la vio), "segundo aviso", "sin confirmar"
+ * y "respondida" (tomé, no tomé, pospuse). "Enviado" no es "recibido" y "recibido" no es "tomado".
+ */
+export type DoseStage =
+  | { stage: 'scheduled' }
+  | { stage: 'delivered' }
+  | { stage: 'second_notice' }
+  | { stage: 'unconfirmed' }
+  | { stage: 'answered'; answer: 'taken' | 'skipped' | 'snoozed'; by: DoseEvent['answeredBy'] };
+
+export function doseStage(dose: Pick<DoseEvent, 'status' | 'snoozedTo' | 'time' | 'date' | 'answeredBy'>, now: Date, e: Escalation, delivered: boolean): DoseStage {
+  if (dose.status === 'taken' || dose.status === 'skipped') return { stage: 'answered', answer: dose.status, by: dose.answeredBy };
+  const since = (now.getTime() - atClock(dose.date, effectiveTime(dose)).getTime()) / 60_000;
+  if (dose.status === 'snoozed' && since < 0) return { stage: 'answered', answer: 'snoozed', by: dose.answeredBy };
+  if (since >= e.unconfirmedAfterMin) return { stage: 'unconfirmed' };
+  if (since >= e.remindAfterMin) return { stage: 'second_notice' };
+  return delivered ? { stage: 'delivered' } : { stage: 'scheduled' };
 }
 
 export function isOpen(status: DisplayDoseStatus): boolean {
@@ -72,11 +110,11 @@ export interface DoseItem {
 }
 
 /** Tomas del día, ordenadas por hora efectiva. */
-export function dayDoses(meds: Medication[], doses: DoseEvent[], date: ISODate, now: Date): DoseItem[] {
+export function dayDoses(meds: Medication[], doses: DoseEvent[], date: ISODate, now: Date, unconfirmedAfterMin = UNCONFIRMED_AFTER_MIN): DoseItem[] {
   const byId = new Map(meds.map((m) => [m.id, m]));
   return doses
     .filter((d) => d.date === date && byId.has(d.medicationId))
-    .map((dose) => ({ dose, medication: byId.get(dose.medicationId)!, status: displayStatus(dose, now) }))
+    .map((dose) => ({ dose, medication: byId.get(dose.medicationId)!, status: displayStatus(dose, now, unconfirmedAfterMin) }))
     .sort((a, b) => toMinutes(effectiveTime(a.dose)) - toMinutes(effectiveTime(b.dose)));
 }
 

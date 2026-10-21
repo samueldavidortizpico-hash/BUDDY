@@ -2,15 +2,17 @@
  * Planificador PURO de las notificaciones locales del adulto mayor (NotificationScheduler). Con los datos de su perfil
  * decide qué avisos programar; el adaptador (src/infrastructure/notifications.ts) los entrega a expo-notifications.
  *
- * - Medicamentos, agua, comidas y chequeo: diarios (o semanales si tienen días concretos). Un tratamiento con fecha de
- *   fin o que aún no empieza se programa por fecha dentro de su ventana (nunca antes del inicio ni después del fin).
+ * - Medicamentos: aviso escalonado por toma (T y T+10), por fecha, en los próximos días (nunca antes del inicio ni
+ *   después del fin del tratamiento); al responder se cancelan los avisos pendientes de esa toma.
+ * - Agua, comidas y chequeo: diarios.
  * - Citas: el día anterior a la hora que defina el cuidador (18:00 por defecto) y dos horas antes.
  * - Existencias bajas: un aviso a la mañana siguiente.
  * Mensajes claros y sin alarmismo. Por privacidad, la pantalla de bloqueo NO muestra el nombre del medicamento salvo
  * que el cuidador lo active. Límite de iOS: 64 avisos pendientes; se programan como máximo 60 por prioridad.
  */
+import { escalationOf, type Escalation } from './schedule';
 import { intervalTimes } from './time';
-import type { Appointment, ClockTime, Meal, Medication, WaterPlan, Weekday } from './types';
+import type { Appointment, ClockTime, DoseEvent, Meal, Medication, WaterPlan, Weekday } from './types';
 import { appointmentAddress } from './types';
 
 export type PlannedTrigger =
@@ -37,11 +39,16 @@ export interface PlanInput {
   lowStock: Medication[];
   apptNoticeTime?: ClockTime;
   showMedName?: boolean;
+  /** Tomas registradas (respondidas o pospuestas): sus avisos pendientes se cancelan o se mueven. */
+  doses?: Pick<DoseEvent, 'medicationId' | 'date' | 'time' | 'status' | 'snoozedTo'>[];
+  escalation?: Partial<Escalation>;
 }
 
 export const MAX_SCHEDULED = 60;
-/** Días que se programan por fecha para tratamientos con inicio futuro o con fin. */
-export const HORIZON_DAYS = 14;
+/** Días que se programan por fecha (8: cubre siempre el mismo día de la semana siguiente); se recalcula al abrir BUDDY. */
+export const HORIZON_DAYS = 8;
+/** Avisos de medicamentos como máximo (deja sitio a citas, chequeo, existencias, agua y comidas). */
+export const MED_BUDGET = 44;
 
 const hm = (t: ClockTime) => {
   const [h, m] = t.split(':').map(Number);
@@ -67,27 +74,45 @@ function at(dateIso: string, time: ClockTime, minusMinutes = 0): Date {
 }
 
 export function planNotifications(i: PlanInput): PlannedNotification[] {
+  // Medicamentos: aviso escalonado POR TOMA (V3.0). A la hora T y, si no responde, a T+N (segundo aviso). Cada toma
+  // respondida (tomé, no tomé, pospuse) sale del plan, así que al reprogramar se cancelan sus avisos pendientes; una toma
+  // pospuesta se avisa a su nueva hora. Se programan por fecha los próximos días dentro de MED_BUDGET; al final queda un
+  // aviso honesto "Abre BUDDY" para que nunca deje de avisar en silencio si no se abre la app.
+  const e = escalationOf(i.escalation);
+  const answered = new Map((i.doses ?? []).map((d) => [`${d.medicationId}@${d.date}@${d.time}`, d]));
   const meds: PlannedNotification[] = [];
-  for (const m of i.meds.filter((x) => !x.paused)) {
-    const times = m.schedule.kind === 'times' ? m.schedule.times : intervalTimes(m.schedule.everyHours, m.schedule.from);
-    const body = i.showMedName ? `Es hora de ${m.name}.` : 'Abre BUDDY para ver cuál es.';
-    const today = isoDay(i.now);
-    if (m.endDate && m.endDate < today) continue;
-    if (!m.endDate && m.startDate <= today) {
-      for (const t of times) meds.push(...repeating(`med-${m.id}-${t}`, 'Hora de tu medicamento', body, t, m.schedule.days));
-      continue;
-    }
-    // ponytail: ventana de HORIZON_DAYS; se recalcula cada vez que abre BUDDY. Si no la abre en 14 días, se agota.
-    for (let k = 0; k < HORIZON_DAYS; k++) {
-      const day = new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + k);
-      const iso = isoDay(day);
-      if (m.endDate && iso > m.endDate) break;
-      if (iso < m.startDate || (m.schedule.days.length && !m.schedule.days.includes(day.getDay() as Weekday))) continue;
+  const active = i.meds.filter((x) => !x.paused);
+  let last: Date | null = null;
+  for (let k = 0; k < HORIZON_DAYS; k++) {
+    const day = new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + k);
+    const iso = isoDay(day);
+    const slots: { when: Date; key: string; title: string; body: string }[] = [];
+    for (const m of active) {
+      if (iso < m.startDate || (m.endDate && iso > m.endDate)) continue;
+      if (m.schedule.days.length && !m.schedule.days.includes(day.getDay() as Weekday)) continue;
+      const times = m.schedule.kind === 'times' ? m.schedule.times : intervalTimes(m.schedule.everyHours, m.schedule.from);
       for (const t of times) {
-        const when = at(iso, t);
-        if (when > i.now) meds.push({ key: `med-${m.id}-${iso}-${t}`, title: 'Hora de tu medicamento', body, trigger: { type: 'date', date: when.toISOString() } });
+        const dose = answered.get(`${m.id}@${iso}@${t}`);
+        if (dose && (dose.status === 'taken' || dose.status === 'skipped')) continue;
+        const base = dose?.status === 'snoozed' && dose.snoozedTo ? at(iso, dose.snoozedTo) : at(iso, t);
+        const key = `med-${m.id}-${iso}-${t}`;
+        const body = i.showMedName ? `Es hora de ${m.name}.` : 'Abre BUDDY para ver cuál es.';
+        slots.push({ when: base, key, title: 'Hora de tu medicamento', body });
+        slots.push({ when: new Date(base.getTime() + e.remindAfterMin * 60_000), key: `${key}-r`, title: '¿Ya tomaste tu medicamento?', body: i.showMedName ? `Te recuerdo ${m.name}. Márcalo en BUDDY.` : 'Te lo recuerdo de nuevo. Márcalo en BUDDY.' });
       }
     }
+    const future = slots.filter((x) => x.when > i.now).sort((x, y) => x.when.getTime() - y.when.getTime());
+    // Sin cupo para el día completo se corta ahí (el primer día entra hasta el límite: nunca queda sin avisos).
+    if (!future.length) continue;
+    const room = meds.length ? (meds.length + future.length > MED_BUDGET ? 0 : future.length) : Math.min(future.length, MED_BUDGET);
+    if (!room) break;
+    for (const x of future.slice(0, room)) meds.push({ key: x.key, title: x.title, body: x.body, trigger: { type: 'date', date: x.when.toISOString() } });
+    if (room) last = future[room - 1].when;
+    if (room < future.length) break;
+  }
+  if (last) {
+    const renew = new Date(last.getTime() + 60 * 60_000);
+    meds.push({ key: 'med-renew', title: 'Abre BUDDY', body: 'Para que BUDDY siga recordándote tus medicamentos, ábrelo hoy.', trigger: { type: 'date', date: renew.toISOString() } });
   }
 
   const appts: PlannedNotification[] = [];

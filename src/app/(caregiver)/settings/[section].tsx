@@ -16,6 +16,7 @@ import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
+import { escalationOf } from '@/domain/schedule';
 import { ALERT_KINDS, type ElderAppearance } from '@/domain/types';
 import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
 import { feedActions } from '@/state/feed';
@@ -225,8 +226,30 @@ function MyAlerts() {
       {ALERT_KINDS.map((k) => (
         <Row key={k} label={strings.alertKinds[k]} value={account.myAlerts[k]} onChange={(v) => db.update('accounts', account.id, { myAlerts: { ...account.myAlerts, [k]: v } })} />
       ))}
+      <EscalationPrefs />
       <Thresholds />
     </View>
+  );
+}
+
+/** Aviso escalonado de cada toma (V3.0): segundo aviso y "sin confirmar", en minutos desde la hora. */
+function EscalationPrefs() {
+  const t = useTheme();
+  const s = useStyles();
+  const elder = useActiveElder();
+  if (!elder) return null;
+  const E = S.escalation;
+  const e = escalationOf(elder.screen);
+  const set = (patch: Partial<typeof e>) => elderActions.update(elder.id, { screen: { ...elder.screen, ...escalationOf({ ...e, ...patch }) } });
+  const min = (n: number) => E.minutes(n);
+  return (
+    <Card style={s.stack}>
+      <AppText variant="h3">{E.title}</AppText>
+      <AppText variant="secondary" color={t.c.muted}>{E.body(elder.firstName)}</AppText>
+      <Stepper label={E.remind} value={e.remindAfterMin} min={5} max={e.unconfirmedAfterMin - 5} step={5} onChange={(v) => set({ remindAfterMin: v })} format={min} />
+      <Stepper label={E.unconfirmed} value={e.unconfirmedAfterMin} min={e.remindAfterMin + 5} max={120} step={5} onChange={(v) => set({ unconfirmedAfterMin: v })} format={min} />
+      <AppText variant="caption" color={t.c.muted}>{E.note}</AppText>
+    </Card>
   );
 }
 

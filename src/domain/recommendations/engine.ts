@@ -11,7 +11,7 @@
  */
 import { addDays, lastDays } from '@/utils/dates';
 
-import { displayStatus, effectiveTime } from '../schedule';
+import { displayStatus, effectiveTime, escalationOf, type Escalation } from '../schedule';
 import { estimateStock } from '../stock';
 import type { Activity, Alert, Appointment, CheckinAnswer, DoseEvent, ISODate, Meal, MealLog, Medication, WaterEntry } from '../types';
 
@@ -85,6 +85,8 @@ export interface RecoInput {
   /** Desde cuándo hay registro de esta persona (no se reclaman días anteriores). */
   since: ISODate;
   thresholds?: Thresholds;
+  /** Aviso escalonado de la persona (Ajustes > Mis avisos). */
+  escalation?: Partial<Escalation>;
 }
 
 const RANK: Record<Severity, number> = { alarm: 0, attention: 1, info: 2 };
@@ -157,16 +159,18 @@ export function buildFeed(i: RecoInput): FeedItem[] {
     });
   }
 
-  // Tomas sin confirmar hoy (una tarjeta por toma). "Sin confirmar" no significa "no la tomó".
+  // Tomas sin confirmar hoy (una tarjeta por toma, clave estable: no se duplica). Llega tras el aviso a la hora y el
+  // segundo aviso sin respuesta. "Sin confirmar" no significa "no la tomó"; nunca se llama emergencia.
+  const esc = escalationOf(i.escalation);
   for (const d of i.doses.filter((x) => x.date === today)) {
     const med = medsById.get(d.medicationId);
-    if (!med || med.paused || displayStatus(d, now) !== 'unconfirmed') continue;
+    if (!med || med.paused || displayStatus(d, now, esc.unconfirmedAfterMin) !== 'unconfirmed') continue;
     out.push({
       key: `dose-${d.id}`,
       kind: 'alert',
       severity: 'attention',
       title: `${name} no ha confirmado ${med.name} de las ${clock(effectiveTime(d))}`,
-      reason: 'Pasó más de una hora desde la toma y no hay respuesta. Puede que la haya tomado y no lo marcó.',
+      reason: `Pasaron ${esc.unconfirmedAfterMin} minutos desde la hora y no respondió el aviso ni el segundo aviso. Puede que la haya tomado y no lo marcó: llama para saber.`,
       support: [`${med.name}: ${clock(effectiveTime(d))}`],
       at: nowIso,
       count: 1,

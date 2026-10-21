@@ -44,6 +44,7 @@ export function computeFeed(now = new Date()): FeedItem[] {
     checkinTime: elder.checkinTime,
     since: elder.createdAt.slice(0, 10),
     thresholds: feedActions.thresholds(elderId),
+    escalation: elder.screen,
   });
   return visibleFeed(items, feedActions.prefs(elderId), now);
 }
@@ -83,6 +84,7 @@ export function useFeed(): { items: FeedItem[]; unread: number; alarm: boolean; 
       checkinTime: elder.checkinTime,
       since: elder.createdAt.slice(0, 10),
       thresholds,
+      escalation: elder.screen,
     });
     const items = visibleFeed(all, prefs, now);
     return { items, unread: unreadCount(items, prefs), alarm: items.some((f) => f.severity === 'alarm'), unreadItems: items.filter((f) => prefs.read[f.key] !== itemVersion(f)) };
