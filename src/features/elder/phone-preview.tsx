@@ -3,13 +3,12 @@
  * lectura, con su apariencia y su tamaño de texto, dentro de un marco de teléfono. Lee el mismo store que Rutina y el
  * chat, así que se actualiza al instante mientras el administrador edita.
  */
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
 import { Button, IconButton } from '@/components/button';
-import { BottomSheet } from '@/components/feedback';
 import { strings } from '@/i18n';
 import { useActiveElder } from '@/state/data';
 import { radius, spacing } from '@/theme';
@@ -48,21 +47,18 @@ export function PhonePreview({ height = 560 }: { height?: number }) {
 export function PreviewSheetButton({ compact = false }: { compact?: boolean }) {
   const elder = useActiveElder();
   const reduce = useReducedMotion();
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
   if (!elder?.setupDone) return null;
   const label = strings.buddy.seeElderScreen(elder.firstName);
   return (
     <>
       <Animated.View entering={reduce ? undefined : FadeIn.duration(220)} style={{ flexShrink: 1, maxWidth: '100%' }}>
         {compact ? (
-          <IconButton icon="eye" label={label} showLabel={false} accessibilityHint={strings.summary.elderScreenHint} onPress={() => setOpen(true)} />
+          <IconButton icon="eye" label={label} showLabel={false} accessibilityHint={strings.summary.elderScreenHint} onPress={() => router.push('/preview')} />
         ) : (
-          <Button label={label} icon="eye" variant="tonal" tone="mint" size="sm" accessibilityHint={strings.summary.elderScreenHint} onPress={() => setOpen(true)} />
+          <Button label={label} icon="eye" variant="tonal" tone="mint" size="sm" accessibilityHint={strings.summary.elderScreenHint} onPress={() => router.push('/preview')} />
         )}
       </Animated.View>
-      <BottomSheet visible={open} onClose={() => setOpen(false)} title={label}>
-        {open ? <PhonePreview height={520} /> : null}
-      </BottomSheet>
     </>
   );
 }

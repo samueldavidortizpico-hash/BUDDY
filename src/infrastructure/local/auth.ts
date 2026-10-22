@@ -32,6 +32,8 @@ interface StoredAccount extends AuthUser {
   iterations: number;
   failedAttempts: number;
   lockedUntil: number | null;
+  recoverySalt?: string;
+  recoveryHash?: string;
 }
 
 const e = strings.auth.errors;
@@ -82,6 +84,7 @@ const publicUser = ({ id, email, name, createdAt, role, ownerId, elderId }: Auth
 });
 
 const managedKey = (elderId: string) => `buddy.managed.${elderId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+const ownerKey = (id: string) => `buddy.owner.${id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
 async function newStored(input: { name: string; email: string; password: string } & Partial<AuthUser>): Promise<StoredAccount> {
   if (!isValidEmail(input.email)) throw new AuthError('invalid_email', e.email);
@@ -109,21 +112,22 @@ export function createLocalAuthProvider(): AuthService {
   const emit = (u: AuthUser | null) => listeners.forEach((l) => l(u));
 
   async function setSession(user: AuthUser | null) {
+    if (user && roleOf(user) === 'caregiver') await secureStorage.set(ownerKey(user.id), user.email);
     if (user) await secureStorage.set(SESSION_KEY, JSON.stringify(publicUser(user)));
     else await secureStorage.remove(SESSION_KEY);
     emit(user ? publicUser(user) : null);
   }
 
-  async function verify(email: string, password: string): Promise<StoredAccount> {
+  async function verify(email: string, password: string, recovery = false): Promise<StoredAccount> {
     const acc = await readAccount(email);
     // Con o sin cuenta se calcula un hash, para no revelar por el tiempo de respuesta si el correo existe.
-    const salt = acc?.salt ?? 'buddy-no-account';
+    const salt = (recovery ? acc?.recoverySalt : acc?.salt) ?? 'buddy-no-account';
     const hash = await hashSecret(password, salt, acc?.iterations ?? ITERATIONS);
     if (!acc) throw new AuthError('invalid_credentials', e.invalid);
     if (acc.lockedUntil && acc.lockedUntil > Date.now()) {
       throw new AuthError('locked', e.locked(Math.ceil((acc.lockedUntil - Date.now()) / 1000)), acc.lockedUntil - Date.now());
     }
-    if (!same(hash, acc.hash)) {
+    if (!same(hash, (recovery ? acc.recoveryHash : acc.hash) ?? '')) {
       const failed = acc.failedAttempts + 1;
       const over = failed - MAX_ATTEMPTS;
       const lockMs = over >= 0 ? Math.min(MAX_LOCK_MS, BASE_LOCK_MS * 2 ** over) : 0;
@@ -132,11 +136,54 @@ export function createLocalAuthProvider(): AuthService {
       throw new AuthError('invalid_credentials', e.invalid);
     }
     if (acc.failedAttempts || acc.lockedUntil) await writeAccount({ ...acc, failedAttempts: 0, lockedUntil: null });
-    return acc;
+    return { ...acc, failedAttempts: 0, lockedUntil: null };
   }
 
   return {
     kind: 'local',
+
+    async switchToManaged(elderId, password) {
+      const session = await this.getSession();
+      if (!session || roleOf(session) !== 'caregiver') throw new AuthError('forbidden', e.forbidden);
+      const target = await managed(session.id, elderId);
+      const acc = await verify(target.email, password);
+      if (acc.revoked || acc.elderId !== elderId || acc.ownerId !== session.id || roleOf(acc) !== 'elder') throw new AuthError('forbidden', e.forbidden);
+      await setSession(acc);
+      return publicUser(acc);
+    },
+
+    async returnToOwner(password, email) {
+      const session = await this.getSession();
+      if (!session) throw new AuthError('invalid_credentials', e.invalid);
+      const id = roleOf(session) === 'elder' ? session.ownerId : session.id;
+      if (!id) throw new AuthError('forbidden', e.forbidden);
+      const ownerEmail = email || await secureStorage.get(ownerKey(id));
+      if (!ownerEmail) throw new AuthError('invalid_credentials', 'Escribe también el correo del administrador.');
+      const acc = await verify(ownerEmail, password);
+      if (acc.id !== id || roleOf(acc) !== 'caregiver') throw new AuthError('forbidden', e.forbidden);
+      await setSession(acc);
+      return publicUser(acc);
+    },
+
+    async regenerateRecoveryCode(password) {
+      const session = await this.getSession();
+      if (!session || roleOf(session) !== 'caregiver') throw new AuthError('forbidden', e.forbidden);
+      const acc = await verify(session.email, password);
+      const code = toHex(await Crypto.getRandomBytesAsync(16)).toUpperCase();
+      const recoverySalt = await newSalt();
+      await writeAccount({ ...acc, recoverySalt, recoveryHash: await hashSecret(code, recoverySalt) });
+      return code;
+    },
+
+    async recoverWithCode({ email, code, next }) {
+      if (!isAcceptablePassword(next)) throw new AuthError('weak_password', e.weak);
+      const acc = await verify(email, code.replace(/[\s-]/g, '').toUpperCase(), true);
+      if (roleOf(acc) !== 'caregiver') throw new AuthError('forbidden', e.forbidden);
+      const salt = await newSalt();
+      await writeAccount({ ...acc, salt, hash: await hashSecret(next, salt), recoverySalt: undefined, recoveryHash: undefined, failedAttempts: 0, lockedUntil: null });
+      // A password reset must not retain an authenticated session on a shared phone.
+      await setSession(null);
+    },
 
     async signUp({ name, email, password }) {
       const acc = await newStored({ name, email, password, role: 'caregiver' });

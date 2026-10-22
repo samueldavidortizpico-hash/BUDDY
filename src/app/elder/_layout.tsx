@@ -10,7 +10,7 @@ import { ThemeOverride, resolveThemeName } from '@/theme/provider';
 /**
  * Pantalla del adulto mayor. Se llega de dos formas:
  * - con su propio acceso (sesión con rol `elder`, creada por su administrador), o
- * - con el teléfono del administrador entregado (handoff), que se cierra con el PIN.
+ * - con una entrega heredada (handoff), que ahora se cierra con la contraseña de la cuenta administradora.
  * Usa su apariencia y su tamaño de texto.
  */
 export default function ElderLayout() {

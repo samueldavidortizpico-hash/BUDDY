@@ -119,6 +119,8 @@ function Account() {
         }}
       />
       <AppText variant="caption" color={t.c.muted}>{S.authNote}</AppText>
+      <Button label="Código de recuperación" icon="lock" variant="ghost" size="md" onPress={() => router.push('/settings/recovery' as Href)} />
+      <Button label="Ver la pantalla de mi persona" icon="eye" variant="ghost" size="md" onPress={() => router.push('/preview')} />
       <Button label={S.signOut} icon="logout" onPress={async () => { await sessionActions.signOut(); router.replace('/'); }} />
       <Button label={S.deleteAccount} icon="trash" variant="danger" size="md" onPress={() => setDel(true)} />
       <ConfirmDialog visible={del} title={S.deleteTitle} body={S.deleteBody} confirmLabel={S.deleteAccount} destructive onCancel={() => setDel(false)}

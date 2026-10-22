@@ -46,3 +46,21 @@ Controles nuevos:
 - `layout-v31.test.tsx`: prueba contrato escalable y decisión de columna en los 45 casos de ancho/fuente; medición física pendiente.
 
 Verificación adicional del hito: guarda AST **406 declaraciones**; suite completa **40 suites, 712 pruebas aprobadas**; `typecheck`, `lint`, `git diff --check` sin errores. Jest emitió una advertencia `act` preexistente en NotificationsSection (suite V3.0); no se presenta como ejecución sin advertencias.
+
+## Hito 2 — vista y cambio de cuenta
+
+Skills: buddy-testing, buddy-medical-safety, baseline-ui, fixing-accessibility (ya leídas). Brief: una vista de lectura; banner explícito; una acción de cambiar cuenta; contraseña en ruta propia; errores junto al campo.
+
+| Fallo | Antes / causa | Después / evidencia |
+|---|---|---|
+| Nombre no abre vista | `Summary` abría selector de personas. `PreviewSheetButton` abría otra hoja. | Ambos abren `/preview`. Mi perfil conserva acceso a la misma ruta. |
+| No había cambio con acceso de la persona | Dos tests de integración fallaron por servicio inexistente antes del cambio. | Servicio verifica cuenta vinculada, rol, revocación y contraseña antes de cambiar sesión. Contraseña errónea conserva sesión. |
+| PIN aparte para salir | `ElderOptionsSheet` y `/elder/unlock` exigían PIN, luego otra pantalla de login. | Una contraseña de cuenta basta. Las entregas antiguas siguen siendo válidas; tras contraseña se elimina el PIN persistido, sin borrar persona ni registros. |
+| Recuperación local inexistente | El proveedor respondía solamente que no podía enviar correo. | Código mostrado una vez, hash con sal, rotación, consumo, bloqueo y nuevo acceso probados contra el proveedor local. No se publica código en URLs ni se registra en logs. |
+| Riesgo de salir de la vista modificando alarmas | La vista usa `preview`; los efectos de sincronización, programación y respuestas están guardados. | Se mantiene lectura. El acceso cambia sesión solo después de verificar credenciales. Limitación de pausa y siguiente reprogramación documentada en V31-09. |
+
+Pruebas específicas iniciales tras el cambio: 3 suites, 15 pruebas aprobadas (proveedor, formulario, Expo Router real), `typecheck`, lint y 31 rutas con encabezados. Se amplían pruebas de bloqueo y aislamiento entre dueños antes del commit. Recorrido de Router: vista → contraseña de persona → adulto mayor → contraseña del dueño → Inicio → cerrar sesión → entrada; prueba estructural en Jest, **no web ni celular**.
+
+La herramienta de escritura inicial falló por comillas de PowerShell antes de escribir; se corrigió usando texto literal UTF-8. No se atribuye ese error al producto.
+
+Verificación de cierre del hito 2: **41 suites / 714 pruebas aprobadas**. Tipos, lint, guarda de texto y comprobación de encabezados sin errores. Las 5 expectativas obsoletas se migraron conservando pruebas de lectura, actualización reactiva, error de contraseña y roles; no se omitieron pruebas. Sigue pendiente el recorrido visual en web/iPhone.

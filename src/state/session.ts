@@ -64,7 +64,42 @@ export async function startSession() {
 }
 
 export const sessionActions = {
-  signUp: (input: { name: string; email: string; password: string }) => getAuthService().signUp(input),
+  signUp: async (input: { name: string; email: string; password: string }) => {
+    const user = await getAuthService().signUp(input);
+    setUser(user);
+    return user;
+  },
+  switchToElder: async (elderId: string, password: string) => {
+    const service = getAuthService();
+    if (!service.switchToManaged) throw new AuthError('not_configured', 'El cambio de cuenta requiere el proveedor local o un backend compatible.');
+    const user = await service.switchToManaged(elderId, password);
+    db.setHandoff(null);
+    setUser(user);
+    return user;
+  },
+  returnToAdmin: async (password: string, email?: string) => {
+    const service = getAuthService();
+    if (!service.returnToOwner) throw new AuthError('not_configured', 'Inicia sesión con el correo y la contraseña del administrador.');
+    const user = await service.returnToOwner(password, email);
+    db.setHandoff(null);
+    setUser(user);
+    const acc = db.list('accounts', user.id)[0];
+    if (acc) db.update('accounts', acc.id, { pinHash: null, pinSalt: null });
+    db.setDraft(user.id, 'pin.guard', undefined);
+    return user;
+  },
+  recoveryCode: async (password: string) => {
+    const service = getAuthService();
+    if (!service.regenerateRecoveryCode) throw new AuthError('not_configured', 'La recuperación por correo requiere backend.');
+    return service.regenerateRecoveryCode(password);
+  },
+  recoverWithCode: async (input: { email: string; code: string; next: string }) => {
+    const service = getAuthService();
+    if (!service.recoverWithCode) throw new AuthError('not_configured', 'Usa la recuperación por correo del proveedor.');
+    await service.recoverWithCode(input);
+    db.setHandoff(null);
+    setUser(null);
+  },
   signIn: async (input: { email: string; password: string; role?: Role }) => {
     const user = await getAuthService().signIn(input);
     // Igual que al salir: la sesión queda fijada aunque el oyente del proveedor aún no haya respondido.

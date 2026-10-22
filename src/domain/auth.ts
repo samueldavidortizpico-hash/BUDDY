@@ -66,4 +66,9 @@ export interface AuthService {
   revokeManagedAccount(input: { ownerId: string; elderId: string }): Promise<void>;
   changeManagedEmail(input: { ownerId: string; elderId: string; email: string }): Promise<void>;
   managedAccount(input: { ownerId: string; elderId: string }): Promise<{ email: string; revoked: boolean } | null>;
+  /** Local today; remote implementation must verify ownership server-side before changing session. */
+  switchToManaged?(elderId: string, password: string): Promise<AuthUser>;
+  returnToOwner?(password: string, email?: string): Promise<AuthUser>;
+  regenerateRecoveryCode?(password: string): Promise<string>;
+  recoverWithCode?(input: { email: string; code: string; next: string }): Promise<void>;
 }

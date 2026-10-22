@@ -29,6 +29,8 @@ export default function ForgotPassword() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ sent: boolean; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState('');
+  const [next, setNext] = useState('');
 
   const send = async () => {
     if (!isValidEmail(email)) return setError(strings.auth.errors.email);
@@ -64,7 +66,15 @@ export default function ForgotPassword() {
             </AppText>
           </View>
         ) : null}
-        <Button label={F.send} loading={busy} onPress={send} />
+        <Field label="Código de recuperación" value={code} onChangeText={setCode} autoCapitalize="characters" secure />
+        <Field label="Nueva contraseña" value={next} onChangeText={setNext} secure autoCapitalize="none" />
+        <Button label="Recuperar con mi código" loading={busy} disabled={!email || !code || !next} onPress={async () => {
+          setBusy(true); setError(null);
+          try { await sessionActions.recoverWithCode({ email, code, next }); setCode(''); setNext(''); router.replace('/sign-in'); }
+          catch (e) { setError(e instanceof Error ? e.message : strings.auth.errors.unknown); }
+          finally { setBusy(false); }
+        }} />
+        <Button label={F.send} variant="ghost" loading={busy} onPress={send} />
         <Button label={strings.auth.noAccount} variant="ghost" size="md" onPress={() => router.replace('/sign-up')} />
       </View>
     </ScreenContainer>

@@ -34,6 +34,7 @@ export default function SignUp() {
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  const [recovery, setRecovery] = useState<string | null>(null);
 
   const strength = passwordStrength(password);
 
@@ -55,7 +56,8 @@ export default function SignUp() {
       await sessionActions.signUp({ name, email, password });
       successHaptic();
       robot.success();
-      router.replace('/setup');
+      setRecovery(await sessionActions.recoveryCode(password));
+      setPassword(''); setConfirm('');
     } catch (e) {
       warningHaptic();
       robot.error();
@@ -64,6 +66,14 @@ export default function SignUp() {
       setBusy(false);
     }
   };
+
+  if (recovery) return <ScreenContainer header={<ScreenHeader title="Guarda tu código de recuperación" fallback="/setup" />}>
+    <View style={s.form}>
+      <AppText>Se muestra una sola vez. Guárdalo en un lugar seguro; sirve para cambiar tu contraseña en este celular.</AppText>
+      <AppText variant="h2" selectable>{recovery}</AppText>
+      <Button label="Ya guardé mi código" onPress={() => { setRecovery(null); router.replace('/setup'); }} />
+    </View>
+  </ScreenContainer>;
 
   return (
     <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={A.signUpTitle} fallback="/" />}>

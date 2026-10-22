@@ -7,6 +7,7 @@ import { act, cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-rou
 import { Text } from 'react-native';
 
 import Handoff from '@/app/(caregiver)/handoff';
+import Preview from '@/app/(caregiver)/preview';
 import CaregiverLayout from '@/app/(caregiver)/_layout';
 import ElderHome from '@/app/elder';
 import ElderLayout from '@/app/elder/_layout';
@@ -96,6 +97,7 @@ describe('Entregar a [nombre]', () => {
     _layout: TestRoot,
     '(caregiver)/_layout': CaregiverLayout,
     '(caregiver)/handoff': Handoff,
+    '(caregiver)/preview': Preview,
     '(caregiver)/summary': () => <Text>Resumen de prueba</Text>,
     'elder/_layout': ElderLayout,
     'elder/index': ElderHome,
@@ -104,13 +106,13 @@ describe('Entregar a [nombre]', () => {
   it('tiene flecha atrás y tres opciones claras', () => {
     renderRouter(routes, { initialUrl: '/handoff' });
     expect(screen.getByRole('button', { name: strings.common.back })).toBeTruthy();
-    expect(screen.getByText(strings.handoff.previewTitle)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Vista de Rosa' })).toBeTruthy();
     expect(screen.getByRole('button', { name: strings.handoff.testAction('Rosa') })).toBeTruthy();
-    expect(screen.getByRole('button', { name: strings.routine.handoff('Rosa') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cambiar a la cuenta de Rosa' })).toBeTruthy();
   });
 
   it('la vista previa en vivo se actualiza al instante cuando el administrador agrega algo', async () => {
-    renderRouter(routes, { initialUrl: '/handoff' });
+    renderRouter(routes, { initialUrl: '/preview' });
     expect(screen.queryByText(/Mensaje de prueba/)).toBeNull();
     act(() => {
       const d = new Date();
@@ -139,7 +141,7 @@ describe('Entregar a [nombre]', () => {
   });
 
   it('sin nada programado muestra el estado vacío del paciente, sin datos inventados', () => {
-    renderRouter(routes, { initialUrl: '/handoff' });
+    renderRouter(routes, { initialUrl: '/preview' });
     expect(screen.getByText(strings.elder.done)).toBeTruthy();
   });
 });

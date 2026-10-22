@@ -11,6 +11,7 @@ import SignIn from '@/app/(auth)/sign-in';
 import CaregiverLayout from '@/app/(caregiver)/_layout';
 import ElderHome from '@/app/elder';
 import ElderLayout from '@/app/elder/_layout';
+import Unlock from '@/app/elder/unlock';
 import { AuthError } from '@/domain/auth';
 import { can, type Permission } from '@/domain/permissions';
 import { getAuthService } from '@/infrastructure';
@@ -18,7 +19,6 @@ import { db } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { activeElderId } from '@/state/actions';
 import { elderAnswers } from '@/state/care';
-import { handoffActions } from '@/state/handoff';
 import { sessionActions, useSession } from '@/state/session';
 import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
 
@@ -107,6 +107,7 @@ describe('navegación por rol', () => {
     '(caregiver)/summary': () => <Text>Resumen de prueba</Text>,
     'elder/_layout': ElderLayout,
     'elder/index': ElderHome,
+    'elder/unlock': Unlock,
   };
   let elderId: string;
   const elderSession = () => ({ id: 'elder-acc', email: 'e@correo.com', name: 'Rosa', createdAt: '', role: 'elder' as const, ownerId: testUser.id, elderId });
@@ -132,22 +133,23 @@ describe('navegación por rol', () => {
     expect(screen.getByRole('button', { name: strings.welcome.createAccount })).toBeTruthy();
   });
 
-  it('"Opciones" (visible) → "Entrar como administrador" pide el PIN con límite de intentos y abre el inicio del administrador', async () => {
-    await handoffActions.setPin('1234');
-    useSession.setState({ status: 'signedIn', user: elderSession() });
+  it('"Opciones" → contraseña de cuenta del administrador; una incorrecta conserva el rol adulto', async () => {
+    const owner = await sessionActions.signUp({ name: '[PRUEBA] Admin', email: unique('v31-admin'), password: 'Segura123!' });
+    db.update('elders', elderId, { ownerUserId: owner.id });
+    await sessionActions.createElderAccess({ elderId, name: '[PRUEBA] Rosa', email: unique('v31-elder'), password: 'Codigo123!' });
+    await sessionActions.switchToElder(elderId, 'Codigo123!');
     const r = renderRouter(routes, { initialUrl: '/elder' });
     fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
     fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.enterAdmin }));
-    await screen.findByText(strings.adminAccess.pinBody);
-    for (const d of '9999') fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(d) }));
-    await screen.findByText(strings.pin.wrong(4));
-    // renderRouter usa temporizadores simulados: el teclado limpia el PIN tras un breve retraso.
-    await act(async () => {
-      jest.advanceTimersByTime(1000);
-    });
-    for (const d of '1234') fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(d) }));
-    await waitFor(() => expect(r.getPathname()).toBe('/sign-in'));
-    expect(useSession.getState().user).toBeNull();
+    await waitFor(() => expect(r.getPathname()).toBe('/elder/unlock'));
+    fireEvent.changeText(screen.getByLabelText('Contraseña del administrador'), 'incorrecta');
+    fireEvent.press(screen.getByRole('button', { name: 'Entrar como administrador' }));
+    await screen.findByText(strings.auth.errors.invalid);
+    expect(useSession.getState().user?.role).toBe('elder');
+    fireEvent.changeText(screen.getByLabelText('Contraseña del administrador'), 'Segura123!');
+    fireEvent.press(screen.getByRole('button', { name: 'Entrar como administrador' }));
+    await waitFor(() => expect(r.getPathname()).toBe('/summary'));
+    expect(useSession.getState().user?.id).toBe(owner.id);
   });
 
   it('"Opciones" → "Cerrar sesión" confirma con texto claro y vuelve a la elección de rol (sin PIN)', async () => {

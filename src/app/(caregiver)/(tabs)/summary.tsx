@@ -47,8 +47,8 @@ export default function Summary() {
             {S.greeting(user?.name.split(' ')[0] ?? '')}
           </AppText>
           {elder ? (
-            <Pressable onPress={() => setPicker(true)} accessibilityRole="button" accessibilityLabel={`${S.caring(elder.firstName)}. ${S.switchPerson}`} style={s.personBtn}>
-              <AppText variant="h1" numberOfLines={1} style={s.shrink}>
+            <Pressable onPress={() => router.push('/preview')} accessibilityRole="button" accessibilityLabel={`Vista de ${elder.firstName}`} style={s.personBtn}>
+              <AppText variant="h1" numberOfLines={2} style={s.shrink}>
                 {elder.firstName}
               </AppText>
               <Icon name="chevron" color={t.c.muted} size={22} strokeWidth={2.2} />

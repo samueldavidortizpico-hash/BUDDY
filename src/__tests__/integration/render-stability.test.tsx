@@ -53,7 +53,7 @@ it('preview cannot confirm medication but the elder screen retains the legitimat
 it('renders caregiver preview without changing the patient, including attempted actions', () => {
   const before = useDb.getState();
   const screen = render(<Preview />, { wrapper: RenderProviders });
-  expect(screen.getByText(strings.routine.preview('Rosa'))).toBeTruthy();
+  expect(screen.getByText('Vista de Rosa')).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: strings.elder.help }));
   expect(useDb.getState()).toBe(before);
 });

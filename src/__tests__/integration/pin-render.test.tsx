@@ -1,105 +1,84 @@
+/** V3.1: legacy PinPad remains unit-tested; account exit now checks the owner password. */
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-
 import Unlock from '@/app/elder/unlock';
 import Handoff from '@/app/(caregiver)/handoff';
 import { PinPad } from '@/components/pin-pad';
-import { db, useDb } from '@/infrastructure/local/db';
+import { db } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
+import { elderActions } from '@/state/actions';
 import { handoffActions } from '@/state/handoff';
-import { useSession } from '@/state/session';
-import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
-
+import { sessionActions, useSession } from '@/state/session';
+import { RenderProviders, seedRenderData } from '@/testing/render-fixtures';
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => false, replace: mockReplace }),
-  useIsFocused: () => true,
-  useLocalSearchParams: () => ({}),
+  useRouter: () => ({ push: mockPush, back: jest.fn(), canGoBack: () => false, replace: mockReplace }),
+  useIsFocused: () => true, useLocalSearchParams: () => ({}),
 }));
 jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
-
 let elderId: string;
+let ownerId: string;
 beforeEach(async () => {
   elderId = (await seedRenderData()).id;
+  const owner = await sessionActions.signUp({ name: '[PRUEBA] Admin', email: `password-ui-${Date.now()}-${Math.random()}@example.test`, password: 'Segura123!' });
+  ownerId = owner.id;
+  db.update('elders', elderId, { ownerUserId: owner.id });
+  elderActions.setActive(elderId);
   await handoffActions.setPin('1234');
   handoffActions.start(elderId);
-  mockReplace.mockClear();
+  mockReplace.mockClear(); mockPush.mockClear();
 });
-
-function enter(screen: ReturnType<typeof render>, pin: string) {
-  for (const digit of pin) fireEvent.press(screen.getByRole('button', { name: strings.pin.digit(digit) }));
+function password(ui: ReturnType<typeof render>, value: string) {
+  fireEvent.changeText(ui.getByLabelText('Contraseña del administrador'), value);
+  fireEvent.press(ui.getByRole('button', { name: 'Entrar como administrador' }));
 }
-
-it('correct PIN clears handoff, preserves authentication and navigates once', async () => {
-  const screen = render(<Unlock />, { wrapper: RenderProviders });
-  enter(screen, '1234');
+function enter(ui: ReturnType<typeof render>, pin: string) {
+  for (const digit of pin) fireEvent.press(ui.getByRole('button', { name: strings.pin.digit(digit) }));
+}
+it('migrates an old locked handoff using the account password and preserves care data', async () => {
+  const ui = render(<Unlock />, { wrapper: RenderProviders });
+  password(ui, 'Segura123!');
   await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/summary'));
-  expect(mockReplace).toHaveBeenCalledTimes(1);
-  expect(useDb.getState().handoff).toBeNull();
-  expect(useSession.getState().user?.id).toBe(testUser.id);
+  expect(db.draftHandoff()).toBeNull();
+  expect(useSession.getState().user?.id).toBe(ownerId);
+  expect(db.get('elders', elderId)).toBeTruthy();
+  expect(handoffActions.hasPin()).toBe(false);
 });
-
-it('wrong PIN shows a controlled error and stays in elder mode', async () => {
-  const screen = render(<Unlock />, { wrapper: RenderProviders });
-  enter(screen, '0000');
-  expect(await screen.findByText(strings.pin.wrong(4))).toBeTruthy();
-  expect(db.draftHandoff()?.failedPins).toBe(1);
+it('wrong account password stays in elder mode, without accepting the old PIN', async () => {
+  const ui = render(<Unlock />, { wrapper: RenderProviders });
+  password(ui, '1234');
+  expect(await ui.findByText(strings.auth.errors.invalid)).toBeTruthy();
+  expect(db.draftHandoff()).not.toBeNull();
   expect(mockReplace).not.toHaveBeenCalled();
 });
-
-it('does not submit twice while the fourth digit is still displayed', async () => {
+it('legacy PinPad does not submit twice while validation is pending', async () => {
   let finish!: () => void;
   const onComplete = jest.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
-  const screen = render(<PinPad onComplete={onComplete} />, { wrapper: RenderProviders });
-  enter(screen, '1234');
-  fireEvent.press(screen.getByRole('button', { name: strings.pin.digit('5') }));
+  const ui = render(<PinPad onComplete={onComplete} />, { wrapper: RenderProviders });
+  enter(ui, '1234');
+  fireEvent.press(ui.getByRole('button', { name: strings.pin.digit('5') }));
   expect(onComplete).toHaveBeenCalledTimes(1);
   await act(async () => { finish(); });
-  expect(screen.getByLabelText('0 de 4')).toBeTruthy();
+  expect(ui.getByLabelText('0 de 4')).toBeTruthy();
 });
-
-it('announces disabled PIN keys while validation is pending', () => {
-  const screen = render(<PinPad onComplete={jest.fn()} disabled />, { wrapper: RenderProviders });
-  expect(screen.getByRole('button', { name: strings.pin.digit('1') })).toBeDisabled();
+it('announces disabled legacy keys', () => {
+  const ui = render(<PinPad onComplete={jest.fn()} disabled />, { wrapper: RenderProviders });
+  expect(ui.getByRole('button', { name: strings.pin.digit('1') })).toBeDisabled();
 });
-
-it('fails closed when persisted PIN credentials are missing', async () => {
-  const account = db.list('accounts', testUser.id)[0];
-  db.update('accounts', account.id, { pinHash: null });
-  const screen = render(<Unlock />, { wrapper: RenderProviders });
-  enter(screen, '1234');
-  await waitFor(() => expect(screen.getByRole('button', { name: strings.pin.digit('1') })).not.toBeDisabled());
-  expect(mockReplace).not.toHaveBeenCalled();
-  expect(db.draftHandoff()).not.toBeNull();
-  expect(screen.getByText(strings.pin.unavailable)).toBeTruthy();
-});
-
-it.each(['false', 'exception'])('does not hand off when PIN creation fails (%s)', async (failure) => {
+it('does not need or create a separate PIN from the handoff route', () => {
   db.setHandoff(null);
-  const account = db.list('accounts', testUser.id)[0];
-  db.update('accounts', account.id, { pinHash: null, pinSalt: null });
-  const save = jest.spyOn(handoffActions, 'setPin');
-  if (failure === 'false') save.mockResolvedValueOnce(false);
-  else save.mockRejectedValueOnce(new Error('Controlled storage failure'));
-  try {
-    const screen = render(<Handoff />, { wrapper: RenderProviders });
-    fireEvent.press(screen.getByRole('button', { name: strings.routine.handoff('Rosa') }));
-    enter(screen, '1234');
-    await screen.findByText(strings.pin.confirm);
-    enter(screen, '1234');
-    expect(await screen.findByText(strings.pin.saveError)).toBeTruthy();
-    expect(db.draftHandoff()).toBeNull();
-    expect(mockReplace).not.toHaveBeenCalled();
-  } finally { save.mockRestore(); }
+  const ui = render(<Handoff />, { wrapper: RenderProviders });
+  fireEvent.press(ui.getByRole('button', { name: 'Cambiar a la cuenta de Rosa' }));
+  expect(mockPush).toHaveBeenCalledWith('/account-switch');
+  expect(db.draftHandoff()).toBeNull();
 });
-
-it('controls verification exceptions and re-enables the keyboard for retry', async () => {
-  const unlock = jest.spyOn(handoffActions, 'unlock').mockRejectedValueOnce(new Error('Controlled verification failure'));
+it('controls storage errors and enables a retry', async () => {
+  const verify = jest.spyOn(sessionActions, 'returnToAdmin').mockRejectedValueOnce(new Error('Controlled storage error'));
   try {
-    const screen = render(<Unlock />, { wrapper: RenderProviders });
-    enter(screen, '1234');
-    expect(await screen.findByText(strings.pin.unavailable)).toBeTruthy();
-    expect(screen.getByRole('button', { name: strings.pin.digit('1') })).not.toBeDisabled();
+    const ui = render(<Unlock />, { wrapper: RenderProviders });
+    password(ui, 'Segura123!');
+    expect(await ui.findByText('No pudimos comprobar la contraseña.')).toBeTruthy();
+    expect(ui.getByRole('button', { name: 'Entrar como administrador' })).not.toBeDisabled();
     expect(db.draftHandoff()).not.toBeNull();
-    expect(mockReplace).not.toHaveBeenCalled();
-  } finally { unlock.mockRestore(); }
+  } finally { verify.mockRestore(); }
 });
