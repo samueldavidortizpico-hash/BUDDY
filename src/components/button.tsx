@@ -110,6 +110,7 @@ export function Button({
       onPress={onPress}
       style={[
         s.base,
+        size === 'sm' && s.compact,
         { minHeight: HEIGHTS[size], backgroundColor: v.bg },
         v.border ? { borderColor: v.border, borderWidth: v.borderWidth } : null,
         !disabled ? v.shadow : null,
@@ -129,7 +130,6 @@ export function Button({
             variant={stacked ? 'secondaryStrong' : size === 'elder' ? 'h3' : 'button'}
             color={v.text}
             align="center"
-            numberOfLines={stacked ? 2 : undefined}
             style={s.grow}
           >
             {label}
@@ -206,7 +206,7 @@ export function IconButton({ icon, label, onPress, variant = 'soft', showLabel =
     >
       <Icon name={icon} color={v.color} size={22} />
       {showLabel ? (
-        <AppText variant="captionStrong" color={v.color}>
+        <AppText variant="captionStrong" color={v.color} align="center">
           {label}
         </AppText>
       ) : null}
@@ -245,11 +245,12 @@ const useStyles = makeStyles((t) =>
     fill: { ...StyleSheet.absoluteFill, borderRadius: radius.button },
     shineClip: { ...StyleSheet.absoluteFill, borderRadius: radius.button, overflow: 'hidden' },
     shine: { position: 'absolute', top: 0, bottom: 0, left: '35%', width: '28%' },
-    grow: { flexShrink: 1 },
+    grow: { flexShrink: 1, minWidth: 0, textAlign: 'center' },
+    compact: { paddingHorizontal: spacing.sm },
     stacked: { flexDirection: 'column', gap: 2, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
     disabled: { opacity: 0.45 },
     circle: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center' },
-    pill: { minHeight: touch.min, borderRadius: radius.pill, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    pill: { minHeight: touch.min, maxWidth: '100%', flexShrink: 0, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
     badge: {
       position: 'absolute',
       top: -4,

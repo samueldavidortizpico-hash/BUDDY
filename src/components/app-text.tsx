@@ -30,6 +30,7 @@ export function AppText({ variant = 'body', color, align, maxScale, style, acces
       accessibilityRole={accessibilityRole ?? (HEADERS.includes(variant) ? 'header' : undefined)}
       style={[
         base,
+        { minWidth: 0, flexShrink: 1 },
         { color: color ?? t.c.text, textAlign: align, fontSize: base.fontSize * appScale, lineHeight: base.lineHeight * appScale },
         style,
       ]}

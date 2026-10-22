@@ -102,7 +102,7 @@ export function Icon({ name, size = 22, color, strokeWidth = 1.8 }: IconProps) {
   const stroke = color ?? t.c.text;
   // El View posicionado garantiza que el icono quede sobre fondos absolutos (degradados) también en web.
   return (
-    <View pointerEvents="none" style={{ width: size, height: size }} {...HIDDEN}>
+    <View pointerEvents="none" style={{ width: size, height: size, flexShrink: 0 }} {...HIDDEN}>
       <Svg
         width={size}
         height={size}

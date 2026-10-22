@@ -10,6 +10,7 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { useToast } from '@/components/feedback';
 import { Icon } from '@/components/icon';
+import { InlineBanner } from '@/components/inline-banner';
 import type { Elder } from '@/domain/types';
 import { currentFix } from '@/infrastructure/location';
 import { strings } from '@/i18n';
@@ -73,10 +74,8 @@ export function ElderLocation({ elder, caregiver, preview }: { elder: Elder; car
   }
   if (consent === 'granted') {
     return (
-      <View style={s.sharing} pointerEvents={preview ? 'none' : 'auto'}>
-        <Icon name="location" color={t.c.muted} size={18} />
-        <AppText variant="secondary" color={t.c.muted} style={s.flex}>{L.sharing(who)}</AppText>
-        <Button
+      <View pointerEvents={preview ? 'none' : 'auto'}>
+        <InlineBanner icon={<Icon name="location" color={t.c.muted} size={18} />} action={<Button
           label={L.stop}
           size="sm"
           variant="ghost"
@@ -85,7 +84,9 @@ export function ElderLocation({ elder, caregiver, preview }: { elder: Elder; car
             locationActions.revoke(elder.id, 'elder');
             toast({ message: L.stopped, icon: 'check' });
           }}
-        />
+        />}>
+          <AppText variant="secondary" color={t.c.muted}>{L.sharing(who)}</AppText>
+        </InlineBanner>
       </View>
     );
   }
@@ -94,7 +95,7 @@ export function ElderLocation({ elder, caregiver, preview }: { elder: Elder; car
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    flex: { flex: 1 },
+    flex: { flex: 1, flexShrink: 1, minWidth: 0 },
     // Margen inferior amplio: el robot de la tarjeta "Ahora" sobresale hacia arriba y no debe tapar los botones.
     card: { gap: spacing.sm, padding: spacing.md, marginBottom: 64, borderRadius: radius.card, backgroundColor: t.c.surface },
     row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },

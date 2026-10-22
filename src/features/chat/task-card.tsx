@@ -126,7 +126,7 @@ export function TaskCard({
           <Icon name={meta.icon} color={t.hc ? t.c.text : d.accent} size={20} />
         </View>
         <View style={s.flex}>
-          <AppText variant="secondaryStrong" numberOfLines={1}>
+          <AppText variant="secondaryStrong" numberOfLines={2}>
             {title}
           </AppText>
           {draft.asking ? (
@@ -357,10 +357,10 @@ export function ActionMenu({ onPick }: { onPick: (key: MenuKey) => void }) {
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    flex: { flex: 1 },
+    flex: { flex: 1, flexShrink: 1, minWidth: 0 },
     shrink: { flexShrink: 1 },
     pressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
-    card: { marginHorizontal: spacing.md, marginBottom: spacing.xs, padding: spacing.sm, gap: spacing.xs, borderRadius: radius.card, backgroundColor: t.c.surface },
+    card: { alignSelf: 'stretch', minWidth: 0, marginHorizontal: spacing.md, marginBottom: spacing.xs, padding: spacing.sm, gap: spacing.xs, borderRadius: radius.card, backgroundColor: t.c.surface },
     head: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     iconBubble: { width: 40, height: 40, borderRadius: radius.icon, alignItems: 'center', justifyContent: 'center' },
     stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

@@ -9,6 +9,7 @@ import { Card } from '@/components/card';
 import { BottomSheet, ConfirmDialog, useToast } from '@/components/feedback';
 import { Field, Stepper } from '@/components/forms';
 import { Icon } from '@/components/icon';
+import { InlineBanner } from '@/components/inline-banner';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { EmptyState } from '@/components/states';
@@ -91,15 +92,14 @@ export default function MedicationDetail() {
           <AppText variant="h3">{M.today}</AppText>
           {todays.length ? (
             todays.map((it) => (
-              <View key={it.dose.id} style={s.doseRow}>
+              <InlineBanner key={it.dose.id} action={it.status !== 'taken' ? <Button label={M.markTaken} size="sm" variant="ghost" onPress={() => doseActions.confirm(it.dose.id, 'caregiver')} /> : <Icon name="check" color={t.ink.mint} />}>
                 <AppText variant="bodyStrong" style={s.time}>
                   {formatClock(effectiveTime(it.dose))}
                 </AppText>
                 <AppText variant="secondary" color={it.status === 'unconfirmed' ? t.ink.yellow : t.c.muted} style={s.flex}>
                   {M.statuses[it.status]}
                 </AppText>
-                {it.status !== 'taken' ? <Button label={M.markTaken} size="sm" variant="ghost" onPress={() => doseActions.confirm(it.dose.id, 'caregiver')} /> : <Icon name="check" color={t.ink.mint} />}
-              </View>
+              </InlineBanner>
             ))
           ) : (
             <AppText variant="secondary" color={t.c.muted}>
@@ -199,8 +199,8 @@ export default function MedicationDetail() {
 
 const useStyles = makeStyles(() =>
   StyleSheet.create({
-    flex: { flex: 1 },
-    grow: { flexGrow: 1, flexBasis: 140 },
+    flex: { flex: 1, flexShrink: 1, minWidth: 0 },
+    grow: { flexGrow: 1, flexBasis: '100%', minWidth: 0 },
     tabular: { fontVariant: ['tabular-nums'] },
     stack: { gap: spacing.md },
     hero: { gap: spacing.xs, padding: spacing.xl },

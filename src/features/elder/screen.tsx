@@ -355,7 +355,7 @@ function ItemView({
   const s = useStyles();
   const d = t.domains[domainOf(item)];
   const title = (text: string) => (
-    <AppText variant="display" color={d.text}>
+    <AppText variant="display" color={d.text} align="center">
       {text}
     </AppText>
   );
@@ -501,24 +501,24 @@ function FaceButton({ kind, onPress, disabled }: { kind: Answer3; onPress: () =>
       <View style={[s.faceCircle, { backgroundColor: t.hc ? t.c.bg : bg }, t.hairline]}>
         <Face kind={kind} size={72} />
       </View>
-      <AppText variant="bodyStrong">{strings.answers[kind]}</AppText>
+      <AppText variant="bodyStrong" align="center">{strings.answers[kind]}</AppText>
     </PressableScale>
   );
 }
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    flex: { flex: 1 },
+    flex: { flex: 1, flexShrink: 1, minWidth: 0 },
     noTouch: { pointerEvents: 'none' },
     tabular: { fontVariant: ['tabular-nums'] },
     round: { borderRadius: radius.hero },
-    top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.section + spacing.xxl },
+    top: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.section + spacing.xxl },
     options: { marginTop: -spacing.xs },
     card: { borderRadius: radius.hero, padding: spacing.xl, backgroundColor: t.c.surface },
     robot: { position: 'absolute', top: -72, right: -18 },
-    cardBody: { gap: spacing.sm },
-    itemBody: { gap: spacing.md },
-    twoCol: { flexDirection: 'row', gap: spacing.sm },
+    cardBody: { minWidth: 0, width: '100%', gap: spacing.sm },
+    itemBody: { minWidth: 0, width: '100%', gap: spacing.md },
+    twoCol: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
     faces: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.xs },
     faceBtn: { alignItems: 'center', gap: spacing.xs, flexGrow: 1, flexBasis: 90 },
     faceCircle: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center' },

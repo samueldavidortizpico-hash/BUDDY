@@ -1,5 +1,17 @@
 # BUDDY — Decisiones
 
+## Ronda V3.1 (2026-10-22)
+
+Este prompt reemplaza el V3.1 anterior y tiene prioridad sobre decisiones anteriores donde se contradigan. Los estados y la evidencia de cada hito viven en `AUDITORIA_V3_1.md`; implementado no significa comprobado en iPhone.
+
+| ID | Decisión | Motivo |
+|---|---|---|
+| V31-01 | Texto base con minWidth 0 y flexShrink 1; InlineBanner separa acción y texto y pasa a columna con ancho <390 o escala combinada >1,15. | Evitar depender de los valores flex de react-native-web. |
+| V31-02 | Botones sm compactos conservan 48 mínimos; etiquetas crecen verticalmente sin altura fija ni recorte obligatorio a dos líneas. | Un límite fijo de dos líneas puede ocultar una acción al 200%. |
+| V31-03 | Burbujas de chat a 85% explícito y resultados a ancho completo; propuesta hasta dos líneas en su título. | Evitar medición intrínseca estrecha en nativo. |
+| V31-04 | No iniciar servidores, incluidos los estáticos de captura. Las capturas usan BUDDY_TEST_URL cuando el dueño inicia la app. | Instrucción explícita del prompt; evidencia nativa/web pendiente se declara. |
+| V31-05 | No borrar nombres accesibles Cerrar sin reproducir el recuadro amarillo. | No hay evidencia aún de su origen; quitar accessibilityLabel perjudicaría VoiceOver. |
+
 Registro de decisiones tomadas durante la Fase 1 (interfaz completa con datos ficticios locales).
 Fuentes, en orden: `docs/CONTEXTO_BUDDY.md` (no estaba en el repositorio ni en el remoto durante este trabajo; se usaron las reglas del prompt y la Skill `buddy-medical-safety`), prototipo de Figma Make (`docs/figma-referencia/`, descargado con el conector de Figma) y el prompt de la fase.
 
