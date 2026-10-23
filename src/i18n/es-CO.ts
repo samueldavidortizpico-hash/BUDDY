@@ -149,7 +149,7 @@ export const esCO = {
     },
   },
   answers: { good: 'Bien', regular: 'Regular', bad: 'Mal' } as Record<'good' | 'regular' | 'bad', string>,
-  tabs: { summary: 'Inicio', routine: 'Rutina', health: 'Salud', settings: 'Ajustes' },
+  tabs: { summary: 'Inicio', health: 'Salud', location: 'Ubicación', routine: 'Rutina', settings: 'Ajustes' },
   time: {
     hint: 'Abre el selector de hora',
     hour: 'Hora',

@@ -57,7 +57,7 @@ export default function Summary() {
             <AppText variant="h1">{strings.brand.name}</AppText>
           )}
         </View>
-        {ready ? <IconButton icon="sparkle" label={strings.brand.name} showLabel={false} onPress={() => router.push('/buddy' as Href)} /> : null}
+        {ready ? <IconButton icon="user" label="Ajustes de cuenta" showLabel={false} onPress={() => router.push({ pathname: '/settings/[section]', params: { section: 'account' } } as unknown as Href)} /> : null}
         <IconButton icon="bell" label={S.alerts} showLabel={false} badge={unread} onPress={() => router.push('/alerts' as Href)} />
       </View>
 

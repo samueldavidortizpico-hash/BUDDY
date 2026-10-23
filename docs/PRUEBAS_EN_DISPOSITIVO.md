@@ -4,6 +4,18 @@ Lista para una persona con un iPhone y un Android reales y Expo Go (SDK 57). El 
 
 Lo que **no** se puede comprobar en web y por eso está aquí: teclado real, gestos, hápticos, notificaciones, permisos, efecto glass, splash nativo, lector de pantalla y rendimiento.
 
+## Ronda V3.1 (2026-10-23): navegación nueva
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 3.1.1 | En Inicio toca el avatar arriba a la derecha. | Abre Ajustes > Cuenta; ya no hay un botón superior que abra BUDDY. | ☐ | ☐ |
+| 3.1.2 | Revisa la barra inferior. | Orden: Inicio, Salud, BUDDY al centro con robot mint y contador rojo si hay novedades, Ubicación, Rutina. Todos los controles tienen objetivo de al menos 64 dp y VoiceOver/TalkBack anuncia sus nombres. | ☐ | ☐ |
+| 3.1.3 | Toca Ubicación. | Abre “Dónde está [nombre]” con flecha atrás; solo presenta ubicaciones registradas y respeta el consentimiento. | ☐ | ☐ |
+| 3.1.4 | Toca el botón central BUDDY y escribe algo. | Chat a pantalla completa, sin barra inferior; el compositor queda visible sobre el teclado. Flecha atrás vuelve a la pestaña anterior. | ☐ | ☐ |
+| 3.1.5 | Activa “Reducir movimiento” del sistema y repite la navegación. | El indicador respeta movimiento reducido y ninguna transición bloquea el toque. | ☐ | ☐ |
+
+La prueba automatizada de esta ronda cubre presencia y navegación lógica de las cinco posiciones. No sustituye esta comprobación con escalado de texto ni al lector de pantalla nativo.
+
 ## 0. Ronda V3.0 (2026-10-20): empieza por aquí
 
 En V3.0 el chat dejó de ser una pestaña (las pruebas 1.1 y 1.5 de V2.4 que hablan de la "pestaña BUDDY" o de la barra

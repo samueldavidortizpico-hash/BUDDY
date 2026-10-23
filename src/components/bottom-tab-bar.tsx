@@ -1,8 +1,9 @@
 import { BlurView } from 'expo-blur';
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from 'expo-glass-effect';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
+import { useRouter, type Href } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { AccessibilityInfo, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
@@ -11,9 +12,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { motion, radius, spacing, touch } from '@/theme';
 import { makeStyles, useAppearanceStore, useTheme } from '@/theme/provider';
 import { tapHaptic } from '@/utils/haptics';
+import { strings } from '@/i18n';
 
 import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
+import { BuddyRobot } from './robot';
+import { useFeed } from '@/state/feed';
 
 const PILL_W = 60;
 const PILL_H = 34;
@@ -52,19 +56,24 @@ export function BottomTabBar({
   descriptors,
   navigation,
   icons,
-}: BottomTabBarProps & { icons: Record<string, IconName> }) {
+  caregiver = false,
+}: BottomTabBarProps & { icons: Record<string, IconName>; caregiver?: boolean }) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useTheme();
+  const { unread } = useFeed();
   const s = useStyles();
   const reduceMotion = useReducedMotion();
   const reduceTransparency = useReduceTransparency();
   const gestures = useAppearanceStore((x) => x.barGestures);
   const [width, setWidth] = useState(0);
-  const n = state.routes.length;
+  const visibleRouteCount = state.routes.filter((route) => !(caregiver && route.name === 'settings')).length;
+  const n = visibleRouteCount + (caregiver ? 1 : 0);
   const item = width / n;
   const x = useSharedValue(0);
   const stretch = useSharedValue(1);
-  const hover = useSharedValue(state.index);
+  const slotForRoute = (index: number) => caregiver && index >= 2 ? index + 1 : index;
+  const hover = useSharedValue(slotForRoute(state.index));
   const dragging = useSharedValue(0);
   // En Android (edge-to-edge) la barra quedaría flotando sobre el teclado y taparía el compositor del chat: se oculta
   // mientras el teclado está abierto (como tabBarHideOnKeyboard). En iOS el teclado ya la cubre.
@@ -80,27 +89,34 @@ export function BottomTabBar({
   }, []);
 
   // La gota viaja a la pestaña activa y se estira según la distancia; luego se asienta.
-  const prev = useSharedValue(state.index);
+  const prev = useSharedValue(slotForRoute(state.index));
   useEffect(() => {
-    const target = state.index * item + (item - PILL_W) / 2;
-    hover.set(state.index);
+    const selectedSlot = slotForRoute(state.index);
+    const target = selectedSlot * item + (item - PILL_W) / 2;
+    hover.set(selectedSlot);
     if (reduceMotion || item === 0) {
       x.set(target);
       return;
     }
     x.set(withSpring(target, motion.spring));
-    const jump = Math.min(3, Math.abs(state.index - prev.get()));
+    const jump = Math.min(3, Math.abs(selectedSlot - prev.get()));
     if (jump) stretch.set(withSequence(withTiming(1 + jump * 0.28, { duration: 140 }), withSpring(1, motion.spring)));
-    prev.set(state.index);
+    prev.set(selectedSlot);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.index, item, reduceMotion]);
+  }, [state.index, item, reduceMotion, caregiver]);
 
   const go = useCallback(
-    (index: number) => {
+    (slot: number) => {
+      if (caregiver && slot === 2) {
+        tapHaptic();
+        router.push('/buddy' as Href);
+        return;
+      }
+      const index = caregiver && slot > 2 ? slot - 1 : slot;
       const route = state.routes[index];
       if (!route) return;
       if (index === state.index) {
-        x.set(withSpring(index * item + (item - PILL_W) / 2, motion.spring));
+        x.set(withSpring(slot * item + (item - PILL_W) / 2, motion.spring));
         return;
       }
       const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
@@ -108,7 +124,7 @@ export function BottomTabBar({
       // (comprobado con scripts/capture/v24-tabbar.mjs).
       if (!event.defaultPrevented) setTimeout(() => navigation.navigate(route.name, route.params), 0);
     },
-    [state.routes, state.index, navigation, item, x],
+    [state.routes, state.index, navigation, item, x, caregiver, router],
   );
 
   const drag = Gesture.Pan()
@@ -165,32 +181,35 @@ export function BottomTabBar({
           {item > 0 ? <Animated.View pointerEvents="none" style={[s.pill, pill]} /> : null}
           {state.routes.map((route, index) => {
             const { options } = descriptors[route.key];
+            if (caregiver && route.name === 'settings') return null;
             const label = options.title ?? route.name;
             const focused = state.index === index;
-            const onPress = () => {
-              const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-              if (!focused && !event.defaultPrevented) {
-                tapHaptic();
-                navigation.navigate(route.name, route.params);
-              }
-            };
+            const slot = slotForRoute(index);
             return (
-              <Pressable
-                key={route.key}
-                accessibilityRole="tab"
-                accessibilityLabel={label}
-                accessibilityState={{ selected: focused }}
-                // Como en iOS: la etiqueta no crece más allá de ×1.1; con texto grande, mantener presionado muestra el visor.
-                accessibilityShowsLargeContentViewer
-                accessibilityLargeContentTitle={label}
-                onPress={onPress}
-                style={s.item}
-              >
-                <TabIcon name={icons[route.name] ?? 'home'} focused={focused} />
-                <AppText variant="meta" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1.1} style={styles.label}>
-                  {label}
-                </AppText>
-              </Pressable>
+              <Fragment key={route.key}>
+                {caregiver && index === 2 ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Abrir chat de ${strings.brand.name}${unread ? `, ${unread} novedades` : ''}`} onPress={() => go(2)} style={s.centerItem}>
+                    <View style={[s.centerOrb, { backgroundColor: t.hc ? t.c.surface : t.ink.mint }]}>
+                      <BuddyRobot size={42} compact mood="idle" badge={unread || undefined} flying={false} shadow={false} glow={false} navigationIndependent />
+                    </View>
+                    <AppText variant="meta" color={t.c.text} numberOfLines={1} maxScale={1.1} style={styles.label}>BUDDY</AppText>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityRole="tab"
+                  accessibilityLabel={label}
+                  accessibilityState={{ selected: focused }}
+                  accessibilityShowsLargeContentViewer
+                  accessibilityLargeContentTitle={label}
+                  onPress={() => go(slot)}
+                  style={s.item}
+                >
+                  <TabIcon name={icons[route.name] ?? 'home'} focused={focused} />
+                  <AppText variant="meta" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1.1} style={styles.label}>
+                    {label}
+                  </AppText>
+                </Pressable>
+              </Fragment>
             );
           })}
         </View>
@@ -244,5 +263,7 @@ const useStyles = makeStyles((t) =>
       borderColor: t.c.text,
     },
     item: { flex: 1, alignItems: 'center', gap: 2, minHeight: touch.tabBar - 8, paddingTop: 8, paddingBottom: 6, paddingHorizontal: 2 },
+    centerItem: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', minHeight: touch.tabBar - 8, paddingBottom: 6, paddingHorizontal: 2 },
+    centerOrb: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: -23, marginBottom: 3, borderWidth: t.hc ? 2 : 0, borderColor: t.c.text },
   }),
 );

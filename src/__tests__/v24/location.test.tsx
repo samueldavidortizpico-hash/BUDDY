@@ -5,7 +5,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
-import LocationScreen from '@/app/(caregiver)/location';
+import LocationScreen from '@/app/(caregiver)/(tabs)/location';
 import { KEEP_FIXES, STALE_MIN, locationView } from '@/domain/location';
 import { ElderScreen } from '@/features/elder/screen';
 import { db, useDb } from '@/infrastructure/local/db';

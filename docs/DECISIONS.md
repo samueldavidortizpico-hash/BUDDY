@@ -171,3 +171,9 @@ Esta ronda tiene prioridad sobre las anteriores donde se contradigan. La definic
 | 117 | Registro RÁPIDO para la primera vez: Quién es → Medicamentos → Contactos → Chequeo diario → Listo (5 pantallas; antes 9). Salud, alimentación, agua y actividades, avisos y acceso pasan a "Primeros pasos" del Inicio y abren el asistente COMPLETO en ese paso (`/setup?elderId=…&step=…`), que es también el de editar. | Pedido del Hito 6 (primer valor en unos cinco minutos). |
 | 118 | En la pantalla del adulto mayor TODAS las respuestas miden 72 (antes las secundarias, 52–56). La voz sigue siendo un interruptor del administrador (Ajustes > Pantalla de [nombre]) y lee cada aviso. | Pedido del Hito 6; nada que configurar para el adulto mayor. |
 | 119 | Invitación familiar: código de 8 caracteres legibles con permiso "ver" o "administrar", válido 7 días, revocable, compartible con enlace `buddy://invitacion?codigo=…` (el esquema de app.json, sin depender de `expo-linking`). Guardada en local; `InviteRepository.accept` responde `needs_backend` hasta que exista servidor. | Funcional en local con el contrato listo; no se simula que otro celular ya puede entrar. |
+
+## Ronda V3.1 (2026-10-23): reemplaza decisiones incompatibles
+
+| # | Decisión | Por qué |
+|---|---|---|
+| 120 | Barra del administrador: Inicio, Salud, BUDDY al centro, Ubicación y Rutina. El botón BUDDY abre `/buddy` a pantalla completa sin barra. Ajustes se abre desde el avatar de Inicio y no ocupa una posición de pestaña. Esta decisión reemplaza 93 y 104 en lo que respecta a las pestañas y accesos al chat. | V3.1 exige Ubicación de fácil acceso y botón central del asistente. Mantener Ajustes como pestaña quitaba espacio a las cinco posiciones y duplicar un robot flotante generaba dos accesos. La bolita de novedades pasa al robot central. |

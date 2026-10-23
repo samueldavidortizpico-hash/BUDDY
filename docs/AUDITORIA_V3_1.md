@@ -64,3 +64,15 @@ Pruebas específicas iniciales tras el cambio: 3 suites, 15 pruebas aprobadas (p
 La herramienta de escritura inicial falló por comillas de PowerShell antes de escribir; se corrigió usando texto literal UTF-8. No se atribuye ese error al producto.
 
 Verificación de cierre del hito 2: **41 suites / 714 pruebas aprobadas**. Tipos, lint, guarda de texto y comprobación de encabezados sin errores. Las 5 expectativas obsoletas se migraron conservando pruebas de lectura, actualización reactiva, error de contraseña y roles; no se omitieron pruebas. Sigue pendiente el recorrido visual en web/iPhone.
+
+## Hito 3 — navegación
+
+Skills aplicadas: `baseline-ui` para jerarquía y orden de pestañas; `fixing-accessibility` para mantener objetivo táctil de al menos 64 dp y etiquetas del lector; `fixing-motion-performance` para conservar solo la animación del robot existente y las transformaciones del indicador de la barra. No se añadió una animación nueva.
+
+| Fallo | Antes / causa demostrada | Cambio | Después / evidencia |
+|---|---|---|---|
+| No había botón central BUDDY | Reproducción en Jest: la barra mostraba cuatro pestañas y no encontraba el botón central accesible. Causa: Hito 2 dejó el chat como ruta completa pero el diseño V3.0 mantuvo la barra de cuatro pestañas y un lanzador flotante aparte. | Barra ordenada Inicio, Salud, BUDDY, Ubicación y Rutina; botón central mint abre `/buddy`; se quitó lanzador duplicado; Ajustes se abre desde el avatar del Inicio y queda fuera de la barra. | `navigation-v31.test.tsx`: botón central abre ruta y no llama la navegación de pestañas; Ubicación navega a su ruta. La prueba focal pasa. |
+| Ubicación no era pestaña | La ruta existía en el stack del cuidador, no dentro del navegador de pestañas. | Se movió la misma pantalla al grupo `(tabs)`; la URL estable `/location` no cambia. | `check:headers` valida 31 rutas; prueba focal de navegación pasa. |
+| Chat podía mostrarse con barra o robot redundante | El chat ya era ruta de stack; el icono de Inicio y el lanzador de pantalla tenían accesos repetidos. | El acceso de chat queda central en la barra; el botón junto a campana ahora es el avatar y abre Cuenta. | Verificado por código y prueba del componente; aún sin captura de navegador. |
+
+La prueba inicial focal fallaba porque no encontraba BUDDY; ese fue el fallo reproducido antes del cambio. Después pasan la prueba de navegación, `typecheck`, `lint` y `check:headers` (31 rutas). La suite completa queda en **42 suites / 715 pruebas aprobadas**. `scripts/check-text-rows.mjs` se ejecuta como `node scripts/check-text-rows.mjs` (no existe un script npm llamado `check:text-rows`); informó **405 declaraciones**, y no mide Yoga. No se inició servidor ni se capturó web por instrucción del dueño; el comportamiento visual en navegador, iPhone y Android queda pendiente. Android no tiene dispositivo conectado por adb.

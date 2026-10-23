@@ -1,6 +1,6 @@
 # Hoja de ruta de BUDDY
 
-Estado real al 2026-10-20 (ronda V3.0 completada: Hitos 1 a 6 y verificación final). Desde V3.0 la hoja de ruta se ordena por la definición del producto
+Estado real al 2026-10-23 (ronda V3.1 en ejecución; hitos 1 a 3 implementados). Esta ronda tiene prioridad sobre V3.0 donde contradiga. Desde V3.0 la hoja de ruta se ordena por la definición del producto
 (`docs/PRODUCTO.md`): **Núcleo**, **Valor añadido** y **Futuro**. "Hecho" significa implementado y probado en web y con
 Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`; lo que necesita backend se marca como tal.
 
@@ -49,6 +49,13 @@ Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`; 
 | Piloto con familias | Metas a validar de `docs/PRODUCTO.md` | Lo anterior |
 
 ## Historial
+
+### Ronda V3.1 en curso (2026-10-23)
+
+- **Hito 1 — textos y botones:** base de textos y botones responsivos; controles automatizados añadidos. Jest, typecheck y lint aprobados. Reproducción visual nativa y web pendiente.
+- **Hito 2 — cuenta y vista:** vista de la persona y cambio/retorno de cuenta con contraseña implementados y probados en Jest. El recorrido visual en navegador y dispositivo está pendiente.
+- **Hito 3 — navegación:** Inicio, Salud, BUDDY, Ubicación y Rutina; Ajustes desde avatar; chat en pantalla completa. Prueba focal, typecheck, lint y 31 rutas con flecha atrás aprobados. Capturas web y dispositivo pendientes.
+- **Hitos 4 a 7:** pendientes de ejecución en esta ronda.
 
 ### Hasta V2.4
 
