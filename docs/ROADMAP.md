@@ -56,7 +56,8 @@ Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`; 
 - **Hito 2 — cuenta y vista:** vista de la persona y cambio/retorno de cuenta con contraseña implementados y probados en Jest. El recorrido visual en navegador y dispositivo está pendiente.
 - **Hito 3 — navegación:** Inicio, Salud, BUDDY, Ubicación y Rutina; Ajustes desde avatar; chat en pantalla completa. Prueba focal, typecheck, lint y 31 rutas con flecha atrás aprobados. Capturas web y dispositivo pendientes.
 - **Hito 4 — BUDDY que actúa:** mensajes con hora/avatar/indicador, automatizaciones editables y avisos locales; 50 frases del corpus (100 %) y pruebas de estado aprobadas. Falta el recorrido visual en navegador/dispositivo y backend entre teléfonos.
-- **Hitos 5 a 7:** pendientes de ejecución en esta ronda.
+- **Hitos 5 y 6:** implementados; falta validación física en iPhone/Android con escalas grandes.
+- **Hito 7:** Plus, contratos de entitlement y Pedometer implementados; falta configurar productos/claves y validar en build/dispositivos.
 
 ### Hasta V2.4
 
@@ -100,3 +101,13 @@ Hitos 3 a 8: existencias exactas e idempotentes con avisos a 3 días, evaluador 
 - [x] Hito 6: agua por horario con estados respaldados por registros y animación de ondas; Salud apila ánimo y sueño a ancho completo, conserva barras vacías y dice cuando no hay respuestas.
 - [x] Línea de tiempo con iconos de estado para medicamentos, comidas y actividad.
 - [ ] Validación visual manual en iPhone y Android a escalas de texto máximas.
+
+## Ronda V3.1 — planes y BUDDY Plus
+
+- [x] Entitlement `free/plus`, lista ampliable de beneficios y catálogo central de productos sin precios inventados.
+- [x] Proveedor local de prueba desde Ajustes > Avanzado; pantalla Plus y bloqueos amables.
+- [x] Adaptador RevenueCat con claves públicas opcionales; Preview de Expo Go solo para interfaz, sin compras reales ni claves configuradas.
+- [x] Pedometer: datos históricos reales iOS; Android comunica que el total día/semana depende de Health Connect.
+- [x] `docs/PAGOS.md` reúne la recomendación y requisitos de las tiendas.
+- [ ] Crear productos, elegir precios/prueba, configurar RevenueCat y verificar compra/restauración en development build.
+- [ ] Probar sensores en Expo Go iPhone y Android físico; validar integración real de HealthKit/Health Connect en build instalable.

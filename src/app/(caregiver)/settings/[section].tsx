@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -17,6 +17,7 @@ import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
 import { escalationOf } from '@/domain/schedule';
+import { createLocalEntitlementProvider } from '@/domain/entitlements';
 import { DEFAULT_SILENCE_HOURS } from '@/domain/verification';
 import { ALERT_KINDS, type ElderAppearance } from '@/domain/types';
 import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
@@ -445,10 +446,23 @@ function Advanced() {
   const s = useStyles();
   const account = useAccount();
   const userId = useSession((x) => x.user?.id);
+  const plusTest = useDb((x) => userId ? x.drafts[userId]?.buddyPlusTest === true : false);
+  const localEntitlements = useMemo(() => createLocalEntitlementProvider({
+    read: async (id) => db.draft<boolean>(id, 'buddyPlusTest') ? 'plus' : 'free',
+    write: async (id, plan) => db.setDraft(id, 'buddyPlusTest', plan === 'plus'),
+  }), []);
   const [reset, setReset] = useState(false);
   if (!account || !userId) return null;
   return (
     <View style={s.stack}>
+      {__DEV__ ? (
+        <Row
+          label="BUDDY Plus de prueba"
+          hint="Solo cambia este dispositivo. No activa una compra ni cobra dinero."
+          value={plusTest}
+          onChange={(value) => { if (userId) void localEntitlements.setTestPlan?.(userId, value ? 'plus' : 'free'); }}
+        />
+      ) : null}
       <Row
         label={S.demo}
         hint={S.demoBody}

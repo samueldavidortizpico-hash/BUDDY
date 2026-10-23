@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
-import { FEATURES } from '@/config/features';
 import { Appear } from '@/components/appear';
 import { Card } from '@/components/card';
 import { Segmented } from '@/components/forms';
@@ -15,6 +14,8 @@ import { METRICS, MetricBody, useHealth } from '@/features/health/metrics';
 import { strings } from '@/i18n';
 import { radius, spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
+import { PlusLock } from '@/components/plus-lock';
+import { useIsPlus } from '@/state/entitlements';
 
 const H = strings.health;
 
@@ -22,6 +23,7 @@ const H = strings.health;
 export default function Health() {
   const router = useRouter();
   const t = useTheme();
+  const isPlus = useIsPlus();
   const s = useStyles();
   const [period, setPeriod] = useState<Period>('day');
   const data = useHealth(period);
@@ -58,23 +60,12 @@ export default function Health() {
           </Appear>
         ))}
       </View>
-      {/* Reloj: Futuro en V3.0 (FEATURES.watch). */}
-      {FEATURES.watch ? (
-      <Card style={s.watch} onPress={() => router.push('/health/watch')} accessibilityLabel={H.watch}>
-        <Icon name="watch" color={t.ink.lavender} size={28} />
-        <View style={s.flex}>
-          <View style={s.badgeRow}>
-            <AppText variant="h3">{H.watch}</AppText>
-            <View style={s.badge}>
-              <AppText variant="meta" color={t.ink.lavender}>{strings.common.premium}</AppText>
-            </View>
-          </View>
-          <AppText variant="caption" color={t.c.muted}>
-            {H.watchBody}
-          </AppText>
-        </View>
-      </Card>
-      ) : null}
+      {isPlus ? (
+        <Card style={s.watch} onPress={() => router.push('/health/watch')} accessibilityLabel="Conectar reloj">
+          <Icon name="watch" color={t.ink.lavender} size={28} />
+          <View style={s.flex}><AppText variant="h3">Conectar reloj</AppText><AppText variant="caption" color={t.c.muted}>{H.watchBody}</AppText></View>
+        </Card>
+      ) : <PlusLock label="Conectar reloj · Disponible en BUDDY Plus" />}
       <AppText variant="caption" color={t.c.muted} align="center" style={s.note}>
         {H.disclaimer}
       </AppText>

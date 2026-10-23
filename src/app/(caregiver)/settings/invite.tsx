@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import { Share, StyleSheet, View } from 'react-native';
 
@@ -9,10 +10,12 @@ import { ConfirmDialog, useToast } from '@/components/feedback';
 import { Segmented } from '@/components/forms';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
+import { PlusLock } from '@/components/plus-lock';
 import { checkInvite, inviteLink as link, type Invite, type InviteRole } from '@/domain/invites';
 import { useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { useActiveElder, useUserId } from '@/state/data';
+import { useIsPlus } from '@/state/entitlements';
 import { invites } from '@/state/invites';
 import { spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
@@ -26,11 +29,13 @@ const NONE: Invite[] = [];
  */
 export default function InviteScreen() {
   const t = useTheme();
+  const router = useRouter();
   const s = useStyles();
   const toast = useToast();
   const elder = useActiveElder();
   const userId = useUserId() ?? '';
   const list = useDb((x) => x.drafts[userId]?.[invites.key] as Invite[] | undefined) ?? NONE;
+  const isPlus = useIsPlus();
   const [role, setRole] = useState<InviteRole>('viewer');
   const [created, setCreated] = useState<Invite | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -43,11 +48,13 @@ export default function InviteScreen() {
         <AppText variant="body" color={t.c.muted}>{I.body(elder.firstName)}</AppText>
         <Segmented label={I.roleLabel} value={role} onChange={setRole} options={[{ key: 'viewer', label: I.roles.viewer }, { key: 'admin', label: I.roles.admin }]} />
         <AppText variant="caption" color={t.c.muted}>{I.roleHint[role]}</AppText>
+        {role === 'admin' && !isPlus ? <PlusLock label="Agregar otro cuidador · Disponible en BUDDY Plus" /> : null}
         <Button
           label={I.create}
           icon="users"
           haptic
           onPress={async () => {
+            if (role === 'admin' && !isPlus) { router.push('/plus' as Href); return; }
             setCreated(await invites.create({ elderId: elder.id, role }));
           }}
         />

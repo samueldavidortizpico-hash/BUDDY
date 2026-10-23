@@ -1,92 +1,80 @@
-import Constants, { ExecutionEnvironment } from 'expo-constants';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+import { Pedometer } from 'expo-sensors';
+import { useRouter, type Href } from 'expo-router';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
-import { BottomSheet } from '@/components/feedback';
-import { Segmented, Stepper } from '@/components/forms';
-import { Icon, type IconName } from '@/components/icon';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { healthConnectProvider, healthKitProvider } from '@/domain/services';
+import { useIsPlus } from '@/state/entitlements';
 import { strings } from '@/i18n';
 import { spacing } from '@/theme';
 import { useTheme } from '@/theme/provider';
 
-const H = strings.health;
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
-/** Reloj y monitoreo avanzado (Premium). Sin reloj conectado, todo vacío: nunca datos inventados. */
+/** Pedometer de Expo Go: histórico en iOS; Android solo ofrece lecturas en primer plano. */
 export default function Watch() {
   const t = useTheme();
-  const expoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient || Platform.OS === 'web';
-  const [platform, setPlatform] = useState<'apple' | 'android'>(Platform.OS === 'ios' ? 'apple' : 'android');
-  const [info, setInfo] = useState<string | null>(null);
-  const [pulse, setPulse] = useState({ min: 50, max: 110 });
-  const [steps, setSteps] = useState(3000);
-  const provider = platform === 'apple' ? healthKitProvider : healthConnectProvider;
-
-  const connect = async () => {
-    const r = await provider.getSteps(new Date().toISOString().slice(0, 10));
-    setInfo(typeof r === 'number' ? null : r.reason);
-  };
-
-  const tiles: { icon: IconName; label: string }[] = [
-    { icon: 'heart', label: H.pulse },
-    { icon: 'walk', label: H.stepsLabel },
-    { icon: 'drop', label: H.oxygen },
-    { icon: 'moon', label: H.sleepWatch },
-  ];
-
+  const router = useRouter();
+  const entitled = useIsPlus();
+  const [today, setToday] = useState<number | null>(null);
+  const [week, setWeek] = useState<number | null>(null);
+  const [message, setMessage] = useState('Conecta Apple Salud o Health Connect para consultar tus pasos.');
+  const [busy, setBusy] = useState(false);
+  const refresh = useCallback(async () => {
+    setBusy(true);
+    setToday(null); setWeek(null);
+    try {
+      if (Platform.OS === 'web') { setMessage('El podómetro requiere un dispositivo iPhone o Android.'); return; }
+      const available = await Pedometer.isAvailableAsync();
+      if (!available) { setMessage('Este dispositivo no informa pasos con el podómetro.'); return; }
+      const permission = await Pedometer.getPermissionsAsync();
+      const result = permission.granted ? permission : await Pedometer.requestPermissionsAsync();
+      if (!result.granted) { setMessage('Permiso de movimiento no concedido. Revisa los permisos del celular.'); return; }
+      if (Platform.OS === 'ios') {
+        const now = new Date();
+        const todayResult = await Pedometer.getStepCountAsync(startOfDay(now), now);
+        const weekResult = await Pedometer.getStepCountAsync(startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)), now);
+        setToday(todayResult.steps); setWeek(weekResult.steps);
+        setMessage('Datos del iPhone. El historial del podómetro conserva hasta siete días.');
+      } else {
+        setMessage('En Android, Expo Go solo informa pasos en primer plano. Para el total de hoy y la semana se requiere conectar Health Connect en una versión instalable.');
+      }
+    } catch {
+      setMessage('No pudimos leer los pasos. Puedes conectar un reloj desde la versión instalable.');
+    } finally { setBusy(false); }
+  }, []);
+  const provider = Platform.OS === 'ios' ? healthKitProvider : healthConnectProvider;
   return (
-    <ScreenContainer header={<ScreenHeader title={H.watch} fallback="/health" />}>
-      <View style={styles.stack}>
-        <AppText variant="body" color={t.c.muted}>
-          {H.watchBody}
-        </AppText>
-        {expoGo ? (
-          <Card variant="tint" tone="lavender" style={styles.row}>
-            <Icon name="info" color={t.ink.lavender} />
-            <AppText variant="secondaryStrong" style={styles.flex}>
-              {H.watchExpoGo}
-            </AppText>
+    <ScreenContainer header={<ScreenHeader title="Conectar reloj" fallback="/(caregiver)/(tabs)/health" />}>
+      <View style={s.stack}>
+        {!entitled ? (
+          <Card variant="tint" tone="lavender" style={s.stack}>
+            <AppText variant="h3">Disponible en BUDDY Plus</AppText>
+            <AppText variant="secondary">Apple Salud y Health Connect requieren permisos del adulto mayor y una suscripción activa.</AppText>
+            <Button label="Conocer BUDDY Plus" icon="lock" size="md" onPress={() => router.push('/plus' as Href)} />
           </Card>
         ) : null}
-        <AppText variant="secondaryStrong">{H.platform}</AppText>
-        <Segmented label={H.platform} value={platform} onChange={setPlatform} options={[{ key: 'apple', label: H.apple }, { key: 'android', label: H.android }]} />
-        <Button label={H.connect} icon="watch" onPress={connect} />
-        <View style={styles.grid}>
-          {tiles.map((tile) => (
-            <Card key={tile.label} style={styles.tile}>
-              <Icon name={tile.icon} color={t.c.muted} />
-              <AppText variant="secondaryStrong">{tile.label}</AppText>
-              <AppText variant="caption" color={t.c.muted}>
-                {H.emptyWatch}
-              </AppText>
-            </Card>
-          ))}
-        </View>
-        <AppText variant="h3">{H.ranges}</AppText>
-        <Stepper label={`${H.pulse} mínimo`} value={pulse.min} min={30} max={pulse.max - 10} step={5} onChange={(min) => setPulse({ ...pulse, min })} />
-        <Stepper label={`${H.pulse} máximo`} value={pulse.max} min={pulse.min + 10} max={180} step={5} onChange={(max) => setPulse({ ...pulse, max })} />
-        <Stepper label={strings.routine.steps} value={steps} min={500} max={20000} step={500} onChange={setSteps} />
-        <AppText variant="caption" color={t.c.muted}>
-          {H.stepsNote}
-        </AppText>
+        {entitled ? <Card style={s.stack}>
+          <AppText variant="h3">Pasos del celular</AppText>
+          <AppText variant="secondary" color={t.c.muted}>{message}</AppText>
+          {Platform.OS === 'ios' && today !== null ? <AppText variant="h2">Hoy: {today.toLocaleString()} pasos</AppText> : null}
+          {Platform.OS === 'ios' && week !== null ? <AppText variant="secondaryStrong">Últimos 7 días: {week.toLocaleString()} pasos</AppText> : null}
+          <Button label="Actualizar pasos" icon="walk" variant="secondary" size="md" loading={busy} onPress={refresh} />
+        </Card> : null}
+        <Card style={s.stack}>
+          <AppText variant="h3">Conectar un reloj</AppText>
+          <AppText variant="secondary">Apple Salud o Health Connect permiten compartir datos medidos. El adaptador de reloj requiere un build instalable y permisos explícitos.</AppText>
+          <AppText variant="caption" color={t.c.muted}>{provider.platform === 'healthkit' ? 'Apple Salud' : 'Health Connect'}: {provider.platform === 'healthkit' ? 'iPhone' : 'Android'}.</AppText>
+        </Card>
+        <AppText variant="caption" color={t.c.muted}>{strings.health.disclaimer}</AppText>
       </View>
-      <BottomSheet visible={!!info} onClose={() => setInfo(null)} title={H.watch}>
-        <AppText variant="body">{info}</AppText>
-        <Button label={strings.common.understood} onPress={() => setInfo(null)} />
-      </BottomSheet>
     </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  stack: { gap: spacing.md },
-  row: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  tile: { flexGrow: 1, flexBasis: 140, gap: spacing.xxs },
-});
+const s = StyleSheet.create({ stack: { gap: spacing.md } });

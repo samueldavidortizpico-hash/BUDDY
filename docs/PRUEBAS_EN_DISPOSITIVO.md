@@ -170,3 +170,12 @@ Verificación completa (Hito 8).
 2. Cambia el tamaño de texto de BUDDY por todos sus pasos y el escalado del sistema a 1.0, 1.3 y 2.0. Confirma que horarios, iconos y texto no se montan en 360, 375 y 390 puntos de ancho.
 3. En Salud, confirma que Ánimo y Sueño se apilan a todo el ancho, que las barras se animan y que sin respuestas dice “Sin datos” con barras base vacías.
 4. Revisa los estados de comida, medicamento y caminata: cada icono debe concordar con su registro, con VoiceOver/TalkBack y alto contraste.
+
+## V3.1 Hito 7 — BUDDY Plus y pasos (pendiente en dispositivo)
+
+1. En web, abre Salud > Conectar reloj y comprueba el bloqueo amable. Ajustes > Avanzado > BUDDY Plus de prueba activa Plus local; desactívalo y confirma que el acceso vuelve a estar bloqueado. Esto no compra ni cobra.
+2. Abre BUDDY Plus: precios/prueba deben decir “por definir”, debe estar el enlace a términos y restaurar compras, y no debe aparecer formulario de tarjeta.
+3. En Expo Go con iPhone físico, concede el permiso de movimiento y toca **Actualizar pasos**. Compara el valor de hoy y los últimos siete días con la app Salud. Si no hay sensor/permiso, debe decirlo y no mostrar ceros como medición.
+4. En Android Expo Go, confirma que no aparece un total diario/semanal inventado; se informa que el histórico requiere Health Connect. La integración de Health Connect se prueba después en development build.
+5. En un build instalable, configura productos de sandbox y claves públicas RevenueCat solo fuera del repositorio; prueba compra, cancelación, restauración y expiración. No usar claves secretas en el cliente.
+6. Repite Plus y Conectar reloj con letra BUDDY máxima, fontScale 1.0/1.3/2.0, anchos 360/375/390 y VoiceOver/TalkBack. Estas comprobaciones físicas siguen pendientes.

@@ -118,9 +118,9 @@ Notificaciones del teléfono, inicio de sesión real y cuentas, voz, foto del en
 - [x] Hito 2: vista de la persona y cambio/retorno de cuenta con contraseña; recorrido Jest aprobado, falta recorrido visual en teléfono.
 - [x] Hito 3: barra Inicio, Salud, BUDDY, Ubicación, Rutina; avatar abre Cuenta y chat sin barra; prueba focal aprobada.
 - [x] Hito 4: chat y automatizaciones implementados y probados en Jest; falta validación visual y nativa.
-- [ ] Hito 5: permisos del adulto mayor.
-- [ ] Hito 6: historiales y Salud visuales.
-- [ ] Hito 7: planes y BUDDY Plus.
+- [x] Hito 5: permisos del adulto mayor (falta verificación física).
+- [x] Hito 6: historiales y Salud visuales (falta verificación física).
+- [x] Hito 7: planes y BUDDY Plus implementados (compras reales y dispositivos pendientes).
 
 Pasos manuales de navegación: `docs/PRUEBAS_EN_DISPOSITIVO.md`, sección “Ronda V3.1”.
 # Ronda V3.1 — hito 5: permisos
@@ -139,3 +139,11 @@ Pasos manuales de navegación: `docs/PRUEBAS_EN_DISPOSITIVO.md`, sección “Ron
 - [x] Actividad, comidas y tomas muestran iconos de estado en la línea de tiempo.
 - [ ] Auditar en iPhone con todos los tamaños de letra de BUDDY y fontScale del sistema 1.0/1.3/2.0.
 - [ ] Repetir en anchos 360/375/390 y lector de pantalla/alto contraste.
+
+## Hito 7 — BUDDY Plus y actividad
+
+- [x] Salud muestra acceso bloqueado de reloj con texto accesible y abre la pantalla Plus.
+- [x] Ajustes > Avanzado expone el entitlement local solo en desarrollo; probar activar/desactivar y abrir de nuevo Salud.
+- [x] La pantalla Plus declara precios pendientes, términos y restauración; no recoge tarjetas ni afirma una prueba activa.
+- [x] El podómetro no presenta valores de ejemplo; el conteo aparece solo cuando el sistema devuelve una lectura.
+- [ ] Revisar lector de pantalla y texto al 200 % en Plus y Conectar reloj.
