@@ -8,7 +8,7 @@ import SignUp from '@/app/(auth)/sign-up';
 import Buddy from '@/app/(caregiver)/buddy';
 import Health from '@/app/(caregiver)/(tabs)/health';
 import Routine from '@/app/(caregiver)/(tabs)/routine';
-import Settings from '@/app/(caregiver)/(tabs)/settings';
+import Settings from '@/app/(caregiver)/settings';
 import Summary from '@/app/(caregiver)/(tabs)/summary';
 import Alerts from '@/app/(caregiver)/alerts';
 import NewMedication from '@/app/(caregiver)/medication/new';

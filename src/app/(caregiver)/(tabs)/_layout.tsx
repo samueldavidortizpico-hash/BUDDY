@@ -9,7 +9,7 @@ const ICONS: Record<string, IconName> = { summary: 'home', health: 'heart', loca
 
 /**
  * Pestañas del administrador (V3.1): Inicio, Salud, BUDDY, Ubicación y Rutina. BUDDY abre el chat del stack en pantalla
- * completa, y Ajustes vive en el avatar de Inicio.
+ * completa, y Ajustes es una ruta del stack que se abre desde el engranaje de Inicio.
  */
 export default function CaregiverTabs() {
   const T = strings.tabs;
@@ -20,7 +20,6 @@ export default function CaregiverTabs() {
         <Tabs.Screen name="health" options={{ title: T.health }} />
         <Tabs.Screen name="location" options={{ title: T.location }} />
         <Tabs.Screen name="routine" options={{ title: T.routine }} />
-        <Tabs.Screen name="settings" options={{ href: null }} />
       </Tabs>
     </View>
   );

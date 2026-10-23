@@ -67,8 +67,7 @@ export function BottomTabBar({
   const reduceTransparency = useReduceTransparency();
   const gestures = useAppearanceStore((x) => x.barGestures);
   const [width, setWidth] = useState(0);
-  const visibleRouteCount = state.routes.filter((route) => !(caregiver && route.name === 'settings')).length;
-  const n = visibleRouteCount + (caregiver ? 1 : 0);
+  const n = state.routes.length + (caregiver ? 1 : 0);
   const item = width / n;
   const x = useSharedValue(0);
   const stretch = useSharedValue(1);
@@ -181,7 +180,6 @@ export function BottomTabBar({
           {item > 0 ? <Animated.View pointerEvents="none" style={[s.pill, pill]} /> : null}
           {state.routes.map((route, index) => {
             const { options } = descriptors[route.key];
-            if (caregiver && route.name === 'settings') return null;
             const label = options.title ?? route.name;
             const focused = state.index === index;
             const slot = slotForRoute(index);

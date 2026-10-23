@@ -57,8 +57,9 @@ export default function Summary() {
             <AppText variant="h1">{strings.brand.name}</AppText>
           )}
         </View>
-        {ready ? <IconButton icon="user" label="Ajustes de cuenta" showLabel={false} onPress={() => router.push({ pathname: '/settings/[section]', params: { section: 'account' } } as unknown as Href)} /> : null}
         <IconButton icon="bell" label={S.alerts} showLabel={false} badge={unread} onPress={() => router.push('/alerts' as Href)} />
+        {/* Siempre visible, también antes de registrar a la persona: Apariencia y Cerrar sesión viven en Ajustes. */}
+        <IconButton icon="settings" label={strings.settings.title} showLabel={false} onPress={() => router.push('/settings' as Href)} />
       </View>
 
       {!ready ? (

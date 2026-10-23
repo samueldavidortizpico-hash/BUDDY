@@ -14,7 +14,6 @@ const ROOTS = new Set<string>([
   '(caregiver)/(tabs)/summary.tsx',
   '(caregiver)/(tabs)/routine.tsx',
   '(caregiver)/(tabs)/health.tsx',
-  '(caregiver)/(tabs)/settings.tsx',
   'elder/index.tsx',
 ]);
 

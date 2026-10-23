@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Icon, type IconName } from '@/components/icon';
 import { ScreenContainer } from '@/components/screen-container';
+import { ScreenHeader } from '@/components/screen-header';
 import { strings } from '@/i18n';
 import { useActiveElder } from '@/state/data';
 import { useSession } from '@/state/session';
@@ -33,13 +34,13 @@ export default function Settings() {
     { key: 'about', icon: 'info', label: S.sections.about },
   ];
   return (
-    <ScreenContainer insideTabs>
-      <View style={s.head}>
-        <AppText variant="h1">{S.title}</AppText>
-        <AppText variant="secondary" color={t.c.muted}>
-          {user ? `${user.name} · ${user.email}` : ''}
+    // Ruta propia con flecha atrás (V4): como pestaña oculta no había forma de llegar a Apariencia (docs/AUDITORIA_V4.md).
+    <ScreenContainer header={<ScreenHeader title={S.title} fallback="/summary" />}>
+      {user ? (
+        <AppText variant="secondary" color={t.c.muted} style={s.head}>
+          {`${user.name} · ${user.email}`}
         </AppText>
-      </View>
+      ) : null}
       <View style={s.group}>
         {rows.map((r, i) => (
           <Pressable
@@ -68,7 +69,7 @@ export default function Settings() {
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
     flex: { flex: 1 },
-    head: { paddingTop: spacing.sm, marginBottom: spacing.lg },
+    head: { marginBottom: spacing.md },
     group: { borderRadius: radius.card, backgroundColor: t.c.surface, overflow: 'hidden', ...t.hairline, ...t.shadow.soft },
     row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.timeRow + 8, paddingHorizontal: spacing.md },
     divider: { borderTopWidth: t.borderWidth, borderTopColor: t.c.border },

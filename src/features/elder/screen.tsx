@@ -249,7 +249,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
           <AppText variant="h1" accessibilityRole="header">{E.greeting(greetingFor(now), elder.firstName)}</AppText>
         </View>
         {/* Visible y etiquetado (antes: gesto oculto de 2 s). Pequeño para no competir con la tarea del momento. */}
-        {preview ? null : <Button label={strings.adminAccess.button} icon="menu" size="sm" variant="ghost" onPress={() => setAdmin(true)} style={s.options} />}
+        {preview ? null : <Button label={strings.adminAccess.button} icon="settings" size="sm" variant="secondary" onPress={() => setAdmin(true)} style={s.options} />}
       </View>
 
       {elder.locationConsent === 'granted' ? <View accessibilityLabel="Compartiendo ubicación" style={s.locationStatus}><Icon name="location" color={t.c.muted} size={15} /><AppText variant="caption" color={t.c.muted}>Compartiendo ubicación</AppText></View> : null}

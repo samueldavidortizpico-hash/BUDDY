@@ -43,7 +43,8 @@ function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyl
     case 'danger':
       return { bg: t.c.dangerPale, border: t.hc ? t.c.danger : t.tones.red.soft, borderWidth: t.borderWidth, text: t.ink.danger };
     case 'ghost':
-      return { bg: 'transparent', border: t.hc ? t.c.text : t.dark ? 'rgba(242, 248, 247, 0.32)' : '#A8BDC2', borderWidth: t.hc ? 2 : 1.5, text: t.c.text };
+      // Superficie propia y borde ≥ 3:1: transparente no parecía un botón en el iPhone (V4, error 2).
+      return { bg: t.c.surface, border: t.hc ? t.c.text : t.dark ? '#6F9099' : '#7E979E', borderWidth: t.hc ? 2 : 1.5, text: t.c.text, shadow: t.shadow.soft };
     case 'white':
       return t.hc ? { bg: t.c.bg, ...hcBorder, text: t.c.text } : { bg: '#FFFFFF', text: '#0B3A66', shadow: t.shadow.glow.sky };
     case 'tonal':
