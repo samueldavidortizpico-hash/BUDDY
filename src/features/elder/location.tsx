@@ -4,7 +4,7 @@
  * Las decisiones se registran como del adulto mayor (`by: 'elder'`): la matriz `can` solo le permite a él decidir.
  */
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -80,10 +80,10 @@ export function ElderLocation({ elder, caregiver, preview }: { elder: Elder; car
           size="sm"
           variant="ghost"
           disabled={preview}
-          onPress={() => {
-            locationActions.revoke(elder.id, 'elder');
-            toast({ message: L.stopped, icon: 'check' });
-          }}
+          onPress={() => Alert.alert('Dejar de compartir ubicación', 'Tu familia dejará de ver tu ubicación actual.', [
+            { text: strings.common.cancel, style: 'cancel' },
+            { text: L.stop, style: 'destructive', onPress: () => { locationActions.revoke(elder.id, 'elder'); toast({ message: L.stopped, icon: 'check' }); } },
+          ])}
         />}>
           <AppText variant="secondary" color={t.c.muted}>{L.sharing(who)}</AppText>
         </InlineBanner>

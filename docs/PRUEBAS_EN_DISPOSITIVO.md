@@ -154,3 +154,12 @@ Ver también `docs/NOTIFICACIONES.md`.
 ## Pendiente de agregar en los hitos siguientes
 
 Verificación completa (Hito 8).
+
+## V3.1 Hito 5 — Permisos (pendiente en dispositivo)
+
+1. En la primera entrada de la cuenta adulta, comprueba la explicación “Para que BUDDY te avise, permite las notificaciones”. Actívalas o toca “Ahora no” para continuar. Luego abre **Opciones > Permisos** y confirma el estado del sistema.
+2. Si Notificaciones está sin decidir, toca **Activar** y acepta. Si las negaste, toca **Abrir ajustes del celular**, habilítalas y vuelve; el estado debe actualizarse al regresar a primer plano.
+3. En Inicio confirma que no hay solicitud ni botón “Dejar de compartir”; si comparte, solo aparece “Compartiendo ubicación”.
+4. Solicita ubicación desde el administrador. Acepta desde Permisos y comprueba Dónde está. Revoca con confirmación y verifica que desaparezca el mapa y se borren los puntos locales.
+5. Con notificaciones negadas, Inicio ofrece **Activar avisos** y el estado local del administrador pasa a “No puedo verificar”. En otro teléfono no se sincroniza hasta implementar backend.
+6. Repite en iPhone y Android con letra de BUDDY al máximo, escalado del sistema 1.0/1.3/2.0 y VoiceOver/TalkBack; revisa textos y botones sin cortes.

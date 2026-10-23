@@ -29,6 +29,7 @@ export function ElderOptionsSheet({ visible, onClose }: { visible: boolean; onCl
         }} />
         <Button label={strings.common.cancel} variant="ghost" size="elder" onPress={() => setConfirm(false)} />
       </> : <>
+        <Button label="Permisos" icon="settings" size="elder" onPress={() => { close(); router.push('/elder/permissions' as never); }} />
         <Button label={strings.adminAccess.enterAdmin} icon="lock" size="elder" onPress={() => { close(); router.push('/elder/unlock'); }} />
         <Button label={strings.adminAccess.signOut} icon="logout" variant="ghost" size="elder" onPress={() => setConfirm(true)} />
       </>}

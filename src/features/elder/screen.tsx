@@ -14,7 +14,6 @@ import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ElderOptionsSheet } from '@/features/elder/admin-access';
-import { ElderLocation } from '@/features/elder/location';
 import { planNotifications } from '@/domain/notifications';
 import { estimateStock } from '@/domain/stock';
 import { applyPlan } from '@/infrastructure/notifications';
@@ -253,7 +252,8 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
         {preview ? null : <Button label={strings.adminAccess.button} icon="menu" size="sm" variant="ghost" onPress={() => setAdmin(true)} style={s.options} />}
       </View>
 
-      <ElderLocation elder={elder} caregiver={caregiver} preview={preview} />
+      {elder.locationConsent === 'granted' ? <View accessibilityLabel="Compartiendo ubicación" style={s.locationStatus}><Icon name="location" color={t.c.muted} size={15} /><AppText variant="caption" color={t.c.muted}>Compartiendo ubicación</AppText></View> : null}
+      {!preview && notifyLog.get(elder.id)?.state !== 'granted' ? <Button label="Activar avisos" icon="bell" size="md" variant="tonal" tone="mint" onPress={() => router.push('/elder/permissions' as never)} /> : null}
 
       <Appear key={JSON.stringify(item).slice(0, 80)} style={preview ? s.noTouch : undefined}>
         <View style={[s.card, { minHeight: Math.max(320, height * 0.42) }, t.hc ? t.hairline : t.shadow.hero]}>
@@ -541,6 +541,7 @@ const useStyles = makeStyles((t) =>
     round: { borderRadius: radius.hero },
     top: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.section + spacing.xxl },
     options: { marginTop: -spacing.xs },
+    locationStatus: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start', marginTop: -spacing.section, marginBottom: spacing.sm },
     card: { borderRadius: radius.hero, padding: spacing.xl, backgroundColor: t.c.surface },
     robot: { position: 'absolute', top: -72, right: -18 },
     cardBody: { minWidth: 0, width: '100%', gap: spacing.sm },

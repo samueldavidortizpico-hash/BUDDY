@@ -86,3 +86,11 @@ Hitos 3 a 8: existencias exactas e idempotentes con avisos a 3 días, evaluador 
 | 8 | Reloj y datos de salud (HealthKit / Health Connect) | Build instalable |
 | 9 | Planes premium | Fases 2 a 6 |
 | 10 | Piloto con familias | Fase 4 completa |
+
+## Ronda V3.1 — permisos del adulto mayor
+
+- [x] Hito 5 parcial: consulta runtime de notificaciones y ubicación desde ruta dedicada; registra cambios localmente al abrir y al volver a primer plano.
+- [x] El estado denegado usa la señal existente para que el feed local muestre “No puedo verificar”.
+- [x] Bienvenida de primer ingreso con explicación, solicitud de notificaciones y opción para continuar sin activarlas.
+- [ ] Contrato backend: sincronizar cambios y avisos al cuidador en otro dispositivo (actualmente solo mismo teléfono).
+- [ ] Pruebas manuales de concesión, negación y revocación en iPhone y Android, con letra grande y lector de pantalla.

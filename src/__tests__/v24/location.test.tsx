@@ -4,10 +4,12 @@
  * La ubicación simulada es FICTICIA (jest.setup.ts).
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 
 import LocationScreen from '@/app/(caregiver)/(tabs)/location';
 import { KEEP_FIXES, STALE_MIN, locationView } from '@/domain/location';
 import { ElderScreen } from '@/features/elder/screen';
+import { ElderLocation } from '@/features/elder/location';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { locationActions } from '@/state/location';
@@ -86,13 +88,18 @@ describe('pantallas', () => {
     c.unmount();
 
     const e = ui(<ElderScreen elderId={elderId} />);
+    expect(screen.queryByText(L.elderAsk('Laura'))).toBeNull();
+    expect(screen.queryByRole('button', { name: L.stop })).toBeNull();
+    e.unmount();
+    const permissionRoute = ui(<ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} />);
     expect(screen.getByText(L.elderAsk('Laura'))).toBeTruthy();
     await act(async () => {
       fireEvent.press(screen.getByRole('button', { name: L.accept }));
     });
     expect(fixes()).toHaveLength(1);
+    permissionRoute.rerender(<RenderProviders><ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} /></RenderProviders>);
     expect(screen.getByText(L.sharing('Laura'))).toBeTruthy();
-    e.unmount();
+    permissionRoute.unmount();
 
     const c2 = ui(<LocationScreen />);
     expect(screen.getByTestId('map')).toBeTruthy();
@@ -101,8 +108,11 @@ describe('pantallas', () => {
     expect(screen.getByText(/Mapa: Apple Maps/)).toBeTruthy();
     c2.unmount();
 
-    ui(<ElderScreen elderId={elderId} />);
+    const stop = ui(<ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} />);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, actions) => (actions as { onPress?: () => void }[] | undefined)?.slice(-1)[0]?.onPress?.());
     fireEvent.press(screen.getByRole('button', { name: L.stop }));
+    alert.mockRestore();
+    stop.unmount();
     expect(fixes()).toHaveLength(0);
     expect(db.get('elders', elderId)!.locationConsent).toBe('revoked');
   });

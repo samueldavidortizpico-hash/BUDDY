@@ -139,7 +139,7 @@ describe('navegación por rol', () => {
     await sessionActions.createElderAccess({ elderId, name: '[PRUEBA] Rosa', email: unique('v31-elder'), password: 'Codigo123!' });
     await sessionActions.switchToElder(elderId, 'Codigo123!');
     const r = renderRouter(routes, { initialUrl: '/elder' });
-    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
+    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.button }));
     fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.enterAdmin }));
     await waitFor(() => expect(r.getPathname()).toBe('/elder/unlock'));
     fireEvent.changeText(screen.getByLabelText('Contraseña del administrador'), 'incorrecta');
@@ -154,8 +154,9 @@ describe('navegación por rol', () => {
 
   it('"Opciones" → "Cerrar sesión" confirma con texto claro y vuelve a la elección de rol (sin PIN)', async () => {
     useSession.setState({ status: 'signedIn', user: elderSession() });
+    db.setDraft(testUser.id, `permissions.introDone.${elderId}`, true);
     const r = renderRouter(routes, { initialUrl: '/elder' });
-    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
+    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.button }));
     fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.signOut }));
     expect(screen.getByText(strings.adminAccess.signOutBody)).toBeTruthy();
     fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.signOutConfirm }));

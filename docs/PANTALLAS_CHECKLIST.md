@@ -123,3 +123,11 @@ Notificaciones del teléfono, inicio de sesión real y cuentas, voz, foto del en
 - [ ] Hito 7: planes y BUDDY Plus.
 
 Pasos manuales de navegación: `docs/PRUEBAS_EN_DISPOSITIVO.md`, sección “Ronda V3.1”.
+# Ronda V3.1 — hito 5: permisos
+
+- [x] Inicio del adulto mayor: sin controles de decisión de ubicación; solo indicador cuando comparte.
+- [x] Opciones: entrada Permisos junto a cerrar sesión y entrar como administrador.
+- [x] Ruta Permisos con flecha atrás, estado real de notificaciones, activar/abrir ajustes y compartir/revocar ubicación con confirmación.
+- [x] Primer ingreso de cuenta adulta: explicar y solicitar permiso de notificaciones, con opción para continuar sin activarlo.
+- [ ] Revisar VoiceOver/TalkBack, alto contraste y letra máxima en dispositivos físicos.
+- [ ] Probar fontScale 1.0/1.3/2.0 y anchos 360/375/390 en iPhone y Android.
