@@ -150,6 +150,7 @@ export default function Routine() {
             <Row ids={[elder.id]} domain="mood" icon="smile" title={R.sections.checkin} detail={elder.checkinTime ? formatClock(elder.checkinTime) : R.noCheckin} onPress={() => go('checkin')} />
             <Row ids={appointments.map((a) => a.id)} domain="followUp" icon="calendar" title={R.sections.appointments} detail={appointments.length ? `${appointments.length}` : R.emptyGeneric} onPress={() => go('appointments')} />
             <Row ids={reminders.map((r) => r.id)} domain="contact" icon="bell" title={R.sections.reminders} detail={reminders.length ? reminders.map((r) => r.title).join(', ') : R.emptyGeneric} onPress={() => go('reminders')} />
+            <Row ids={reminders.filter((r) => r.automation).map((r) => r.id)} domain="mood" icon="clock" title="Automatizaciones" detail={`${reminders.filter((r) => r.automation).length} programadas`} onPress={() => router.push('/routine/automations' as Href)} />
           </>
         ) : null}
       </View>

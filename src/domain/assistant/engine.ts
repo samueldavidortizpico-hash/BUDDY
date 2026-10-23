@@ -198,7 +198,7 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
   if (isQuestion && !ADD_VERBS.test(t)) {
     const topic = queryTopic(t);
     if (topic) {
-      return { actions: [{ type: 'query_summary', topic, match: findName(t, ctx.medicationNames) }], missing, reply: null, understood: true };
+      return { actions: [{ type: 'query_summary', topic, match: findName(t, ctx.medicationNames), ...(/esta semana|ultimos siete dias|esta ultima semana/.test(t) ? { period: 'week' as const } : {}) }], missing, reply: null, understood: true };
     }
   }
 

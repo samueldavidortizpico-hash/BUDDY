@@ -227,6 +227,8 @@ export interface Reminder extends SyncMeta {
   days: Weekday[];
   /** Solo ese día (mensajes del cuidador). Sin valor = se repite según `days`. */
   date?: ISODate | null;
+  /** Pregunta/aviso recurrente administrable desde Rutina. Ausente en recordatorios antiguos. */
+  automation?: { kind: 'mood' | 'sleep' | 'emotional' | 'water' | 'meal' | 'walk' | 'medication_alert'; enabled: boolean; medicationId?: string };
 }
 
 export interface Appointment extends SyncMeta {
@@ -264,6 +266,8 @@ export interface CheckinAnswer extends SyncMeta {
   sleep: Answer3 | null;
   /** ¿Tiene algún malestar? */
   unwell: boolean | null;
+  /** Respuestas exactas de automatizaciones, además de las métricas diarias ya normalizadas. */
+  automationAnswers?: Record<string, { answer: string; respondedAt: Timestamp }>;
 }
 
 // ── Avisos ───────────────────────────────────────────────────

@@ -55,7 +55,8 @@ Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`; 
 - **Hito 1 — textos y botones:** base de textos y botones responsivos; controles automatizados añadidos. Jest, typecheck y lint aprobados. Reproducción visual nativa y web pendiente.
 - **Hito 2 — cuenta y vista:** vista de la persona y cambio/retorno de cuenta con contraseña implementados y probados en Jest. El recorrido visual en navegador y dispositivo está pendiente.
 - **Hito 3 — navegación:** Inicio, Salud, BUDDY, Ubicación y Rutina; Ajustes desde avatar; chat en pantalla completa. Prueba focal, typecheck, lint y 31 rutas con flecha atrás aprobados. Capturas web y dispositivo pendientes.
-- **Hitos 4 a 7:** pendientes de ejecución en esta ronda.
+- **Hito 4 — BUDDY que actúa:** mensajes con hora/avatar/indicador, automatizaciones editables y avisos locales; 50 frases del corpus (100 %) y pruebas de estado aprobadas. Falta el recorrido visual en navegador/dispositivo y backend entre teléfonos.
+- **Hitos 5 a 7:** pendientes de ejecución en esta ronda.
 
 ### Hasta V2.4
 

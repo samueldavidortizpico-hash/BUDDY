@@ -120,8 +120,9 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
       meds,
       water,
       meals,
-      checkinTime: elder.checkinTime,
+      checkinTime: reminders.some((r) => r.automation?.enabled && ['mood', 'sleep', 'emotional'].includes(r.automation.kind)) ? null : elder.checkinTime,
       appointments,
+      automations: reminders.filter((r) => !!r.automation),
       lowStock,
       apptNoticeTime: elder.screen.apptNoticeTime,
       showMedName: elder.screen.showMedName,
@@ -138,7 +139,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
         beat(elder.id, 'permissions', r.state);
       })
       .catch(() => undefined);
-  }, [preview, elder, meds, water, meals, appointments, lowStock, doses, today]);
+  }, [preview, elder, meds, water, meals, appointments, reminders, lowStock, doses, today]);
 
   const items = useMemo(() => dayDoses(meds, doses, today, now, escalationOf(elder?.screen).unconfirmedAfterMin), [meds, doses, today, now, elder?.screen]);
   const { now: item, later } = elderNow({
@@ -146,7 +147,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
     doses: items,
     stockAlerts: alerts.filter((a) => (a.kind === 'stock_low' || a.kind === 'stock_out') && a.status === 'pending'),
     seenAlerts: seen,
-    checkinTime: elder?.checkinTime ?? null,
+    checkinTime: reminders.some((r) => r.automation?.enabled && ['mood', 'sleep', 'emotional'].includes(r.automation.kind)) ? null : (elder?.checkinTime ?? null),
     checkin: checkins.find((c) => c.date === today) ?? null,
     meals,
     mealLogs: mealLogs.filter((l) => l.date === today),
@@ -474,6 +475,32 @@ function ItemView({
       );
     }
     case 'reminder':
+      if (item.reminder.automation) {
+        const automation = item.reminder.automation;
+        const todayKey = toISODate(new Date());
+        const answer = (value: string) => {
+          if (preview) return;
+          elderAnswers.automationResponse(item.reminder.id, value, elderId);
+          onSeen(reminderSeenKey(item.reminder.id, todayKey));
+          onThanks();
+        };
+        if (automation.kind === 'medication_alert') return (
+          <View style={s.itemBody}>
+            {title(item.reminder.title)}
+            <AppText variant="body" color={d.muted}>Revisa en Rutina si la toma quedó confirmada. BUDDY no sabe si la persona tomó el medicamento.</AppText>
+            <Button label={E.ok} size="elder" disabled={preview} onPress={() => !preview && onSeen(reminderSeenKey(item.reminder.id, todayKey))} />
+          </View>
+        );
+        const options = automation.kind === 'mood' ? ['Excelente', 'Bien', 'Regular', 'Mal'] : automation.kind === 'sleep' ? ['Bien', 'Regular', 'Mal'] : automation.kind === 'emotional' ? [E.yes, E.no] : automation.kind === 'water' ? [E.waterBtn, E.notYet] : [E.yes, E.notYet];
+        return (
+          <View style={s.itemBody}>
+            {title(item.reminder.title)}
+            <View style={s.autoAnswers}>
+              {options.map((value) => <Button key={value} label={value} size="elder" variant={value === 'Mal' ? 'white' : 'primary'} style={s.full} disabled={preview} onPress={() => answer(value)} />)}
+            </View>
+          </View>
+        );
+      }
       return (
         <View style={s.itemBody}>
           {title(item.reminder.title)}
@@ -519,6 +546,8 @@ const useStyles = makeStyles((t) =>
     cardBody: { minWidth: 0, width: '100%', gap: spacing.sm },
     itemBody: { minWidth: 0, width: '100%', gap: spacing.md },
     twoCol: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    autoAnswers: { width: '100%', gap: spacing.xs },
+    full: { width: '100%' },
     faces: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.xs },
     faceBtn: { alignItems: 'center', gap: spacing.xs, flexGrow: 1, flexBasis: 90 },
     faceCircle: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center' },

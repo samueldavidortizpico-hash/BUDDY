@@ -12,7 +12,7 @@
  */
 import { escalationOf, type Escalation } from './schedule';
 import { intervalTimes } from './time';
-import type { Appointment, ClockTime, DoseEvent, Meal, Medication, WaterPlan, Weekday } from './types';
+import type { Appointment, ClockTime, DoseEvent, Meal, Medication, Reminder, WaterPlan, Weekday } from './types';
 import { appointmentAddress } from './types';
 
 export type PlannedTrigger =
@@ -35,6 +35,7 @@ export interface PlanInput {
   meals: Meal[];
   checkinTime: ClockTime | null;
   appointments: Appointment[];
+  automations?: Reminder[];
   /** Medicamentos con existencias bajas o agotadas. */
   lowStock: Medication[];
   apptNoticeTime?: ClockTime;
@@ -124,9 +125,23 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
     if (twoHours > i.now) appts.push({ key: `appt-${ap.id}-2h`, title: `En 2 horas tienes cita: ${ap.title}`, body: where ? `Es en ${where}.` : 'Prepárate con calma.', trigger: { type: 'date', date: twoHours.toISOString() } });
   }
 
-  const checkin = i.checkinTime ? repeating('checkin', 'BUDDY tiene 3 preguntas para ti', '¿Cómo te sientes hoy?', i.checkinTime, []) : [];
+  const replacesLegacyCheckin = (i.automations ?? []).some((a) => a.automation?.enabled && ['mood', 'sleep', 'emotional'].includes(a.automation.kind));
+  const checkin = i.checkinTime && !replacesLegacyCheckin ? repeating('checkin', 'BUDDY tiene 3 preguntas para ti', '¿Cómo te sientes hoy?', i.checkinTime, []) : [];
   const water = (i.water?.times ?? []).flatMap((t) => repeating(`water-${t}`, 'Toma un vaso de agua', 'Cuando lo tomes, márcalo en BUDDY.', t, []));
   const meals = i.meals.flatMap((m) => repeating(`meal-${m.id}`, MEAL_Q[m.kind], 'Cuéntaselo a BUDDY.', m.time, []));
+  const autoQuestion: Record<NonNullable<Reminder['automation']>['kind'], { title: string; body: string }> = {
+    mood: { title: 'BUDDY quiere saber cómo te sientes', body: 'Abre BUDDY y cuéntale cómo va tu día.' },
+    sleep: { title: 'BUDDY quiere saber cómo dormiste', body: 'Abre BUDDY y cuéntale cómo descansaste.' },
+    emotional: { title: 'BUDDY quiere saber cómo estás', body: 'Abre BUDDY y cuéntale si necesitas apoyo.' },
+    water: { title: 'BUDDY te recuerda tomar agua', body: 'Cuando tomes un vaso, regístralo en BUDDY.' },
+    meal: { title: 'BUDDY pregunta por tu comida', body: 'Abre BUDDY y registra si ya comiste.' },
+    walk: { title: 'BUDDY pregunta por tu caminata', body: 'Abre BUDDY y cuéntale si saliste a caminar.' },
+    medication_alert: { title: 'Revisa una toma pendiente', body: 'Abre BUDDY para ver si hay una toma sin confirmar.' },
+  };
+  const automations = (i.automations ?? []).filter((a) => a.automation?.enabled && a.automation.kind !== 'medication_alert').flatMap((a) => {
+    const text = autoQuestion[a.automation!.kind];
+    return repeating(`automation-${a.id}`, text.title, text.body, a.time, a.days);
+  });
 
   const tomorrow10 = new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + 1, 10, 0);
   const stock = i.lowStock.map((m) => ({
@@ -138,7 +153,7 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
   }));
 
   // Prioridad ante el límite del sistema: medicamentos, citas, chequeo, existencias, agua, comidas.
-  return [...meds, ...appts, ...checkin, ...stock, ...water, ...meals].slice(0, MAX_SCHEDULED);
+  return [...meds, ...appts, ...checkin, ...automations, ...stock, ...water, ...meals].slice(0, MAX_SCHEDULED);
 }
 
 /** Firma del plan: si no cambia, no hace falta reprogramar. */

@@ -2,7 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import Animated, { FadeIn, FadeInDown, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
@@ -284,11 +284,18 @@ function Message({ m, onMenu, onSee, onUndo }: { m: AssistantMessage; onMenu: (k
     );
   }
 
+  const time = new Date(m.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
   return (
     <Animated.View entering={reduce ? undefined : FadeIn.duration(180)} style={[s.msgRow, mine && s.mineRow]}>
-      <View style={[s.bubble, mine ? s.mine : s.theirs]}>
-        {m.imageUri ? <AppText variant="caption" color={mine ? t.c.onPrimary : t.c.muted}>{B.photoSent}</AppText> : null}
-        <AppText variant="secondary" color={mine ? t.c.onPrimary : t.c.text}>{m.text}</AppText>
+      <View style={[s.messageLine, mine && s.messageMine]}>
+        {!mine ? <BuddyRobot size={30} compact mood="idle" flying={false} shadow={false} glow={false} navigationIndependent /> : null}
+        <View style={[s.messageContent, mine && s.messageContentMine]}>
+          <View style={[s.bubble, mine ? s.mine : s.theirs]}>
+            {m.imageUri ? <AppText variant="caption" color={mine ? t.c.onPrimary : t.c.muted}>{B.photoSent}</AppText> : null}
+            <AppText variant="secondary" color={mine ? t.c.onPrimary : t.c.text}>{m.text}</AppText>
+          </View>
+          <AppText variant="meta" color={t.c.muted} style={mine ? s.timeMine : s.time}>{time}</AppText>
+        </View>
       </View>
       {p?.kind === MENU ? <ActionMenu onPick={onMenu} /> : null}
       {p?.suggestions ? <Suggestions /> : null}
@@ -331,10 +338,27 @@ function Suggestions() {
 
 function Typing() {
   const s = useStyles();
+  const reduce = useReducedMotion();
+  const a = useSharedValue(0.4);
+  const b = useSharedValue(0.4);
+  const c = useSharedValue(0.4);
+  useEffect(() => {
+    if (reduce) return;
+    [a, b, c].forEach((v, i) => v.set(withDelay(i * 160, withRepeat(withSequence(withTiming(1, { duration: 240 }), withTiming(0.4, { duration: 240 })), -1, false))));
+  }, [a, b, c, reduce]);
+  const sa = useAnimatedStyle(() => ({ opacity: a.get(), transform: [{ translateY: -3 * a.get() }] }));
+  const sb = useAnimatedStyle(() => ({ opacity: b.get(), transform: [{ translateY: -3 * b.get() }] }));
+  const sc = useAnimatedStyle(() => ({ opacity: c.get(), transform: [{ translateY: -3 * c.get() }] }));
   return (
-    <View style={s.msgRow} accessibilityLabel={B.typing}>
-      <View style={[s.bubble, s.theirs, s.typing]}>
-        <BuddyRobot size={48} compact mood="think" shadow={false} flying={false} />
+    <View style={s.msgRow} accessibilityLabel={B.typing} accessibilityLiveRegion="polite">
+      <View style={s.typingRow}>
+        <BuddyRobot size={30} compact mood="think" shadow={false} flying={false} glow={false} navigationIndependent />
+        <View style={[s.bubble, s.theirs, s.typing]}>
+          <AppText variant="caption" color="text">{B.typing}</AppText>
+          <View style={s.dots}>
+            {[sa, sb, sc].map((style, i) => <Animated.View key={i} style={[s.dot, reduce && { opacity: 1, transform: [{ translateY: 0 }] }, style]} />)}
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -351,10 +375,19 @@ const useStyles = makeStyles((t) =>
     emptyWrap: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
     msgRow: { width: '100%', gap: spacing.xs, alignItems: 'flex-start' },
     mineRow: { alignItems: 'flex-end' },
-    bubble: { width: '85%', maxWidth: '85%', minWidth: 0, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 20 },
+    messageLine: { width: '100%', flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },
+    messageMine: { justifyContent: 'flex-end' },
+    messageContent: { maxWidth: '85%', flexShrink: 1, minWidth: 0, gap: 2 },
+    messageContentMine: { alignItems: 'flex-end' },
+    time: { paddingLeft: spacing.xs },
+    timeMine: { paddingRight: spacing.xs, textAlign: 'right' },
+    bubble: { width: '100%', maxWidth: '100%', minWidth: 0, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: 20 },
     mine: { alignSelf: 'flex-end', backgroundColor: t.hc ? t.c.text : t.c.primary, borderBottomRightRadius: 6 },
     theirs: { alignSelf: 'flex-start', backgroundColor: t.c.surface, borderBottomLeftRadius: 6, ...t.hairline },
-    typing: { paddingVertical: 2, paddingHorizontal: spacing.xs },
+    typing: { width: undefined, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
+    typingRow: { width: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    dots: { flexDirection: 'row', gap: 4 },
+    dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: t.c.muted },
     done: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, backgroundColor: t.c.surface },
     doneActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: spacing.xs, flexBasis: '100%' },
     suggestions: { alignSelf: 'stretch', gap: spacing.xs, padding: spacing.sm, borderRadius: radius.card, backgroundColor: t.c.surface, ...t.hairline },

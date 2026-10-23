@@ -197,7 +197,7 @@ function Question({ draft, hint, onAnswer, onEdit, onCancel }: { draft: Draft; h
           {kind === 'date' ? <Reply label={B.pickDate} icon="calendar" onPress={() => setSheet('date')} /> : null}
         </View>
       )}
-      {kind === 'text' || kind === 'choice' ? (
+      {(kind === 'text' || kind === 'choice') && !(a.type === 'add_medication' && asking.field === 'name') ? (
         <AppText variant="caption" color={t.c.muted}>
           {B.typeBelow}
         </AppText>

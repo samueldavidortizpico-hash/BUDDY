@@ -56,6 +56,13 @@ describe('planificador de notificaciones', () => {
     expect(dateOf(plan[1]).getTime()).toBe(at(12, 20, 15));
   });
 
+  it('programa automatizaciones activas y sustituye el aviso fijo del chequeo', () => {
+    const reminder = { ...meta, id: 'automation-sleep', title: '¿Cómo dormiste?', time: '07:00', days: [], automation: { kind: 'sleep' as const, enabled: true } };
+    const plan = planNotifications(input({ checkinTime: '10:00', automations: [reminder] }));
+    expect(plan.find((n) => n.key === `automation-${reminder.id}`)).toMatchObject({ title: 'BUDDY quiere saber cómo dormiste', trigger: { type: 'daily', hour: 7, minute: 0 } });
+    expect(plan.some((n) => n.key === 'checkin')).toBe(false);
+  });
+
   it('confirmar (tomé o no tomé) cancela los avisos pendientes de esa toma; pospuesta se avisa a su nueva hora', () => {
     const dose = (status: 'taken' | 'skipped' | 'snoozed', snoozedTo: string | null = null) => ({ medicationId: 'm1', date: '2026-10-12', time: '20:00', status, snoozedTo });
     for (const status of ['taken', 'skipped'] as const) {

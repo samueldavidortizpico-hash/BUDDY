@@ -117,7 +117,7 @@ Notificaciones del teléfono, inicio de sesión real y cuentas, voz, foto del en
 - [x] Hito 1: base de textos y botones con reglas de encogimiento; verificar aún en iPhone con 360/375/390 dp, fontScale 1/1.3/2.0 y cada tamaño de letra de la app.
 - [x] Hito 2: vista de la persona y cambio/retorno de cuenta con contraseña; recorrido Jest aprobado, falta recorrido visual en teléfono.
 - [x] Hito 3: barra Inicio, Salud, BUDDY, Ubicación, Rutina; avatar abre Cuenta y chat sin barra; prueba focal aprobada.
-- [ ] Hito 4: BUDDY que actúa y automatizaciones.
+- [x] Hito 4: chat y automatizaciones implementados y probados en Jest; falta validación visual y nativa.
 - [ ] Hito 5: permisos del adulto mayor.
 - [ ] Hito 6: historiales y Salud visuales.
 - [ ] Hito 7: planes y BUDDY Plus.

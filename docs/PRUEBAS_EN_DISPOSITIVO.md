@@ -16,6 +16,16 @@ Lo que **no** se puede comprobar en web y por eso está aquí: teclado real, ges
 
 La prueba automatizada de esta ronda cubre presencia y navegación lógica de las cinco posiciones. No sustituye esta comprobación con escalado de texto ni al lector de pantalla nativo.
 
+### Hito 4 — chat y automatizaciones
+
+| # | Pasos | Resultado esperado | iOS | Android |
+|---|---|---|---|---|
+| 4.1 | En BUDDY pide “agrégale losartán a las 6 y pregúntale cómo se siente a las 8”. | BUDDY crea la pregunta a las 8 y mantiene en el chat la tarjeta del medicamento; la hora de uno no se mezcla con la del otro. | ☐ | ☐ |
+| 4.2 | Pide “en la mañana a las 7 pregúntale cómo durmió”. | Aparece en Rutina > Automatizaciones; el aviso local llega al teléfono del adulto mayor. | ☐ | ☐ |
+| 4.3 | Abre ese aviso en el teléfono del adulto mayor y responde “Mal”. | BUDDY presenta respuesta en pantalla; Salud registra la respuesta exacta y normalizada, y aparece alerta de seguimiento para el administrador. | ☐ | ☐ |
+| 4.4 | En BUDDY pregunta “¿qué automatizaciones tiene?”, pausa Sueño, cambia Ánimo a las 9 y luego reanúdala. | Responde según registros existentes y los cambios se ven en Rutina > Automatizaciones. | ☐ | ☐ |
+| 4.5 | Con notificaciones del sistema apagadas, abre la app y revisa Rutina > Automatizaciones. | La automatización se conserva y aparece en la pantalla cuando vence mientras BUDDY está abierto; no se afirma que el sistema enviara un aviso local. | ☐ | ☐ |
+
 ## 0. Ronda V3.0 (2026-10-20): empieza por aquí
 
 En V3.0 el chat dejó de ser una pestaña (las pruebas 1.1 y 1.5 de V2.4 que hablan de la "pestaña BUDDY" o de la barra

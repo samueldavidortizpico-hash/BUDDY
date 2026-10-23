@@ -5,6 +5,7 @@
 import { reviewMedication, type ReviewFinding } from '@/domain/review';
 import { displayStatus, escalationOf, missingDoses, snoozeTarget } from '@/domain/schedule';
 import { afterDose, afterPurchase, estimateStock } from '@/domain/stock';
+import { toMinutes } from '@/domain/time';
 import type { Alert, AlertKind, Answer3, DoseEvent, Medication, MealLog, Role } from '@/domain/types';
 import type { HeartbeatKind, NotificationPermission } from '@/domain/verification';
 import { db } from '@/infrastructure/local/db';
@@ -239,6 +240,31 @@ export const elderAnswers = {
       alertActions.raise('checkin_unwell', `${elder?.firstName ?? 'Tu familiar'} respondió en el chequeo que no se siente bien.`, rec.id, id);
     }
     return rec;
+  },
+  automationResponse(reminderId: string, answer: string, elderId?: string) {
+    const id = elderOrActive(elderId);
+    const reminder = db.get('reminders', reminderId);
+    if (!reminder?.automation || reminder.elderId !== id) return;
+    const date = toISODate(new Date());
+    const prev = db.list('checkins', currentUserId(), id).find((c) => c.date === date);
+    const automationAnswers = { ...(prev?.automationAnswers ?? {}), [reminderId]: { answer, respondedAt: new Date().toISOString() } };
+    if (prev) db.update('checkins', prev.id, { automationAnswers });
+    else db.insert('checkins', { date, mood: null, sleep: null, unwell: null, automationAnswers }, actor(id));
+    const raw = answer.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (reminder.automation.kind === 'mood') this.checkin({ mood: raw === 'mal' ? 'bad' : raw === 'regular' ? 'regular' : 'good' }, id);
+    if (reminder.automation.kind === 'sleep') this.checkin({ sleep: raw === 'mal' ? 'bad' : raw === 'regular' ? 'regular' : 'good' }, id);
+    if (reminder.automation.kind === 'emotional') this.checkin({ unwell: /si|mal/.test(raw) && !/no/.test(raw) }, id);
+    if (reminder.automation.kind === 'water' && /si|ya/.test(raw)) this.addWater(id);
+    if (reminder.automation.kind === 'meal') {
+      const meals = db.list('meals', currentUserId(), id).slice().sort((a, b) => Math.abs(toMinutes(a.time) - toMinutes(reminder.time)) - Math.abs(toMinutes(b.time) - toMinutes(reminder.time)));
+      if (meals[0]) this.meal(meals[0].id, /si|ya/.test(raw) ? 'yes' : 'no', id);
+    }
+    if (reminder.automation.kind === 'walk') {
+      const walk = db.list('activities', currentUserId(), id).find((a) => a.kind === 'walk');
+      if (walk) this.activity(walk.id, /si|ya/.test(raw) && !/no|todavia/.test(raw), id);
+    }
+    beat(id, 'answer');
+    return reminder;
   },
   requestHelp(elderId?: string) {
     const id = elderOrActive(elderId);

@@ -212,6 +212,10 @@ describe('consultas (solo con registros reales)', () => {
   it('identifica el medicamento consultado', () => {
     expect(as(first('¿tomó el losartán?'), 'query_summary').match).toBe('Losartán');
   });
+
+  it('conserva el intervalo solicitado para el resumen de sueño semanal', () => {
+    expect(as(first('¿Cómo durmió esta semana?'), 'query_summary')).toMatchObject({ topic: 'sleep', period: 'week' });
+  });
 });
 
 describe('cámara, sugerencias, urgencias y errores', () => {

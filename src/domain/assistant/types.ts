@@ -65,7 +65,7 @@ export type AssistantAction =
     }
   | { type: 'add_note_for_elder'; title: string; time: ClockTime | null; days: Weekday[] }
   | { type: 'send_message'; text: string }
-  | { type: 'query_summary'; topic: QueryTopic; match: string | null }
+  | { type: 'query_summary'; topic: QueryTopic; match: string | null; period?: 'week' }
   | { type: 'suggest_routine' }
   | { type: 'open_scan' }
   /** "¿Qué puedes hacer?", "ayuda": se responde con el menú de acciones. */

@@ -322,7 +322,7 @@ export const draftActions = {
 export const isDraftable = (a: AssistantAction) => DRAFTABLE.has(a.type);
 
 /** Responde con datos reales o "Aún no hay registros". */
-export function answerQuery(topic: string, match: string | null): string {
+export function answerQuery(topic: string, match: string | null, period?: 'week'): string {
   const userId = currentUserId();
   const elderId = activeElderId();
   if (!elderId) return 'Primero registra a tu familiar.';
@@ -333,8 +333,9 @@ export function answerQuery(topic: string, match: string | null): string {
   const checkins = db.list('checkins', userId, elderId);
   switch (topic) {
     case 'sleep': {
-      const c = checkins.find((x) => x.date === today && x.sleep);
-      return c?.sleep ? `${name} respondió que durmió ${ANSWER[c.sleep].toLowerCase()}.` : none;
+      const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (period === 'week' ? 6 : 0));
+      const entries = checkins.filter((x) => x.date >= toISODate(from) && x.date <= today && x.sleep).sort((a, b) => a.date.localeCompare(b.date));
+      return entries.length ? entries.map((c) => `${c.date}: ${ANSWER[c.sleep!].toLowerCase()}`).join('. ') : (period === 'week' ? 'Aún no hay respuestas de sueño registradas esta semana.' : none);
     }
     case 'mood': {
       const c = checkins.find((x) => x.date === today && x.mood);

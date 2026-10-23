@@ -7,12 +7,15 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react-n
 
 import Buddy from '@/app/(caregiver)/buddy';
 import { db } from '@/infrastructure/local/db';
+import { draftActions } from '@/state/assistant';
 import { strings } from '@/i18n';
+import { AUTOMATION_CORPUS, interpretAutomationCommand } from '@/domain/assistant/automation-commands';
 import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
 import { toISODate } from '@/utils/dates';
 
+const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => false, replace: jest.fn() }),
+  useRouter: () => ({ push: mockPush, back: jest.fn(), canGoBack: () => false, replace: jest.fn() }),
   useIsFocused: () => true,
   useFocusEffect: () => undefined,
   useLocalSearchParams: () => ({}),
@@ -29,6 +32,7 @@ beforeEach(async () => {
   morning.setHours(8, 0, 0, 0);
   jest.setSystemTime(morning);
   elderId = (await seedRenderData()).id;
+  mockPush.mockClear();
 });
 afterEach(() => jest.useRealTimers());
 
@@ -55,6 +59,7 @@ it('el chat vacío muestra el menú de 8 acciones', () => {
 it('agrega un medicamento solo con respuestas predeterminadas, sin burbujas por cada respuesta', async () => {
   chat();
   await say('agrega losartán');
+  expect(mockPush).not.toHaveBeenCalled();
   // V2.4 Hito 2: primero la presentación del registro del INVIMA, elegida con un toque.
   expect(within(card()).getByText(B.step(2, 4))).toBeTruthy();
   const before = userBubbles();
@@ -137,4 +142,60 @@ it('pliega los mensajes anteriores', async () => {
   chat();
   for (let i = 0; i < 8; i++) await say('hola');
   expect(screen.getByRole('button', { name: /Ver mensajes anteriores/ })).toBeTruthy();
+});
+
+it('quita la indicación redundante del nombre y conserva la hora de cada mensaje', async () => {
+  chat();
+  await fireEvent.press(screen.getByRole('button', { name: B.menu.medication }));
+  await wait();
+  expect(screen.getByText('¿Cómo se llama el medicamento?')).toBeTruthy();
+  expect(screen.queryByText(B.typeBelow)).toBeNull();
+  await say('hola');
+  expect(screen.getAllByText(/\d{1,2}:\d{2}/).length).toBeGreaterThan(0);
+});
+
+it('crea, pausa, cambia y consulta automatizaciones desde BUDDY', async () => {
+  chat();
+  await say('pregúntale todos los días a las 8 de la noche cómo se siente');
+  const rows = list('reminders').filter((r) => r.automation);
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ time: '20:00', automation: { kind: 'mood', enabled: true } });
+  await say('en la mañana a las 7 pregúntale cómo durmió');
+  const sleep = list('reminders').find((r) => r.automation?.kind === 'sleep')!;
+  expect(sleep.time).toBe('07:00');
+  await say('cámbiale la pregunta de cómo se siente a las 9');
+  expect(list('reminders').find((r) => r.id === rows[0].id)?.time).toBe('09:00');
+  await say('pausa la pregunta del sueño');
+  expect(list('reminders').find((r) => r.id === sleep.id)?.automation?.enabled).toBe(false);
+  await say('¿qué automatizaciones tiene?');
+  expect(screen.getAllByText(/Pausada · ¿Cómo dormiste\?/).length).toBeGreaterThan(0);
+});
+
+it('combina un medicamento y una pregunta sin mezclar sus horas', async () => {
+  chat();
+  await say('agrégale losartán a las 6 y pregúntale cómo se siente a las 8');
+  expect(list('reminders').find((r) => r.automation?.kind === 'mood')?.time).toBe('08:00');
+  expect(card()).toBeTruthy();
+  expect(within(card()).getAllByText(/Losartán/i).length).toBeGreaterThan(0);
+  expect(draftActions.get()?.actions[0]).toMatchObject({ type: 'add_medication', times: ['18:00'] });
+});
+
+it('crea un aviso por toma no confirmada a la hora real del medicamento', async () => {
+  chat();
+  const med = db.insert('medications', {
+    name: 'Losartán', activeIngredient: '', strength: '', form: 'tablet', doseAmount: 1, doseUnit: 'unit',
+    schedule: { kind: 'times', times: ['08:00'], days: [] }, startDate: toISODate(new Date()), endDate: null,
+    instructions: '', purpose: '', description: '', unitsPerPackage: null, unitsOnHand: null, refillAlertDays: 3, photoUri: null, paused: false,
+  }, { userId: testUser.id, elderId });
+  await say('avísame si no se toma losartán');
+  expect(list('reminders').find((r) => r.automation?.kind === 'medication_alert')).toMatchObject({ time: '08:00', automation: { medicationId: med.id, enabled: true } });
+});
+
+it('mantiene un corpus de al menos 40 frases reconocibles de automatizaciones', () => {
+  const hits = AUTOMATION_CORPUS.filter((phrase) => interpretAutomationCommand(phrase) !== null);
+  const ratio = hits.length / AUTOMATION_CORPUS.length;
+  expect(AUTOMATION_CORPUS.length).toBeGreaterThanOrEqual(40);
+  console.log(`Corpus de automatizaciones: ${(ratio * 100).toFixed(1)} % (${hits.length}/${AUTOMATION_CORPUS.length})`);
+  if (hits.length !== AUTOMATION_CORPUS.length) console.log('No reconocidas:', AUTOMATION_CORPUS.filter((phrase) => interpretAutomationCommand(phrase) === null));
+  expect(ratio).toBeGreaterThanOrEqual(0.9);
 });
