@@ -10,7 +10,7 @@
  */
 import { addDays, toISODate } from '@/utils/dates';
 
-import { displayStatus, escalationOf, type Escalation } from './schedule';
+import { displayStatus, dueForReview, escalationOf, type Escalation } from './schedule';
 import { estimateStock } from './stock';
 import { toMinutes } from './time';
 import type { Alert, CheckinAnswer, ClockTime, DoseEvent, Medication } from './types';
@@ -79,7 +79,7 @@ export function dayStatus(i: StatusInput): DayStatus {
   const pending = i.alerts.filter((a) => !a.deletedAt && a.status === 'pending' && toISODate(new Date(a.createdAt)) >= addDays(today, -1));
   const c = i.checkins.find((x) => x.date === today);
   const { unconfirmedAfterMin } = escalationOf(i.escalation);
-  const unconfirmed = i.doses.filter((d) => d.date === today && !d.cancelledAt && !d.deletedAt && !d.safetyHold && i.meds.some((m) => m.id === d.medicationId && !m.paused && !m.deletedAt) && displayStatus(d, i.now, unconfirmedAfterMin) === 'unconfirmed');
+  const unconfirmed = i.doses.filter((d) => dueForReview(d, today, unconfirmedAfterMin) && !d.cancelledAt && !d.deletedAt && !d.safetyHold && i.meds.some((m) => m.id === d.medicationId && !m.paused && !m.deletedAt) && displayStatus(d, i.now, unconfirmedAfterMin) === 'unconfirmed');
   const out = (level: StatusLevel, reason: string, extra: Partial<DayStatus> = {}): DayStatus => ({ level, reason, call: level === 'action' || level === 'attention', help: false, facts, ...extra });
 
   // ── Acción necesaria ──

@@ -138,10 +138,15 @@ it('si no entiende, muestra el menú de acciones en lugar de solo "no entendí"'
   expect(screen.getAllByText(B.menuIntro).length).toBeGreaterThan(0);
 });
 
-it('pliega los mensajes anteriores', async () => {
+// V4 Fase 2: antes escribía "hola" 8 veces por la interfaz (16 burbujas animadas). Tardaba 2,1 s sola y pasaba de 5 s
+// con la suite en paralelo (Q-01, docs/AUDITORIA_V4.md). El plegado solo depende de cuántos mensajes hay: se siembran.
+it('pliega los mensajes anteriores', () => {
+  for (let i = 0; i < 12; i++) {
+    db.insert('messages', { from: i % 2 ? 'buddy' : 'user', text: `[PRUEBA] mensaje ${i}`, proposal: null, proposalState: null, quickReplies: [], imageUri: null }, { userId: testUser.id, elderId });
+  }
   chat();
-  for (let i = 0; i < 8; i++) await say('hola');
-  expect(screen.getByRole('button', { name: /Ver mensajes anteriores/ })).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: B.olderMessages(2) }));
+  expect(screen.getByText('[PRUEBA] mensaje 0')).toBeTruthy();
 });
 
 it('quita la indicación redundante del nombre y conserva la hora de cada mensaje', async () => {

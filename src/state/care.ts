@@ -3,7 +3,7 @@
  * Los avisos son idempotentes: no se repite uno pendiente del mismo tipo para el mismo registro.
  */
 import { reviewMedication, type ReviewFinding } from '@/domain/review';
-import { displayStatus, escalationOf, missingDoses, snoozeTarget, timesOn } from '@/domain/schedule';
+import { displayStatus, dueForReview, escalationOf, missingDoses, snoozeTarget, timesOn } from '@/domain/schedule';
 import { afterDose, afterPurchase, estimateStock } from '@/domain/stock';
 import { withDoseSlots } from '@/domain/dose-safety';
 import { toMinutes } from '@/domain/time';
@@ -281,7 +281,7 @@ export function evaluateAlerts(elderId: string, now: Date) {
   const date = toISODate(now);
   const meds = new Map(db.list('medications', userId, elderId).map((m) => [m.id, m]));
   const { unconfirmedAfterMin } = escalationOf(db.get('elders', elderId)?.screen);
-  for (const d of db.list('doses', userId, elderId).filter((x) => x.date === date)) {
+  for (const d of db.list('doses', userId, elderId).filter((x) => dueForReview(x, date, unconfirmedAfterMin))) {
     const med = meds.get(d.medicationId);
     if (med && !med.paused && !d.cancelledAt && !d.safetyHold && displayStatus(d, now, unconfirmedAfterMin) === 'unconfirmed') {
       alertActions.raise('dose_unconfirmed', `${med.name} de las ${d.time} sigue sin confirmar.`, d.id, elderId);

@@ -2,7 +2,7 @@
  * Horarios de medicamentos y estado de las tomas. Puro: todo recibe `now` o `date`.
  * Zona horaria: las tomas siguen la hora local del dispositivo (fecha `YYYY-MM-DD` + `HH:mm`).
  */
-import { atClock, daysBetween, parseISODate } from '@/utils/dates';
+import { atClock, daysBetween, parseISODate, toISODate } from '@/utils/dates';
 
 import { doseDayLimit, withDoseSlots, type SlottedDose } from './dose-safety';
 import { intervalTimes, onDay, sortTimes, toMinutes } from './time';
@@ -111,6 +111,19 @@ export function doseStage(dose: Pick<DoseEvent, 'status' | 'snoozedTo' | 'time' 
   if (since >= e.unconfirmedAfterMin) return { stage: 'unconfirmed' };
   if (since >= e.remindAfterMin) return { stage: 'second_notice' };
   return delivered ? { stage: 'delivered' } : { stage: 'scheduled' };
+}
+
+/**
+ * Día local en que la toma pasa a "sin confirmar" (V4): una de las 23:50 lo hace a las 00:20 del día siguiente, así que
+ * hay que revisarla también ese día; una que lo hizo ayer ya se revisó ayer y no vuelve a avisar.
+ */
+export function unconfirmedDay(dose: Pick<DoseEvent, 'status' | 'snoozedTo' | 'time' | 'date'>, unconfirmedAfterMin = UNCONFIRMED_AFTER_MIN): ISODate {
+  return toISODate(new Date(atClock(dose.date, effectiveTime(dose)).getTime() + unconfirmedAfterMin * 60_000));
+}
+
+/** Tomas que se revisan hoy para "sin confirmar": las de hoy y las de ayer que cruzan la medianoche. */
+export function dueForReview<T extends Pick<DoseEvent, 'status' | 'snoozedTo' | 'time' | 'date'>>(d: T, today: ISODate, unconfirmedAfterMin = UNCONFIRMED_AFTER_MIN): boolean {
+  return d.date === today || unconfirmedDay(d, unconfirmedAfterMin) === today;
 }
 
 export function isOpen(status: DisplayDoseStatus): boolean {

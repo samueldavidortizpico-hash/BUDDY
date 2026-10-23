@@ -144,3 +144,50 @@ que suponía lo contrario.
 
 **Fuera de alcance (documentado):** zona horaria por paciente (A-07), cobertura de días del plan de avisos (F-02) y
 alarmas exactas de Android (F-03).
+
+## Fase 2: pruebas estables
+
+**Skills:** `buddy-testing` (reloj simulado, esperas deterministas, tres zonas horarias).
+
+### Prueba intermitente (Q-01)
+
+Cinco corridas completas de `npx jest`:
+
+```
+Corrida 1: 1 failed, 765 passed  →  ● pliega los mensajes anteriores (Exceeded timeout of 5000 ms)
+Corrida 2-5: 766 passed, 766 total   (la prueba ya estaba corregida cuando arrancaron)
+```
+
+**Causa:** `src/__tests__/v24/chat-guided.test.tsx:141` escribía "hola" 8 veces por la interfaz: 16 burbujas animadas y
+8 renders completos del chat. Ya usaba reloj simulado; el límite de Jest (5 s) es de tiempo **real**. Sola tardaba
+2,1 s; con los procesos de Jest en paralelo pasaba de 5 s. No era el reloj ni una carrera: era carga de CPU.
+
+**Corrección:** el plegado solo depende de cuántos mensajes hay, así que la prueba siembra 12 mensajes `[PRUEBA]` en la
+base y comprueba "Ver mensajes anteriores (2)" y que al tocarlo aparece el más antiguo. 2,1 s → 0,6 s, sin depender de
+la carga.
+
+### Recordatorios con reloj simulado (`src/__tests__/v4/recordatorios.test.ts`)
+
+Secuencia completa en una sola prueba: aviso T y T+10 en el plan → a las 8:01 solo queda T+10 → a las 8:29 no hay
+alerta → a las 8:30 "sin confirmar" con alerta y tarjeta en Novedades → al confirmar a las 8:40 se cierran la alerta, la
+tarjeta y los avisos, y se descuenta la existencia. Más posponer (el "sin confirmar" pasa a 8:45) y dos casos de cambio
+de día.
+
+**Fallo nuevo encontrado (confirmado):** una toma de las 23:50 sin respuesta **nunca** avisaba al administrador.
+
+```
+× cambio de día: una toma de las 23:50 sin respuesta avisa al administrador a las 00:20
+    Expected length: 1   Received length: 0
+```
+
+**Causa:** `evaluateAlerts` (`care.ts`), las Novedades (`recommendations/engine.ts:168`) y el estado del Inicio
+(`status.ts:82`) solo revisaban las tomas con fecha de **hoy**; a las 00:20 la toma de las 23:50 ya es de ayer.
+**Corrección:** `unconfirmedDay()` y `dueForReview()` en `src/domain/schedule.ts` (puras): se revisan las tomas de hoy y
+las de ayer cuyo "sin confirmar" cae hoy. Lo que pasó a "sin confirmar" ayer no vuelve a avisar (prueba incluida).
+
+### Después
+
+```
+recordatorios + escalation + status + dose-safety: 43 de 43 en TZ=America/Bogota, Europe/Madrid y UTC
+npx jest: 770 de 770 (26,5 s) · --detectOpenHandles sin manejadores abiertos · tsc sin errores
+```

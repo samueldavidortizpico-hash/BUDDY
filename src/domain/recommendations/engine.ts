@@ -11,7 +11,7 @@
  */
 import { addDays, lastDays } from '@/utils/dates';
 
-import { displayStatus, effectiveTime, escalationOf, type Escalation } from '../schedule';
+import { displayStatus, dueForReview, effectiveTime, escalationOf, type Escalation } from '../schedule';
 import { estimateStock } from '../stock';
 import type { Activity, Alert, Appointment, CheckinAnswer, DoseEvent, ISODate, Meal, MealLog, Medication, WaterEntry } from '../types';
 import type { Verification } from '../verification';
@@ -165,7 +165,7 @@ export function buildFeed(i: RecoInput): FeedItem[] {
   // Tomas sin confirmar hoy (una tarjeta por toma, clave estable: no se duplica). Llega tras el aviso a la hora y el
   // segundo aviso sin respuesta. "Sin confirmar" no significa "no la tomó"; nunca se llama emergencia.
   const esc = escalationOf(i.escalation);
-  for (const d of i.doses.filter((x) => x.date === today && !x.cancelledAt && !x.safetyHold)) {
+  for (const d of i.doses.filter((x) => dueForReview(x, today, esc.unconfirmedAfterMin) && !x.cancelledAt && !x.safetyHold)) {
     const med = medsById.get(d.medicationId);
     if (!med || med.paused || displayStatus(d, now, esc.unconfirmedAfterMin) !== 'unconfirmed') continue;
     out.push({
