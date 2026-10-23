@@ -163,3 +163,10 @@ Verificación completa (Hito 8).
 4. Solicita ubicación desde el administrador. Acepta desde Permisos y comprueba Dónde está. Revoca con confirmación y verifica que desaparezca el mapa y se borren los puntos locales.
 5. Con notificaciones negadas, Inicio ofrece **Activar avisos** y el estado local del administrador pasa a “No puedo verificar”. En otro teléfono no se sincroniza hasta implementar backend.
 6. Repite en iPhone y Android con letra de BUDDY al máximo, escalado del sistema 1.0/1.3/2.0 y VoiceOver/TalkBack; revisa textos y botones sin cortes.
+
+## V3.1 Hito 6 — Agua e historiales (pendiente en dispositivo)
+
+1. En Inicio, revisa **Vasos de agua hoy**: cada horario pasado debe tener check si hay registro cercano, X si no lo hay, y los horarios futuros quedan pendientes. Verifica que total y marcas coincidan con Salud > Agua.
+2. Cambia el tamaño de texto de BUDDY por todos sus pasos y el escalado del sistema a 1.0, 1.3 y 2.0. Confirma que horarios, iconos y texto no se montan en 360, 375 y 390 puntos de ancho.
+3. En Salud, confirma que Ánimo y Sueño se apilan a todo el ancho, que las barras se animan y que sin respuestas dice “Sin datos” con barras base vacías.
+4. Revisa los estados de comida, medicamento y caminata: cada icono debe concordar con su registro, con VoiceOver/TalkBack y alto contraste.

@@ -100,7 +100,12 @@ export function MetricBody({ metric, data, big = false }: { metric: MetricKey; d
     case 'mood':
     case 'sleep': {
       const r = metric === 'mood' ? data.mood : data.sleep;
-      if (!r.answered) return empty;
+      if (!r.answered) return (
+        <View style={styles.gap}>
+          <AppText variant="secondary" color={d.muted}>{H.noData}</AppText>
+          <Bars values={[0, 0, 0]} max={1} color={d.accent} labels={['Bien', 'Regular', 'Mal']} labelColor={d.muted} height={40} />
+        </View>
+      );
       const top = (['good', 'regular', 'bad'] as Answer3[]).sort((a, b) => r[b] - r[a])[0];
       // Cara en un contenedor que no se comprime y texto que puede ocupar varias líneas (antes la palabra grande
       // aplastaba la cara a ancho 0 en tarjetas de media columna).

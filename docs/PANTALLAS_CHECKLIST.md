@@ -131,3 +131,11 @@ Pasos manuales de navegación: `docs/PRUEBAS_EN_DISPOSITIVO.md`, sección “Ron
 - [x] Primer ingreso de cuenta adulta: explicar y solicitar permiso de notificaciones, con opción para continuar sin activarlo.
 - [ ] Revisar VoiceOver/TalkBack, alto contraste y letra máxima en dispositivos físicos.
 - [ ] Probar fontScale 1.0/1.3/2.0 y anchos 360/375/390 en iPhone y Android.
+
+## Hito 6 — Historiales y Salud
+
+- [x] Resumen: un vaso por horario, estado derivado de marcas de tiempo reales y total de registros de hoy.
+- [x] Salud: ánimo y sueño apilados a ancho completo y con barras visibles aunque no haya registros.
+- [x] Actividad, comidas y tomas muestran iconos de estado en la línea de tiempo.
+- [ ] Auditar en iPhone con todos los tamaños de letra de BUDDY y fontScale del sistema 1.0/1.3/2.0.
+- [ ] Repetir en anchos 360/375/390 y lector de pantalla/alto contraste.

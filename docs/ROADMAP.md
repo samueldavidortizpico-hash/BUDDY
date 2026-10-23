@@ -94,3 +94,9 @@ Hitos 3 a 8: existencias exactas e idempotentes con avisos a 3 días, evaluador 
 - [x] Bienvenida de primer ingreso con explicación, solicitud de notificaciones y opción para continuar sin activarlas.
 - [ ] Contrato backend: sincronizar cambios y avisos al cuidador en otro dispositivo (actualmente solo mismo teléfono).
 - [ ] Pruebas manuales de concesión, negación y revocación en iPhone y Android, con letra grande y lector de pantalla.
+
+## Ronda V3.1 — historiales y Salud
+
+- [x] Hito 6: agua por horario con estados respaldados por registros y animación de ondas; Salud apila ánimo y sueño a ancho completo, conserva barras vacías y dice cuando no hay respuestas.
+- [x] Línea de tiempo con iconos de estado para medicamentos, comidas y actividad.
+- [ ] Validación visual manual en iPhone y Android a escalas de texto máximas.

@@ -49,6 +49,20 @@ export function waterByDay(entries: WaterEntry[], days: ISODate[]): number[] {
   return days.map((d) => count.get(d) ?? 0);
 }
 
+/** Asocia cada registro real al horario programado más cercano (máximo 90 min); no inventa qué vaso se tomó. */
+export function scheduledWaterStatus(times: string[], entries: Pick<WaterEntry, 'at'>[], now: Date): ('taken' | 'missed' | 'upcoming')[] {
+  const minute = (date: Date) => date.getHours() * 60 + date.getMinutes();
+  const slots = times.map((time) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)));
+  const taken = new Set<number>();
+  for (const entry of entries) {
+    const at = minute(new Date(entry.at));
+    const nearest = slots.map((slot, index) => ({ index, delta: Math.abs(slot - at) })).filter((slot) => !taken.has(slot.index) && slot.delta <= 90).sort((a, b) => a.delta - b.delta)[0];
+    if (nearest) taken.add(nearest.index);
+  }
+  const current = minute(now);
+  return slots.map((slot, i) => taken.has(i) ? 'taken' : slot <= current ? 'missed' : 'upcoming');
+}
+
 export function mealsSummary(logs: MealLog[], days: ISODate[]) {
   const set = new Set(days);
   const inRange = logs.filter((l) => set.has(l.date));

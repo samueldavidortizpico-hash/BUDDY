@@ -9,10 +9,11 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
+import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Face, ProgressRing, WaterFill } from '@/components/charts';
 import { Icon, type IconName } from '@/components/icon';
-import { adherence, answersBy } from '@/domain/health';
+import { adherence, answersBy, scheduledWaterStatus } from '@/domain/health';
 import { dayDoses, doseStage, effectiveTime, escalationOf, stockUnit, type DoseStage } from '@/domain/schedule';
 import { estimateStock } from '@/domain/stock';
 import { appointmentAddress, type Elder } from '@/domain/types';
@@ -32,6 +33,7 @@ interface TimelineEvent {
   icon: IconName;
   tone: 'coral' | 'sky' | 'yellow' | 'lavender' | 'mint' | 'red';
   text: string;
+  statusIcon?: 'check' | 'close' | 'clock';
 }
 
 export function TodayPanel({ elder }: { elder: Elder }) {
@@ -46,6 +48,8 @@ export function TodayPanel({ elder }: { elder: Elder }) {
   const plan = useRecords('waterPlans', { elderId: elder.id })[0];
   const meals = useRecords('meals', { elderId: elder.id });
   const mealLogs = useRecords('mealLogs', { elderId: elder.id });
+  const activities = useRecords('activities', { elderId: elder.id });
+  const activityLogs = useRecords('activityLogs', { elderId: elder.id });
   const checkins = useRecords('checkins', { elderId: elder.id });
   const alerts = useRecords('alerts', { elderId: elder.id });
   const appointments = useRecords('appointments', { elderId: elder.id });
@@ -62,27 +66,31 @@ export function TodayPanel({ elder }: { elder: Elder }) {
   const log = useDb((x) => x.drafts[userId]?.[notifyLog.key(elder.id)] as NotifyLog | undefined) ?? null;
   const adh = adherence(doses, [today], now);
   const glasses = water.filter((w) => w.date === today).length;
-  const goal = plan?.glasses ?? 0;
   const checkin = checkins.find((c) => c.date === today);
   const mood = answersBy(checkins, [today], 'mood');
+  const waterStatuses = plan?.times ? scheduledWaterStatus(plan.times, water.filter((w) => w.date === today), now) : [];
 
   const events: TimelineEvent[] = useMemo(() => {
     const list: TimelineEvent[] = [];
     for (const it of items) {
-      if (it.dose.respondedAt && it.dose.status === 'taken') list.push({ at: it.dose.respondedAt, icon: 'meds', tone: 'coral', text: `Tomó ${it.medication.name}` });
-      if (it.dose.respondedAt && it.dose.status === 'skipped') list.push({ at: it.dose.respondedAt, icon: 'meds', tone: 'yellow', text: `No tomó ${it.medication.name}` });
-      if (it.dose.respondedAt && it.dose.status === 'snoozed') list.push({ at: it.dose.respondedAt, icon: 'clock', tone: 'yellow', text: `Pospuso ${it.medication.name}` });
+      if (it.dose.respondedAt && it.dose.status === 'taken') list.push({ at: it.dose.respondedAt, icon: 'meds', tone: 'coral', text: it.medication.name, statusIcon: 'check' });
+      if (it.dose.respondedAt && it.dose.status === 'skipped') list.push({ at: it.dose.respondedAt, icon: 'meds', tone: 'yellow', text: it.medication.name, statusIcon: 'close' });
+      if (it.dose.respondedAt && it.dose.status === 'snoozed') list.push({ at: it.dose.respondedAt, icon: 'clock', tone: 'yellow', text: it.medication.name, statusIcon: 'clock' });
     }
-    water.filter((w) => w.date === today).forEach((w) => list.push({ at: w.at, icon: 'drop', tone: 'sky', text: 'Tomó un vaso de agua' }));
+    water.filter((w) => w.date === today).forEach((w) => list.push({ at: w.at, icon: 'drop', tone: 'sky', text: 'Agua', statusIcon: 'check' }));
     mealLogs.filter((m) => m.date === today).forEach((m) => {
       const meal = meals.find((x) => x.id === m.mealId);
       const name = meal ? strings.setup.food.mealNames[meal.kind].toLowerCase() : 'comida';
-      list.push({ at: m.updatedAt, icon: 'food', tone: 'yellow', text: m.answer === 'yes' ? `Confirmó ${name}` : `Dijo que no ha comido (${name})` });
+      list.push({ at: m.updatedAt, icon: 'food', tone: 'yellow', text: name, statusIcon: m.answer === 'yes' ? 'check' : 'close' });
+    });
+    activityLogs.filter((log) => log.date === today).forEach((log) => {
+      const activity = activities.find((item) => item.id === log.activityId);
+      list.push({ at: log.updatedAt, icon: 'walk', tone: 'mint', text: activity?.title ?? 'Actividad', statusIcon: log.done ? 'check' : 'close' });
     });
     if (checkin) list.push({ at: checkin.updatedAt, icon: 'smile', tone: 'lavender', text: 'Respondió el chequeo' });
     alerts.filter((a) => a.kind === 'help_requested' && a.createdAt.startsWith(today)).forEach((a) => list.push({ at: a.createdAt, icon: 'shield', tone: 'red', text: 'Pidió ayuda' }));
     return list.sort((a, b) => b.at.localeCompare(a.at));
-  }, [items, water, mealLogs, meals, checkin, alerts, today]);
+  }, [items, water, mealLogs, meals, activityLogs, activities, checkin, alerts, today]);
 
   const lowStock = meds
     .map((m) => ({ m, e: estimateStock(m, today) }))
@@ -99,20 +107,32 @@ export function TodayPanel({ elder }: { elder: Elder }) {
         </AppText>
       </View>
 
+      <Card variant="gradient" domain="water" radius={radius.hero} padding={0} style={s.waterHistory}>
+        <WaterFill ratio={plan?.times.length ? glasses / plan.times.length : 0} height={100} />
+        <View style={s.waterHistoryBody}>
+          <View style={s.waterHead}>
+            <Icon name="drop" color={t.domains.water.text} />
+            <AppText variant="h3" color={t.domains.water.text} style={s.flex}>Vasos de agua hoy</AppText>
+            <AppText variant="secondaryStrong" color={t.domains.water.text}>{plan?.times.length ? `${Math.min(glasses, plan.times.length)} de ${plan.times.length}` : 'Sin horario'}</AppText>
+          </View>
+          {plan?.times.length ? <View style={s.waterGlasses}>
+            {plan.times.map((time, i) => {
+              const status = waterStatuses[i];
+              const label = status === 'taken' ? `Vaso ${i + 1}, ${time}, registrado` : status === 'missed' ? `Vaso ${i + 1}, ${time}, sin registro` : `Vaso ${i + 1}, ${time}, pendiente`;
+              return <View key={`${time}-${i}`} accessible accessibilityLabel={label} style={s.waterGlass}>
+                <Icon name="drop" size={20} color={status === 'taken' ? t.c.success : status === 'missed' ? t.c.danger : t.domains.water.muted} />
+                <Icon name={status === 'taken' ? 'check' : status === 'missed' ? 'close' : 'clock'} size={15} color={status === 'taken' ? t.c.success : status === 'missed' ? t.c.danger : t.domains.water.muted} />
+                <AppText variant="meta" color={t.domains.water.text}>{time}</AppText>
+              </View>;
+            })}
+          </View> : <AppText variant="secondary" color={t.domains.water.muted}>Aún no hay tomas de agua programadas.</AppText>}
+          <AppText variant="caption" color={t.domains.water.muted}>Cuenta los registros; no confirma cuánto bebiste.</AppText>
+          <Button label="Ver horario de agua" icon="chevron" size="sm" variant="ghost" onPress={() => router.push('/routine/water' as Href)} />
+        </View>
+      </Card>
+
       {/* Bento asimétrico */}
       <View style={s.bento}>
-        <Card variant="gradient" domain="water" radius={radius.hero} padding={0} style={s.waterCard} onPress={() => router.push('/routine/water' as Href)} accessibilityLabel={`Agua: ${glasses} de ${goal || '—'} vasos`}>
-          <WaterFill ratio={goal ? glasses / goal : 0} />
-          <View style={s.waterBody}>
-            <Icon name="drop" color={t.domains.water.text} />
-            <AppText variant="heroXL" color={t.domains.water.text}>
-              {glasses}
-            </AppText>
-            <AppText variant="secondaryStrong" color={t.domains.water.muted}>
-              {goal ? `de ${goal} vasos` : 'Sin meta de agua'}
-            </AppText>
-          </View>
-        </Card>
         <View style={s.bentoCol}>
           <Card style={s.smallCard} onPress={() => router.push('/routine' as Href)} accessibilityLabel={`Medicamentos: ${adh.taken} de ${adh.total} confirmados`}>
             <ProgressRing size={64} ratio={adh.total ? adh.taken / adh.total : 0} color={t.domains.medication.accent} label={`${adh.taken}/${adh.total}`} />
@@ -184,6 +204,7 @@ export function TodayPanel({ elder }: { elder: Elder }) {
               <AppText variant="caption" color={t.c.muted} style={s.tabular}>
                 {formatClock(new Date(e.at).toTimeString().slice(0, 5))}
               </AppText>
+              {e.statusIcon ? <Icon name={e.statusIcon} color={e.statusIcon === 'check' ? t.c.success : e.statusIcon === 'close' ? t.c.danger : t.c.muted} size={18} /> : null}
             </Appear>
           ))
         ) : (
@@ -231,8 +252,11 @@ const useStyles = makeStyles((t) =>
     root: { gap: spacing.md },
     sectionHead: { gap: 2 },
     bento: { flexDirection: 'row', gap: spacing.sm },
-    waterCard: { flex: 1.15, minHeight: 236, overflow: 'hidden' },
-    waterBody: { flex: 1, padding: spacing.lg, justifyContent: 'flex-end', gap: 2 },
+    waterHistory: { width: '100%', overflow: 'hidden' },
+    waterHistoryBody: { padding: spacing.md, gap: spacing.sm },
+    waterHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+    waterGlasses: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    waterGlass: { minWidth: 56, alignItems: 'center', justifyContent: 'center', gap: 2, padding: spacing.xs },
     bentoCol: { flex: 1, gap: spacing.sm },
     smallCard: { flex: 1, padding: spacing.md, gap: spacing.xs, justifyContent: 'center', alignItems: 'flex-start' },
     sleepCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.lg, borderRadius: radius.card, backgroundColor: t.c.night, overflow: 'hidden' },
