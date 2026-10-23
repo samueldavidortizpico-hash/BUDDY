@@ -150,7 +150,33 @@ export type DoseStatus = 'pending' | 'taken' | 'snoozed' | 'skipped';
 /** Estado mostrado: añade "unconfirmed" cuando pasó el margen sin respuesta (no es omisión ni emergencia). */
 export type DisplayDoseStatus = DoseStatus | 'unconfirmed';
 
+/** Estado capturado en un evento; los campos nuevos son opcionales para datos anteriores. */
+export interface DoseSnapshot {
+  status?: DoseStatus;
+  time?: ClockTime;
+  date?: ISODate;
+  snoozedTo?: ClockTime | null;
+  stockApplied?: number | null;
+}
+
+export interface DoseHistoryEntry {
+  at: Timestamp;
+  by: string;
+  role?: Role;
+  action: string;
+  from?: DoseSnapshot;
+  to?: DoseSnapshot;
+}
+
 export interface DoseEvent extends SyncMeta {
+  /** Posición del día, desde cero; no cambia al editar la hora. */
+  slot?: number;
+  /** Cupo del día capturado antes de editar; mañana rige el horario nuevo. */
+  dayLimit?: number;
+  cancelledAt?: Timestamp | null;
+  safetyHold?: boolean;
+  /** Solo agregar eventos; los registros históricos no se eliminan. */
+  history?: DoseHistoryEntry[];
   medicationId: string;
   date: ISODate;
   time: ClockTime;

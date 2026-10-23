@@ -14,6 +14,13 @@ export const notificationsSupported = Platform.OS === 'ios' || Platform.OS === '
 
 let handlerSet = false;
 let lastSignature = '';
+// Una sola cola para aplicar, cancelar y limpiar: un plan anterior nunca termina después del siguiente.
+let scheduling: Promise<unknown> = Promise.resolve();
+function exclusive<T>(work: () => Promise<T>): Promise<T> {
+  const result = scheduling.then(work);
+  scheduling = result.catch(() => undefined);
+  return result;
+}
 
 function ensureHandler() {
   if (handlerSet || !notificationsSupported) return;
@@ -56,13 +63,20 @@ function toTrigger(t: PlannedNotification['trigger']): Notifications.Notificatio
  * Reemplaza los avisos programados por el plan nuevo (solo si cambió). No pide permiso: si no lo hay, no programa y
  * devuelve 'denied'/'undetermined' para que la pantalla lo explique.
  */
-export async function applyPlan(plan: PlannedNotification[]): Promise<{ state: PermissionState; scheduled: number }> {
+export function applyPlan(plan: PlannedNotification[]): Promise<{ state: PermissionState; scheduled: number }> {
+  const snapshot = plan.map(n => ({ ...n, trigger: { ...n.trigger } }));
+  return exclusive(() => replacePlan(snapshot));
+}
+
+async function replacePlan(plan: PlannedNotification[]): Promise<{ state: PermissionState; scheduled: number }> {
   const state = await notificationPermission(false);
   if (state !== 'granted') return { state, scheduled: 0 };
   const sig = planSignature(plan);
   if (sig === lastSignature) return { state, scheduled: plan.length };
   // Se cancelan solo los avisos del adulto mayor: el resumen diario del administrador (mismo celular en la demo) se queda.
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  // Si falla a mitad de camino, un reintento debe reconstruir el plan completo.
+  lastSignature = '';
   await Promise.all(scheduled.filter((n) => n.identifier !== SUMMARY_ID).map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)));
   for (const n of plan) {
     await Notifications.scheduleNotificationAsync({ identifier: n.key, content: { title: n.title, body: n.body, sound: true }, trigger: toTrigger(n.trigger) });
@@ -83,10 +97,27 @@ export async function sendTestNotification(elderName: string): Promise<Permissio
 }
 
 /** Al cerrar sesión o salir de la pantalla del adulto mayor en un teléfono que no es suyo. */
-export async function clearScheduled() {
-  if (!notificationsSupported) return;
-  lastSignature = '';
-  await Notifications.cancelAllScheduledNotificationsAsync();
+export function clearScheduled() {
+  return exclusive(async () => {
+    if (!notificationsSupported) return;
+    lastSignature = '';
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  });
+}
+
+/** Cancela T y T+N aunque la pantalla que aplica el plan no esté montada. */
+export function cancelDoseNotifications(medicationId: string, date?: string, time?: string): Promise<void> {
+  return exclusive(async () => {
+    if (!notificationsSupported) return;
+    lastSignature = '';
+    const prefix = date && time ? `med-${medicationId}-${date}-${time}` : `med-${medicationId}-`;
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const n of scheduled) {
+      if ((date && time ? n.identifier === prefix || n.identifier === `${prefix}-r` : n.identifier.startsWith(prefix)) || (!date && n.identifier === `stock-${medicationId}`)) {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+      }
+    }
+  });
 }
 
 /**

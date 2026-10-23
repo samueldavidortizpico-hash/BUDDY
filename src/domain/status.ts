@@ -8,7 +8,7 @@
  * - Aún no hay registros: sin señales de su celular y sin nada que atender. Nunca "Todo bien" sin datos.
  * BUDDY informa: no diagnostica ni sugiere cambios de tratamiento.
  */
-import { addDays } from '@/utils/dates';
+import { addDays, toISODate } from '@/utils/dates';
 
 import { displayStatus, escalationOf, type Escalation } from './schedule';
 import { estimateStock } from './stock';
@@ -56,13 +56,13 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 
 export function dayFacts(i: StatusInput): DayFacts {
   const today = iso(i.now);
-  const active = new Map(i.meds.filter((m) => !m.paused).map((m) => [m.id, m]));
-  const doses = i.doses.filter((d) => d.date === today && active.has(d.medicationId));
+  const active = new Map(i.meds.filter((m) => !m.paused && !m.deletedAt).map((m) => [m.id, m]));
+  const doses = i.doses.filter((d) => d.date === today && !d.cancelledAt && !d.deletedAt && !d.safetyHold && active.has(d.medicationId));
   const c = i.checkins.find((x) => x.date === today);
   const answered = !!c && (c.mood !== null || c.sleep !== null || c.unwell !== null);
   const nowMin = i.now.getHours() * 60 + i.now.getMinutes();
   const checkin: DayFacts['checkin'] = !i.checkinTime ? 'none' : answered ? 'answered' : nowMin >= toMinutes(i.checkinTime) + CHECKIN_GRACE_MIN ? 'missed' : 'pending';
-  const levels = i.meds.map((m) => ({ m, e: estimateStock(m, today) })).filter((x) => x.e.level !== 'none');
+  const levels = i.meds.filter((m) => !m.deletedAt).map((m) => ({ m, e: estimateStock(m, today) })).filter((x) => x.e.level !== 'none');
   const worst = levels.find((x) => x.e.level === 'out') ?? levels.filter((x) => x.e.level === 'low').sort((a, b) => (a.e.daysLeft ?? 0) - (b.e.daysLeft ?? 0))[0];
   return {
     doses: { taken: doses.filter((d) => d.status === 'taken').length, total: doses.length },
@@ -76,10 +76,10 @@ export function dayStatus(i: StatusInput): DayStatus {
   const facts = dayFacts(i);
   const name = i.elderName;
   const today = iso(i.now);
-  const pending = i.alerts.filter((a) => a.status === 'pending' && a.createdAt.slice(0, 10) >= addDays(today, -1));
+  const pending = i.alerts.filter((a) => !a.deletedAt && a.status === 'pending' && toISODate(new Date(a.createdAt)) >= addDays(today, -1));
   const c = i.checkins.find((x) => x.date === today);
   const { unconfirmedAfterMin } = escalationOf(i.escalation);
-  const unconfirmed = i.doses.filter((d) => d.date === today && i.meds.some((m) => m.id === d.medicationId && !m.paused) && displayStatus(d, i.now, unconfirmedAfterMin) === 'unconfirmed');
+  const unconfirmed = i.doses.filter((d) => d.date === today && !d.cancelledAt && !d.deletedAt && !d.safetyHold && i.meds.some((m) => m.id === d.medicationId && !m.paused && !m.deletedAt) && displayStatus(d, i.now, unconfirmedAfterMin) === 'unconfirmed');
   const out = (level: StatusLevel, reason: string, extra: Partial<DayStatus> = {}): DayStatus => ({ level, reason, call: level === 'action' || level === 'attention', help: false, facts, ...extra });
 
   // ── Acción necesaria ──

@@ -10,8 +10,9 @@
  * Mensajes claros y sin alarmismo. Por privacidad, la pantalla de bloqueo NO muestra el nombre del medicamento salvo
  * que el cuidador lo active. Límite de iOS: 64 avisos pendientes; se programan como máximo 60 por prioridad.
  */
+import { doseDayLimit, withDoseSlots, type SlottedDose } from './dose-safety';
 import { escalationOf, type Escalation } from './schedule';
-import { intervalTimes } from './time';
+import { intervalTimes, sortTimes } from './time';
 import type { Appointment, ClockTime, DoseEvent, Meal, Medication, Reminder, WaterPlan, Weekday } from './types';
 import { appointmentAddress } from './types';
 
@@ -41,7 +42,7 @@ export interface PlanInput {
   apptNoticeTime?: ClockTime;
   showMedName?: boolean;
   /** Tomas registradas (respondidas o pospuestas): sus avisos pendientes se cancelan o se mueven. */
-  doses?: Pick<DoseEvent, 'medicationId' | 'date' | 'time' | 'status' | 'snoozedTo'>[];
+  doses?: (Pick<DoseEvent, 'medicationId' | 'date' | 'time' | 'status' | 'snoozedTo'> & SlottedDose)[];
   escalation?: Partial<Escalation>;
 }
 
@@ -80,9 +81,12 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
   // pospuesta se avisa a su nueva hora. Se programan por fecha los próximos días dentro de MED_BUDGET; al final queda un
   // aviso honesto "Abre BUDDY" para que nunca deje de avisar en silencio si no se abre la app.
   const e = escalationOf(i.escalation);
-  const answered = new Map((i.doses ?? []).map((d) => [`${d.medicationId}@${d.date}@${d.time}`, d]));
+  const doses = withDoseSlots(i.doses ?? [], (d) => {
+    const med = i.meds.find((m) => m.id === d.medicationId);
+    return med ? sortTimes(med.schedule.kind === 'times' ? med.schedule.times : intervalTimes(med.schedule.everyHours, med.schedule.from)) : [];
+  });
   const meds: PlannedNotification[] = [];
-  const active = i.meds.filter((x) => !x.paused);
+  const active = i.meds.filter((x) => !x.paused && !x.deletedAt);
   let last: Date | null = null;
   for (let k = 0; k < HORIZON_DAYS; k++) {
     const day = new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + k);
@@ -91,11 +95,20 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
     for (const m of active) {
       if (iso < m.startDate || (m.endDate && iso > m.endDate)) continue;
       if (m.schedule.days.length && !m.schedule.days.includes(day.getDay() as Weekday)) continue;
-      const times = m.schedule.kind === 'times' ? m.schedule.times : intervalTimes(m.schedule.everyHours, m.schedule.from);
-      for (const t of times) {
-        const dose = answered.get(`${m.id}@${iso}@${t}`);
-        if (dose && (dose.status === 'taken' || dose.status === 'skipped')) continue;
-        const base = dose?.status === 'snoozed' && dose.snoozedTo ? at(iso, dose.snoozedTo) : at(iso, t);
+      const times = sortTimes(m.schedule.kind === 'times' ? m.schedule.times : intervalTimes(m.schedule.everyHours, m.schedule.from));
+      const dayDoses = doses.filter((d) => d.medicationId === m.id && d.date === iso);
+      const limit = doseDayLimit(dayDoses, times.length);
+      let room = Math.max(0, limit - dayDoses.filter((d) => d.status === 'taken' || d.status === 'skipped').length);
+      for (let slot = 0; slot < limit; slot++) {
+        const matches = dayDoses.filter((d) => d.slot === slot);
+        const dose = matches[0];
+        if (matches.length > 1 || dose?.cancelledAt || dose?.safetyHold || dose?.status === 'taken' || dose?.status === 'skipped') continue;
+        if (room <= 0) continue;
+        room--;
+        // La hora persistida de la toma manda sobre el horario nuevo para este día.
+        const t = dose?.time ?? times[slot];
+        const effective = dose?.status === 'snoozed' && dose.snoozedTo ? dose.snoozedTo : t;
+        const base = at(iso, effective);
         const key = `med-${m.id}-${iso}-${t}`;
         const body = i.showMedName ? `Es hora de ${m.name}.` : 'Abre BUDDY para ver cuál es.';
         slots.push({ when: base, key, title: 'Hora de tu medicamento', body });
@@ -144,7 +157,7 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
   });
 
   const tomorrow10 = new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + 1, 10, 0);
-  const stock = i.lowStock.map((m) => ({
+  const stock = i.lowStock.filter((m) => !m.deletedAt).map((m) => ({
     key: `stock-${m.id}`,
     title: 'Se están acabando tus pastillas',
     // Sin servidor no hay entrega al celular del familiar: no se afirma que ya se le avisó.

@@ -4,6 +4,7 @@
  */
 import { atClock, daysBetween, parseISODate } from '@/utils/dates';
 
+import { doseDayLimit, withDoseSlots, type SlottedDose } from './dose-safety';
 import { intervalTimes, onDay, sortTimes, toMinutes } from './time';
 import type { ClockTime, DisplayDoseStatus, DoseEvent, ISODate, Medication, MedSchedule, Weekday } from './types';
 
@@ -36,8 +37,8 @@ export function scheduleDays(s: MedSchedule): Weekday[] {
   return s.days;
 }
 
-export function isActiveOn(med: Pick<Medication, 'startDate' | 'endDate' | 'paused'>, date: ISODate): boolean {
-  if (med.paused) return false;
+export function isActiveOn(med: Pick<Medication, 'startDate' | 'endDate' | 'paused'> & { deletedAt?: string | null }, date: ISODate): boolean {
+  if (med.paused || med.deletedAt) return false;
   if (!(daysBetween(med.startDate, date) >= 0)) return false;
   return !(med.endDate && daysBetween(date, med.endDate) < 0);
 }
@@ -56,16 +57,29 @@ export function dosesPerDay(med: Pick<Medication, 'schedule'>): number {
   return days === 0 || days === 7 ? per : (per * days) / 7;
 }
 
-export type NewDose = Pick<DoseEvent, 'medicationId' | 'date' | 'time' | 'status' | 'respondedAt' | 'snoozedTo' | 'snoozeCount' | 'answeredBy'>;
+export type NewDose = Pick<DoseEvent, 'slot' | 'medicationId' | 'date' | 'time' | 'status' | 'respondedAt' | 'snoozedTo' | 'snoozeCount' | 'answeredBy'>;
 
 /** Tomas que faltan por crear para `date` (no duplica las existentes). */
-export function missingDoses(meds: Medication[], doses: Pick<DoseEvent, 'medicationId' | 'date' | 'time'>[], date: ISODate): NewDose[] {
-  const existing = new Set(doses.filter((d) => d.date === date).map((d) => `${d.medicationId}@${d.time}`));
-  return meds.flatMap((med) =>
-    timesOn(med, date)
-      .filter((time) => !existing.has(`${med.id}@${time}`))
-      .map((time) => ({ medicationId: med.id, date, time, status: 'pending' as const, respondedAt: null, snoozedTo: null, snoozeCount: 0, answeredBy: null })),
-  );
+export function missingDoses(meds: Medication[], doses: SlottedDose[], date: ISODate): NewDose[] {
+  const existing = withDoseSlots(doses.filter((d) => d.date === date), (d) => {
+    const med = meds.find((m) => m.id === d.medicationId);
+    return med ? timesOn(med, date) : [];
+  });
+  return meds.flatMap((med) => {
+    const day = existing.filter((d) => d.medicationId === med.id);
+    const times = timesOn(med, date);
+    const limit = doseDayLimit(day, times.length);
+    const occupied = new Set(day.map((d) => d.slot));
+    // Los registros fuera del nuevo rango también consumen cupo: nunca pedir otra dosis por reordenar.
+    const registered = day.filter((d) => d.status === 'taken' || d.status === 'skipped').length;
+    const livePending = day.filter((d) => d.status !== 'taken' && d.status !== 'skipped' && !d.cancelledAt).length;
+    let room = Math.max(0, limit - registered - livePending);
+    return times.slice(0, limit).flatMap((time, slot) => {
+      if (occupied.has(slot) || room <= 0) return [];
+      room--;
+      return [{ medicationId: med.id, date, time, slot, status: 'pending' as const, respondedAt: null, snoozedTo: null, snoozeCount: 0, answeredBy: null }];
+    });
+  });
 }
 
 export function effectiveTime(dose: Pick<DoseEvent, 'status' | 'snoozedTo' | 'time'>): ClockTime {
@@ -111,9 +125,9 @@ export interface DoseItem {
 
 /** Tomas del día, ordenadas por hora efectiva. */
 export function dayDoses(meds: Medication[], doses: DoseEvent[], date: ISODate, now: Date, unconfirmedAfterMin = UNCONFIRMED_AFTER_MIN): DoseItem[] {
-  const byId = new Map(meds.map((m) => [m.id, m]));
+  const byId = new Map(meds.filter((m) => !m.deletedAt).map((m) => [m.id, m]));
   return doses
-    .filter((d) => d.date === date && byId.has(d.medicationId))
+    .filter((d) => d.date === date && !d.cancelledAt && !d.deletedAt && !(d.safetyHold && (d.status === 'pending' || d.status === 'snoozed')) && byId.has(d.medicationId))
     .map((dose) => ({ dose, medication: byId.get(dose.medicationId)!, status: displayStatus(dose, now, unconfirmedAfterMin) }))
     .sort((a, b) => toMinutes(effectiveTime(a.dose)) - toMinutes(effectiveTime(b.dose)));
 }

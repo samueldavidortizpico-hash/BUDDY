@@ -165,7 +165,7 @@ export function buildFeed(i: RecoInput): FeedItem[] {
   // Tomas sin confirmar hoy (una tarjeta por toma, clave estable: no se duplica). Llega tras el aviso a la hora y el
   // segundo aviso sin respuesta. "Sin confirmar" no significa "no la tomó"; nunca se llama emergencia.
   const esc = escalationOf(i.escalation);
-  for (const d of i.doses.filter((x) => x.date === today)) {
+  for (const d of i.doses.filter((x) => x.date === today && !x.cancelledAt && !x.safetyHold)) {
     const med = medsById.get(d.medicationId);
     if (!med || med.paused || displayStatus(d, now, esc.unconfirmedAfterMin) !== 'unconfirmed') continue;
     out.push({
@@ -290,7 +290,7 @@ export function buildFeed(i: RecoInput): FeedItem[] {
 
   // Adherencia de los últimos 7 días completos.
   const week = lastDays(addDays(today, -1), 7).filter((d) => d >= i.since);
-  const weekDoses = i.doses.filter((d) => week.includes(d.date) && medsById.has(d.medicationId));
+  const weekDoses = i.doses.filter((d) => !d.cancelledAt && week.includes(d.date) && medsById.has(d.medicationId));
   const due = weekDoses.length;
   const taken = weekDoses.filter((d) => d.status === 'taken').length;
   if (due >= 4 && taken / due < th.adherence) {
@@ -397,7 +397,7 @@ export function buildFeed(i: RecoInput): FeedItem[] {
   // Con todo en orden: tarjetas informativas útiles (nunca un panel vacío). Si se conoce la verificación, solo con señal
   // reciente: sin datos BUDDY no dice que el día va bien.
   if (!out.some((x) => x.severity !== 'info' || x.kind === 'alert') && (!i.verification || i.verification.state === 'ok')) {
-    const next = i.doses
+    const next = i.doses.filter(d => !d.cancelledAt && !d.safetyHold)
       .filter((d) => d.date === today && medsById.has(d.medicationId) && (d.status === 'pending' || d.status === 'snoozed') && minutesOf(effectiveTime(d)) >= nowMin)
       .sort((a, b) => minutesOf(effectiveTime(a)) - minutesOf(effectiveTime(b)))[0];
     out.push({

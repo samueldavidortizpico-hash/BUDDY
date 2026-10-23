@@ -57,18 +57,20 @@ describe('etapas de una toma (programada ≠ entregada ≠ respondida)', () => {
     expect(stage(at(8, 45))).toBe('unconfirmed');
   });
 
-  it('respondida en cualquier momento, deja de escalar (tomé, no tomé y pospuse por separado)', () => {
+  it('respondida en cualquier momento, deja de escalar (pospuse, tomé y no tomé por separado)', () => {
     jest.setSystemTime(at(8, 12));
-    doseActions.confirm(doseId, 'elder');
-    expect(doseStage(dose(), at(9, 0), escalationOf(), true)).toEqual({ stage: 'answered', answer: 'taken', by: 'elder' });
-    doseActions.reset(doseId);
-    doseActions.skip(doseId, 'elder');
-    expect(doseStage(dose(), at(9, 0), escalationOf(), true)).toMatchObject({ answer: 'skipped' });
-    doseActions.reset(doseId);
     doseActions.snooze(doseId, 'elder'); // a las 8:22
     expect(doseStage(dose(), at(8, 15), escalationOf(), true)).toMatchObject({ answer: 'snoozed' });
     // La toma pospuesta vuelve a escalar desde su nueva hora.
     expect(doseStage(dose(), at(8, 52), escalationOf(), true).stage).toBe('unconfirmed');
+    doseActions.confirm(doseId, 'elder');
+    expect(doseStage(dose(), at(9, 0), escalationOf(), true)).toEqual({ stage: 'answered', answer: 'taken', by: 'elder' });
+    // V4 (R8): corregir deja la toma retenida; no se pide otra dosis (ni se pospone) hasta una respuesta explícita.
+    doseActions.reset(doseId);
+    expect(dose().safetyHold).toBe(true);
+    expect(doseActions.snooze(doseId, 'elder')).toBeUndefined();
+    doseActions.skip(doseId, 'elder');
+    expect(doseStage(dose(), at(9, 0), escalationOf(), true)).toMatchObject({ answer: 'skipped' });
   });
 
   it('"aviso entregado" depende de lo que aceptó el sistema del celular, no de que exista la hora', () => {

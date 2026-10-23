@@ -1,5 +1,8 @@
 /** Textos de BUDDY en español de Colombia. Las funciones reciben los datos que se intercalan. */
 export const esCO = {
+  doseSafety: {
+    confirmBeforeAnotherDose: (name: string) => `Confirma con ${name} antes de darle otra dosis`,
+  },
   common: {
     back: 'Volver',
     close: 'Cerrar',

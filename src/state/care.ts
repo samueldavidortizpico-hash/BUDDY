@@ -3,18 +3,20 @@
  * Los avisos son idempotentes: no se repite uno pendiente del mismo tipo para el mismo registro.
  */
 import { reviewMedication, type ReviewFinding } from '@/domain/review';
-import { displayStatus, escalationOf, missingDoses, snoozeTarget } from '@/domain/schedule';
+import { displayStatus, escalationOf, missingDoses, snoozeTarget, timesOn } from '@/domain/schedule';
 import { afterDose, afterPurchase, estimateStock } from '@/domain/stock';
+import { withDoseSlots } from '@/domain/dose-safety';
 import { toMinutes } from '@/domain/time';
 import type { Alert, AlertKind, Answer3, DoseEvent, Medication, MealLog, Role } from '@/domain/types';
 import type { HeartbeatKind, NotificationPermission } from '@/domain/verification';
 import { db } from '@/infrastructure/local/db';
 import { createLocalHeartbeats } from '@/infrastructure/local/heartbeats';
 import { strings } from '@/i18n';
-import { toISODate } from '@/utils/dates';
+import { cancelDoseNotifications } from '@/infrastructure/notifications';
+import { atClock, toISODate } from '@/utils/dates';
 
 import { actor, activeElderId } from './actions';
-import { currentUserId } from './session';
+import { currentAuthorId, currentUserId } from './session';
 
 const AK = strings.alertKinds;
 
@@ -68,14 +70,48 @@ export const medicationActions = {
     return { med, findings: runReview(med) };
   },
   update(id: string, patch: Partial<MedicationInput>): { med: Medication | undefined; findings: ReviewFinding[] } {
-    const med = db.update('medications', id, patch);
-    if (!med) return { med, findings: [] };
-    // Las tomas futuras de hoy que ya no corresponden se eliminan; las respondidas se conservan.
-    const today = toISODate(new Date());
-    db.list('doses', med.ownerUserId, med.elderId)
-      .filter((d) => d.medicationId === id && d.date === today && d.status === 'pending')
-      .forEach((d) => db.remove('doses', d.id));
-    if (med.elderId) doseActions.sync(med.elderId, new Date());
+    const before = db.get('medications', id);
+    if (!before || before.deletedAt) return { med: undefined, findings: [] };
+    const now = new Date();
+    if (before.elderId) doseActions.sync(before.elderId, now);
+    const med = db.update('medications', id, patch)!;
+    const changed = ['schedule', 'startDate', 'endDate', 'paused'].some(key => key in patch && JSON.stringify(before[key as keyof Medication]) !== JSON.stringify(med[key as keyof Medication]));
+    if (changed) {
+      const today = toISODate(now);
+      const all = withDoseSlots(db.list('doses', med.ownerUserId, med.elderId).filter(d => d.medicationId === id));
+      for (const date of new Set(all.filter(d => d.date >= today).map(d => d.date))) {
+        const day = all.filter(d => d.date === date);
+        const times = timesOn(med, date);
+        // R3: con una toma ya registrada, el cupo de hoy se congela y el horario nuevo completo rige mañana. Sin registros,
+        // el horario nuevo rige hoy (R2: pendientes ≤ programadas − registradas = programadas).
+        const registered = day.some(d => d.status === 'taken' || d.status === 'skipped');
+        const dayLimit = registered ? Math.min(day.length, times.length, ...day.map(d => d.dayLimit ?? day.length)) : times.length;
+        for (const d of day) {
+          const patch: Partial<DoseEvent> = { slot: d.slot, dayLimit };
+          if (d.status === 'taken' || d.status === 'skipped') {
+            // La hora registrada se conserva; el cambio queda como otro evento.
+            writeDose(d, patch, 'schedule_changed', 'caregiver');
+          } else if (d.cancelledAt) {
+            // Una posición cancelada por bajar la frecuencia vuelve si el horario la recupera y nada se registró hoy.
+            if (!registered && d.slot < dayLimit) {
+              const time = times[d.slot];
+              writeDose(d, { ...patch, time, status: 'pending', snoozedTo: null, cancelledAt: null, safetyHold: atClock(date, time) <= now }, 'reschedule', 'caregiver');
+            }
+          } else {
+            if (d.slot >= dayLimit) {
+              cancelDose(d, 'caregiver', patch);
+            } else {
+              const time = times[d.slot];
+              closeDoseAlerts(d);
+              cancelNotices(d);
+              writeDose(d, { ...patch, time, status: 'pending', snoozedTo: null,
+                safetyHold: d.safetyHold || (time !== d.time && atClock(date, time) <= now) }, 'reschedule', 'caregiver');
+            }
+          }
+        }
+      }
+      if (med.elderId) doseActions.sync(med.elderId, now);
+    }
     return { med, findings: runReview(med) };
   },
   pause: (id: string, paused: boolean) => medicationActions.update(id, { paused }),
@@ -83,7 +119,11 @@ export const medicationActions = {
     const med = db.remove('medications', id);
     if (med) {
       const today = toISODate(new Date());
-      db.list('doses', med.ownerUserId, med.elderId).filter((d) => d.medicationId === id && d.date >= today && d.status === 'pending').forEach((d) => db.remove('doses', d.id));
+      const related = db.list('doses', med.ownerUserId, med.elderId).filter(d => d.medicationId === id);
+      related.filter(d => d.date >= today && d.status !== 'taken' && d.status !== 'skipped' && !d.cancelledAt).forEach(d => cancelDose(d, 'caregiver'));
+      const refs = new Set([id, ...related.map(d => d.id)]);
+      db.list('alerts', med.ownerUserId, med.elderId).filter(a => a.status === 'pending' && a.refId && refs.has(a.refId)).forEach(a => alertActions.attend(a.id));
+      void cancelDoseNotifications(id).catch(() => recordCancellationFailure(med.elderId));
     }
     return med;
   },
@@ -122,7 +162,10 @@ export const medicationActions = {
 function checkStock(med: Medication) {
   if (!med.elderId) return;
   const est = estimateStock(med, toISODate(new Date()));
-  const done = med.stockAlerted ?? [];
+  db.list('alerts', med.ownerUserId, med.elderId)
+    .filter(a => a.refId === med.id && a.status === 'pending' && ((a.kind === 'stock_out' && est.level !== 'out') || (a.kind === 'stock_low' && (est.level === 'ok' || est.level === 'none'))))
+    .forEach(a => alertActions.attend(a.id));
+  const done = [...(med.stockAlerted ?? [])];
   if (est.level === 'ok' || est.level === 'none') {
     if (done.length) db.update('medications', med.id, { stockAlerted: [] });
     return;
@@ -139,6 +182,59 @@ function checkStock(med: Medication) {
 
 // ── Tomas ────────────────────────────────────────────────────
 
+/** Todos los cambios de una toma agregan eventos; los registros antiguos se conservan como snapshot legacy. */
+function writeDose(dose: DoseEvent, patch: Partial<DoseEvent>, action: string, role: Role) {
+  const snapshot = (d: DoseEvent) => ({ date: d.date, time: d.time, status: d.status, snoozedTo: d.snoozedTo, stockApplied: d.stockApplied });
+  const history = dose.history?.length ? dose.history : [{ at: dose.respondedAt ?? dose.createdAt, by: dose.createdBy, action: 'legacy', to: snapshot(dose) }];
+  return db.update('doses', dose.id, { ...patch, history: [...history, { at: new Date().toISOString(), by: currentAuthorId(), role, action, from: snapshot(dose), to: snapshot({ ...dose, ...patch }) }] });
+}
+function closeDoseAlerts(dose: DoseEvent) {
+  db.list('alerts', dose.ownerUserId, dose.elderId).filter(a => a.kind === 'dose_unconfirmed' && a.refId === dose.id && a.status === 'pending').forEach(a => alertActions.attend(a.id));
+}
+function recordCancellationFailure(elderId: string | null) {
+  if (elderId) db.setDraft(currentUserId(), `doseSafety.cancellationFailed.${elderId}`, true);
+}
+function cancelNotices(dose: DoseEvent) {
+  void cancelDoseNotifications(dose.medicationId, dose.date, dose.time).catch(() => recordCancellationFailure(dose.elderId));
+}
+function cancelDose(dose: DoseEvent, by: Role, patch: Partial<DoseEvent> = {}) {
+  closeDoseAlerts(dose);
+  cancelNotices(dose);
+  return writeDose(dose, { ...patch, cancelledAt: new Date().toISOString() }, 'cancel', by);
+}
+/** Delta real, no dosis teórica: si había 0.25 y se descuentan hasta 0, solo se devuelven 0.25. */
+function reconcileStock(dose: DoseEvent, taken: boolean): number | null {
+  const med = db.get('medications', dose.medicationId);
+  if (!med || med.unitsOnHand === null) return taken ? dose.stockApplied ?? null : null;
+  let applied = dose.stockApplied ?? null;
+  let unitsOnHand = med.unitsOnHand;
+  if (taken && applied === null) {
+    unitsOnHand = afterDose(med.unitsOnHand, med.doseAmount)!;
+    applied = Math.round((med.unitsOnHand - unitsOnHand) * 100) / 100;
+  } else if (!taken && applied !== null) {
+    unitsOnHand = Math.round((med.unitsOnHand + applied) * 100) / 100;
+    applied = null;
+  }
+  const delta = Math.round((unitsOnHand - med.unitsOnHand) * 100) / 100;
+  if (delta) {
+    db.insert('stock', { medicationId: med.id, units: delta, note: taken ? `Toma ${dose.id}` : `Corrección de toma ${dose.id}` }, actor(med.elderId));
+    const next = db.update('medications', med.id, { unitsOnHand });
+    if (next) checkStock(next);
+  }
+  return applied;
+}
+function answerDose(doseId: string, status: 'taken' | 'skipped', by: Role) {
+  const dose = db.get('doses', doseId);
+  if (!dose || dose.deletedAt || dose.cancelledAt) return undefined;
+  const med = db.get('medications', dose.medicationId);
+  if (!med || med.deletedAt) return undefined;
+  if (by === 'elder' && dose.elderId) beat(dose.elderId, 'answer');
+  const stockApplied = reconcileStock(dose, status === 'taken');
+  closeDoseAlerts(dose);
+  cancelNotices(dose);
+  return writeDose(dose, { status, respondedAt: new Date().toISOString(), answeredBy: by, snoozedTo: null, stockApplied, safetyHold: false }, status === 'taken' ? 'confirm' : 'skip', by);
+}
+
 export const doseActions = {
   /** Crea las tomas de hoy que falten para la persona. */
   sync(elderId: string, now: Date) {
@@ -146,45 +242,36 @@ export const doseActions = {
     const date = toISODate(now);
     const meds = db.list('medications', userId, elderId);
     const doses = db.list('doses', userId, elderId);
-    for (const d of missingDoses(meds, doses, date)) db.insert('doses', d, { userId, elderId });
+    for (const d of missingDoses(meds, doses, date)) db.insert('doses', { ...d, history: [{ at: now.toISOString(), by: currentAuthorId(), action: 'created', to: { date: d.date, time: d.time, status: d.status } }] }, actor(elderId));
   },
   confirm(doseId: string, by: Role) {
-    const before = db.get('doses', doseId);
-    if (by === 'elder' && before?.elderId) beat(before.elderId, 'answer');
-    const dose = db.update('doses', doseId, { status: 'taken', respondedAt: new Date().toISOString(), answeredBy: by });
-    const med = dose ? db.get('medications', dose.medicationId) : undefined;
-    // Idempotente: una toma ya descontada no vuelve a descontar (dos confirmaciones = una sola salida de existencias).
-    if (dose && med && med.unitsOnHand !== null && before?.stockApplied == null) {
-      const next = db.update('medications', med.id, { unitsOnHand: afterDose(med.unitsOnHand, med.doseAmount) });
-      db.update('doses', doseId, { stockApplied: med.doseAmount });
-      if (next) checkStock(next);
-    }
-    // Cierra el aviso de "sin confirmar" de esa toma, si lo había.
-    if (dose) db.list('alerts', dose.ownerUserId, dose.elderId).filter((a) => a.kind === 'dose_unconfirmed' && a.refId === doseId && a.status === 'pending').forEach((a) => alertActions.attend(a.id));
-    return dose;
+    return answerDose(doseId, 'taken', by);
   },
   snooze(doseId: string, by: Role) {
     const dose = db.get('doses', doseId);
-    if (!dose) return undefined;
+    if (!dose || dose.deletedAt || dose.cancelledAt || dose.safetyHold || dose.status === 'taken' || dose.status === 'skipped') return undefined;
     if (by === 'elder' && dose.elderId) beat(dose.elderId, 'answer');
-    return db.update('doses', doseId, { status: 'snoozed', snoozedTo: snoozeTarget(new Date()), snoozeCount: dose.snoozeCount + 1, answeredBy: by, respondedAt: new Date().toISOString() });
+    closeDoseAlerts(dose);
+    cancelNotices(dose);
+    return writeDose(dose, { status: 'snoozed', snoozedTo: snoozeTarget(new Date()), snoozeCount: dose.snoozeCount + 1, answeredBy: by, respondedAt: new Date().toISOString() }, 'snooze', by);
   },
   skip(doseId: string, by: Role) {
-    const dose = db.get('doses', doseId);
-    if (by === 'elder' && dose?.elderId) beat(dose.elderId, 'answer');
-    return db.update('doses', doseId, { status: 'skipped', respondedAt: new Date().toISOString(), answeredBy: by });
+    return answerDose(doseId, 'skipped', by);
   },
-  /** El cuidador corrige una respuesta (vuelve a pendiente). Si la toma había descontado, se devuelve (asiento auditable). */
+  /** Una corrección conserva el historial y requiere verificar antes de pedir otra dosis. */
   reset(doseId: string) {
-    const prev = db.get('doses', doseId);
-    const med = prev ? db.get('medications', prev.medicationId) : undefined;
-    if (prev?.stockApplied && med && med.unitsOnHand !== null) {
-      db.update('medications', med.id, { unitsOnHand: Math.round((med.unitsOnHand + prev.stockApplied) * 100) / 100 });
-      db.insert('stock', { medicationId: med.id, units: prev.stockApplied, note: 'Toma corregida' }, { userId: med.ownerUserId, elderId: med.elderId });
-      const next = db.get('medications', med.id);
-      if (next) checkStock(next);
-    }
-    return db.update('doses', doseId, { status: 'pending', respondedAt: null, snoozedTo: null, answeredBy: null, stockApplied: null });
+    const dose = db.get('doses', doseId);
+    if (!dose || dose.deletedAt || dose.cancelledAt) return undefined;
+    const stockApplied = reconcileStock(dose, false);
+    closeDoseAlerts(dose);
+    cancelNotices(dose);
+    return writeDose(dose, { status: 'pending', respondedAt: null, snoozedTo: null, answeredBy: null, stockApplied, safetyHold: true }, 'reset', 'caregiver');
+  },
+  /** Cancelación de una ocurrencia: conserva su posición para que sync no la vuelva a crear. */
+  remove(doseId: string, by: Role = 'caregiver') {
+    const dose = db.get('doses', doseId);
+    if (!dose || dose.deletedAt || dose.cancelledAt) return undefined;
+    return cancelDose(dose, by);
   },
 };
 
@@ -196,7 +283,7 @@ export function evaluateAlerts(elderId: string, now: Date) {
   const { unconfirmedAfterMin } = escalationOf(db.get('elders', elderId)?.screen);
   for (const d of db.list('doses', userId, elderId).filter((x) => x.date === date)) {
     const med = meds.get(d.medicationId);
-    if (med && displayStatus(d, now, unconfirmedAfterMin) === 'unconfirmed') {
+    if (med && !med.paused && !d.cancelledAt && !d.safetyHold && displayStatus(d, now, unconfirmedAfterMin) === 'unconfirmed') {
       alertActions.raise('dose_unconfirmed', `${med.name} de las ${d.time} sigue sin confirmar.`, d.id, elderId);
     }
   }
