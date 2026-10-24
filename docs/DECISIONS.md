@@ -195,3 +195,20 @@ Implementación iniciada por Codex (hasta su límite de uso) y terminada y revis
 Ambigüedades resueltas conservadoramente según R8: una corrección a pendiente (`reset`) retiene recordatorios hasta una respuesta explícita; mover a una hora ya pasada también retiene esa ocurrencia. Editar después de una registrada informa ambigüedad para el banner sin invalidar otras posiciones diarias legítimas. Cancelar una toma conserva su posición para que sync no la recree. Restaurar un medicamento no reactiva las posiciones canceladas hoy. El historial previo ausente no se inventa: snapshot legacy conserva únicamente el estado y metadatos conocidos.
 
 Si el inventario registrado era menor que la dosis, la compensación devuelve el delta efectivamente descontado. Si se deja de registrar inventario (`null`), no se puede reconstruir un saldo desconocido: se mantiene desconocido. Una falla de cancelación nativa queda en el draft `doseSafety.cancellationFailed.<elderId>`; Claude debe mostrarla como imposibilidad de verificar avisos, sin prometer cancelación. La zona sigue siendo la local del dispositivo; modelo por paciente/viajes (A-07) requiere otra fase.
+
+## V4 Fases 0, 2, 6, 7 y 8 (interfaz, pruebas y chat)
+
+| # | Decisión | Por qué |
+|---|---|---|
+| V4-1 | Ajustes es una ruta del stack con flecha atrás (`/settings`), abierta desde el engranaje de Inicio, siempre visible. | Como pestaña oculta (V3.1) no había camino a Apariencia ni a Cerrar sesión. |
+| V4-2 | Inicio muestra las novedades en **una sola fila** (número y la más reciente) que abre Novedades; nada más se riega por la pantalla. | Pedido del dueño: "no pueden haber alertas regadas por toda la pantalla principal". |
+| V4-3 | El botón compacto mide 44 a la vista y su área táctil llega a 48 (`hitSlop`). | El brief pide 44; `fixing-accessibility` exige 48 de área táctil. |
+| V4-4 | En Opciones, el adulto mayor solo cambia **apariencia y tamaño de letra**; su rutina la define el administrador. | Brief 8.9; respeta el rol (el adulto mayor solo responde). |
+| V4-5 | Las tomas retenidas por seguridad (R8) no se le piden al adulto mayor, pero el administrador las ve en el detalle del medicamento como "Retenida: confirma antes" con el aviso "Confirma con [nombre] antes de darle otra dosis". | Que nada quede oculto para quien puede resolverlo. |
+| V4-6 | Rutina: Medicamentos, Agua, Preguntas, Citas y Contactos. Comidas, metas, chequeo y recordatorios viven en **Preguntas**; los enlaces viejos (`meals`, `activities`, `more`) se traducen solos. | Brief 8.2 sin perder funciones existentes. |
+| V4-7 | Salud ya no muestra la tarjeta de comidas. | No está en el brief 8.6 ("todo lo que no esté aquí se oculta"); los registros siguen en el detalle. |
+| V4-8 | El chip "Preguntarle cómo se siente" deja la frase escrita con 8:00 p. m. para que el administrador la ajuste antes de enviar. | Sin hora el motor no puede crearla; elegir por él sería imponer. |
+| V4-9 | "Hola" y "gracias" reciben respuesta; "es una emergencia" activa la urgencia; "quedan N pastillas" corrige existencias. | Antes: "No entendí", sin urgencia y un medicamento nuevo por error. |
+| V4-10 | En preguntas programadas, cada parte separada por " y " toma su propia hora, y la mañana o la tarde se deduce del contexto ("cada noche", "al despertar", "si ya cenó"). | Antes "a las 8 de la noche … y a las 7 de la mañana" dejaba ambas a las 7:00 a. m. |
+| V4-11 | La base local cifrada (AES-GCM) queda encendida solo en desarrollo hasta probarla en dispositivo; `app.json` no se cambió (`allowBackup`). | Menor riesgo; ver `docs/ALMACENAMIENTO_SEGURO.md`. |
+| V4-12 | No se usó el torneo de conceptos de `impeccable` ni sus imágenes: el brief fija paleta y composición pantalla por pantalla. | La skill lo reserva para mundos visuales nuevos. |

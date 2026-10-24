@@ -48,6 +48,7 @@ export default function Alerts() {
       header={<ScreenHeader title={F.title} fallback="/summary" right={<IconButton icon="sparkle" label={strings.brand.name} showLabel={false} onPress={() => router.push('/buddy' as Href)} />} />}
     >
       <Segmented
+        scroll
         label={F.title}
         value={tab}
         onChange={setTab}

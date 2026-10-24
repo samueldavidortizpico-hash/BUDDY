@@ -1,4 +1,55 @@
-# BUDDY — Sistema de diseño v2
+# BUDDY — Sistema de diseño V4
+
+Fuente única: `src/theme/index.ts`. Ningún color, tamaño ni espacio suelto en pantallas. Galería: `/dev/gallery` (solo
+desarrollo). Controles automáticos: `scripts/capture/v4-screens.mjs` (web, 360/375/390 × letra 1,0/1,3/2,0 × claro,
+oscuro y alto contraste), `scripts/check-headers.ts` y las pruebas de `src/__tests__/v4/` y `layout-v31`.
+
+## Skills aplicadas
+
+| Skill | Uso en V4 | Adaptación a React Native |
+|---|---|---|
+| `impeccable` | Dirección (modo *Operate*), piso de calidad, crítica antes y después; sin etiquetas en mayúsculas sobre títulos, sin texto en degradado, iconos de un solo trazo | El brief del dueño fijó paleta y composición: se siguió el camino "superficies dentro de un mundo establecido" (sin torneo de conceptos). Su detector es para web: se usó el control propio `v4-screens.mjs` |
+| `frontend-design` | Jerarquía por pantalla (una idea, una acción principal) | — |
+| `baseline-ui` | Espaciado de 4 pt, una acción protagonista, estados vacíos con una acción, números tabulares | Reglas de Tailwind/web no aplican |
+| `fixing-accessibility` | Contraste medido (prueba), áreas táctiles 48 (compacto 44 + 4 de área), 64–72 en el adulto mayor, nombres accesibles, letra al 200 % | Sin foco de teclado web; lectores de pantalla pendientes en dispositivo |
+| `fixing-motion-performance` | Solo `transform` y opacidad en el hilo de UI (barras de Salud, agua, chat) y movimiento reducido | Reanimated en lugar de CSS |
+
+## Tokens V4
+
+- **Tipografía (Manrope):** Display 32, H1 28, H2 22, H3 20, cuerpo 18, secundario 16, auxiliar 14, barra 13. Todo escala
+  con la letra de la app y del sistema (tope ×2).
+- **Espaciado:** base 4; margen de pantalla 20; separación entre secciones 24; relleno de tarjeta 20.
+- **Botón:** altura mínima 56 (adulto mayor 72); relleno horizontal 20; radio 18; etiqueta 18 en negrita y centrada que
+  puede ocupar dos líneas; icono de 22 a la izquierda. Variantes: principal (petróleo sólido, texto blanco ≥ 9:1), tonal
+  por dominio, peligro, de texto y `ghost` (superficie con borde ≥ 3:1). Compacto: 44 visibles + área táctil de 48.
+- **Fila (`Row`):** texto con `flex: 1` y `minWidth: 0`; la acción nunca se encoge pero no pasa de la mitad del ancho; si
+  el ancho efectivo (px ÷ escala de letra) baja de 340, la acción baja a ancho completo.
+- **Tarjeta:** radio 24, relleno 20, sombra suave, borde fino; variante de estado: menta (todo bien), ámbar suave
+  (atención), coral (acción necesaria) y gris (sin datos), con texto ≥ 4,5:1 medido en prueba.
+- **Encabezado:** flecha atrás de 48 en toda pantalla no raíz; título H2 centrado de hasta dos líneas; acción a la
+  derecha; avatar opcional (chat).
+- **Mosaicos de icono (`IconTile`):** colores vivos por dominio (medicamento coral, agua azul, ánimo violeta, sueño
+  índigo, actividad menta, comida y seguimiento ámbar), glifo ≥ 3:1 medido en prueba. Con letra muy grande se ocultan
+  para dejar el ancho al texto.
+- **Barra del administrador:** Inicio, Salud, BUDDY, Ubicación y Rutina; BUDDY es un círculo menta de 64 elevado con la
+  bolita roja de novedades que abre el chat a pantalla completa; etiquetas de 13 siempre visibles.
+
+## Composición por pantalla (brief de 5 líneas)
+
+| Pantalla | Para qué | Lo primero | Acción principal | Color | Movimiento |
+|---|---|---|---|---|---|
+| Inicio | Saber en un segundo si está bien | Estado héroe | Llamar (si no está bien) | Estado | Entrada suave |
+| Adulto mayor | Hacer una sola cosa | Tarjeta "Ahora" | Ya lo tomé (72) | Dominio de la tarea | Robot que saluda o celebra |
+| Detalle de medicamento | Revisar y corregir un medicamento | Datos y "Hoy" | Marcar como tomado | Coral | Ninguno |
+| Chat | Configurar hablando | Saludo y 6 acciones | Enviar | Menta y petróleo | Entrada de burbujas, "escribiendo" |
+| Rutina | Ver todo lo programado | Segmentos | + Agregar | Por dominio | Nuevo elemento se desliza |
+| Salud | Ver tendencias | Medicamentos | Ver detalle | Por dominio | Barras y agua animadas |
+| Ubicación | Saber dónde está | Mapa | Llamar | Menta | Ninguno |
+| Ajustes | Cambiar preferencias | Lista agrupada | — | Neutro | Ninguno |
+
+---
+
+## Historial: sistema de diseño v2
 
 Fuente única: `src/theme/index.ts`. Ningún componente nuevo usa colores, medidas ni sombras sueltas.
 Estado: **incremento 1** (sistema visual + bienvenida + "Ahora") implementado y revisado con capturas.

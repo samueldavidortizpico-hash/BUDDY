@@ -49,3 +49,15 @@ describe.each(Object.values(themes).map((t) => [t.name, t] as const))('tema %s',
     if (!theme.hc) expect(contrast('#FFFFFF', theme.c.mintDeep)).toBeGreaterThanOrEqual(3);
   });
 });
+
+// V4: mosaicos de icono (glifo ≥ 3:1) y tarjetas de estado del Inicio (texto ≥ 4,5:1).
+describe.each(['light', 'dark'] as const)('V4 %s', (name) => {
+  const t = themes[name];
+  it.each(Object.entries(t.tiles))('mosaico %s ≥ 3:1', (_k, tile) => {
+    expect(contrast(tile.fg, tile.bg)).toBeGreaterThanOrEqual(3);
+  });
+  it.each(Object.entries(t.status))('estado %s: texto ≥ 4,5:1', (_k, st) => {
+    expect(contrast(st.text, st.bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(st.muted, st.bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});

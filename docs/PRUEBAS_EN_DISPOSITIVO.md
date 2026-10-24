@@ -179,3 +179,32 @@ Verificación completa (Hito 8).
 4. En Android Expo Go, confirma que no aparece un total diario/semanal inventado; se informa que el histórico requiere Health Connect. La integración de Health Connect se prueba después en development build.
 5. En un build instalable, configura productos de sandbox y claves públicas RevenueCat solo fuera del repositorio; prueba compra, cancelación, restauración y expiración. No usar claves secretas en el cliente.
 6. Repite Plus y Conectar reloj con letra BUDDY máxima, fontScale 1.0/1.3/2.0, anchos 360/375/390 y VoiceOver/TalkBack. Estas comprobaciones físicas siguen pendientes.
+
+## Ronda V4: lista exacta para probar en el iPhone (rama `v4`)
+
+Preparar: Ajustes del iPhone > Accesibilidad > Pantalla y tamaño del texto > Texto más grande **al máximo**; en BUDDY,
+Ajustes > Apariencia > Tamaño de letra "Máximo (200 %)". Repetir en claro, oscuro y alto contraste.
+
+1. **Ajustes y salida (Fase 0):** Inicio > engranaje "Ajustes" visible antes y después de registrar a la persona;
+   Ajustes > Apariencia (tema y letra con vista previa); Ajustes > Cuenta > "Cerrar sesión" pide confirmación y sale.
+2. **Adulto mayor:** "Opciones" (engranaje con la palabra) visible arriba a la derecha; Opciones > Cerrar sesión con
+   confirmación; Opciones > Entrar como administrador con la contraseña del administrador; "Olvidé la contraseña".
+3. **Textos letra por letra (error 4):** con letra al máximo, revisar que ningún texto quede en una columna de una
+   letra: aviso "Compartiendo ubicación", respuestas del chat, Ajustes > Personas, filas "Hoy" del medicamento.
+4. **Botones (error 6):** "Llamar a [nombre]", "Confirmar" del chat, "Marcar como tomado" (baja debajo de la hora en
+   pantallas angostas), "Registrar compra" y "Corregir existencias" apilados; "Editar" pequeño en el encabezado.
+5. **Recuadro amarillo "Cerrar" (error 7):** abrir la pantalla del adulto mayor en Expo Go y anotar si aparece; si
+   aparece, tomar captura (sospecha: aviso de desarrollo de Expo Go).
+6. **Barra:** BUDDY en el centro (círculo menta de 64 con bolita roja si hay novedades) abre el chat a pantalla completa;
+   "Ubicación" se lee completa en un iPhone SE o mini.
+7. **Chat con teclado:** el compositor queda sobre el teclado; flecha atrás visible; "BUDDY está escribiendo";
+   "pregúntale a las 8 de la noche cómo se siente y a las 7 de la mañana cómo durmió" crea las dos con su hora y se ven
+   en Rutina > Preguntas.
+8. **Medicamentos (Fase 1):** confirmar la toma de las 8:00, cambiar la hora a las 9:00 y comprobar que **no** aparece
+   otra pendiente hoy ni llega aviso a las 9:00; "Tomé" → "No tomé" devuelve la existencia una sola vez.
+9. **Notificaciones:** aviso a la hora, segundo aviso a los 10 minutos, "sin confirmar" a los 30 en el Inicio del
+   administrador; al responder se cancelan. Probar una toma a las 23:50 (el aviso de seguimiento debe salir a las 00:20).
+10. **Permisos:** Opciones > Permisos muestra el estado real de avisos, ubicación y cámara; al cambiarlos en el sistema y
+    volver, el administrador ve la novedad "Cambió un permiso en su celular".
+11. **Almacenamiento cifrado (desarrollo):** abrir con datos existentes en Expo Go (migra), cerrar y abrir (lee lo
+    cifrado), y comprobar que los datos siguen.

@@ -48,6 +48,20 @@ Jest; lo que necesita un dispositivo está en `docs/PRUEBAS_EN_DISPOSITIVO.md`; 
 | Seguridad y legal | Antes de la beta (`docs/SECURITY.md`) | Revisión legal en Colombia |
 | Piloto con familias | Metas a validar de `docs/PRODUCTO.md` | Lo anterior |
 
+## Ronda V4 (2026-10-23, rama `v4`, sin unir a `main`)
+
+| Fase | Estado | Evidencia |
+|---|---|---|
+| 0. Regresión (Ajustes, Apariencia, cerrar sesión, Opciones) | Hecho y probado en Jest | `docs/AUDITORIA_V4.md` |
+| 1. Seguridad de medicamentos (F-01, F-06, F-07, F-08, A-10; R1–R8) | Hecho y probado en Jest (3 zonas horarias) | OpenSpec `corregir-edicion-horario-tomas` |
+| 2. Pruebas estables y recordatorios con reloj simulado | Hecho; corrige el aviso de las 23:50 | `src/__tests__/v4/recordatorios.test.ts` |
+| 3. Almacenamiento cifrado (AES-GCM, bandera) | Hecho; solo en desarrollo hasta probar en dispositivo | `docs/ALMACENAMIENTO_SEGURO.md` |
+| 4 y 5. Sincronización y avisos remotos | Solo diseño | `docs/SINCRONIZACION.md`, `docs/NOTIFICACIONES_REMOTAS.md` |
+| 6 y 7. Sistema de diseño V4 y rediseño de pantallas | Hecho; control web en 3 anchos × 3 tamaños × 3 temas | `docs/DESIGN_SYSTEM.md`, `docs/capturas/v4/` |
+| 8. Chat que se entiende y actúa | Hecho: 39/40 guía, 40/40 automatizaciones | `docs/VOZ_DE_BUDDY.md` |
+| 10. Revisión de BUDDY Plus | Solo documento | `docs/BUDDY_PLUS_REVISION.md` |
+| Falta | Probar en iPhone (`docs/PRUEBAS_EN_DISPOSITIVO.md`), backend, avisos remotos, zona horaria por persona (A-07) | — |
+
 ## Historial
 
 ### Ronda V3.1 en curso (2026-10-23)

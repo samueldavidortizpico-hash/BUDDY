@@ -6,7 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SystemUI from 'expo-system-ui';
 import { createContext, useContext, useEffect, type ReactNode } from 'react';
-import { useColorScheme } from 'react-native';
+import { PixelRatio, useColorScheme } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -74,6 +74,11 @@ export function ThemeOverride({ name, textScale, children }: { name: ThemeName; 
 
 export function useTheme(): Theme {
   return useContext(ThemeContext).theme;
+}
+
+/** Letra muy grande (app × sistema ≥ 1,6): los iconos decorativos ceden su espacio al texto. */
+export function useBigText(): boolean {
+  return useContext(ThemeContext).textScale * PixelRatio.getFontScale() >= 1.6;
 }
 
 export function useTextScaleFactor(): number {

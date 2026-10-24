@@ -21,7 +21,7 @@ import { useFeed } from '@/state/feed';
 
 const PILL_W = 60;
 const PILL_H = 34;
-const INSET = spacing.xs;
+const INSET = spacing.xxs;
 
 /** Espacio que ocupa la barra flotante desde abajo: las pantallas de pestañas lo reservan al final de su contenido. */
 export function tabBarSpace(insetBottom: number) {
@@ -192,7 +192,7 @@ export function BottomTabBar({
                       <BuddyRobot size={46} compact mood="idle" flying={false} shadow={false} glow={false} navigationIndependent />
                       {unread ? <View style={s.dot} accessibilityElementsHidden importantForAccessibility="no" /> : null}
                     </View>
-                    <AppText variant="tab" color={t.c.text} numberOfLines={1} maxScale={1.1} style={styles.label}>BUDDY</AppText>
+                    <AppText variant="tab" color={t.c.text} numberOfLines={1} maxScale={1} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.label}>BUDDY</AppText>
                   </Pressable>
                 ) : null}
                 <Pressable
@@ -205,7 +205,7 @@ export function BottomTabBar({
                   style={s.item}
                 >
                   <TabIcon name={icons[route.name] ?? 'home'} focused={focused} />
-                  <AppText variant="tab" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1.1} style={styles.label}>
+                  <AppText variant="tab" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.label}>
                     {label}
                   </AppText>
                 </Pressable>
@@ -234,12 +234,12 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({ iconWrap: { height: PILL_H, justifyContent: 'center' }, label: { letterSpacing: 0, textTransform: 'none' } });
+const styles = StyleSheet.create({ iconWrap: { height: PILL_H, justifyContent: 'center' }, label: { letterSpacing: -0.2, textTransform: 'none' } });
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
     // Flota sobre el contenido (las pantallas reservan `tabBarSpace` al final).
-    outer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: spacing.md, paddingTop: spacing.xs },
+    outer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: spacing.xs, paddingTop: spacing.xs },
     bar: {
       flexDirection: 'row',
       alignItems: 'flex-end',
@@ -262,7 +262,7 @@ const useStyles = makeStyles((t) =>
       borderWidth: t.hc ? 2 : 0,
       borderColor: t.c.text,
     },
-    item: { flex: 1, alignItems: 'center', gap: 2, minHeight: touch.tabBar - 8, paddingTop: 8, paddingBottom: 6, paddingHorizontal: 2 },
+    item: { flex: 1, alignItems: 'center', gap: 2, minHeight: touch.tabBar - 8, paddingTop: 8, paddingBottom: 6, paddingHorizontal: 0 },
     centerItem: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', minHeight: touch.tabBar - 8, paddingBottom: 6, paddingHorizontal: 2 },
     centerOrb: {
       width: touch.orb,

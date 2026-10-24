@@ -41,7 +41,7 @@ export function WaterToday({ elder }: { elder: Elder }) {
             return <View key={`${time}-${i}`} accessible accessibilityLabel={label} style={s.waterGlass}>
               <Icon name="drop" size={20} color={status === 'taken' ? t.c.success : status === 'missed' ? t.c.danger : t.domains.water.muted} />
               <Icon name={status === 'taken' ? 'check' : status === 'missed' ? 'close' : 'clock'} size={15} color={status === 'taken' ? t.c.success : status === 'missed' ? t.c.danger : t.domains.water.muted} />
-              <AppText variant="caption" color={t.domains.water.text} style={s.tabular}>{time}</AppText>
+              <AppText variant="caption" color={t.domains.water.text} style={s.tabular} maxScale={1.4}>{time}</AppText>
             </View>;
           })}
         </View> : <AppText variant="secondary" color={t.domains.water.muted}>Aún no hay tomas de agua programadas.</AppText>}
@@ -59,6 +59,6 @@ const useStyles = makeStyles(() =>
     waterHistoryBody: { padding: spacing.lg, gap: spacing.sm },
     waterHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
     waterGlasses: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-    waterGlass: { minWidth: 56, alignItems: 'center', justifyContent: 'center', gap: 2, padding: spacing.xs, borderRadius: radius.md },
+    waterGlass: { minWidth: 72, alignItems: 'center', justifyContent: 'center', gap: 2, padding: spacing.xs, borderRadius: radius.md },
   }),
 );

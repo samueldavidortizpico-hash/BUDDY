@@ -10,7 +10,7 @@ import { strings } from '@/i18n';
 import { useActiveElder } from '@/state/data';
 import { useSession } from '@/state/session';
 import { radius, spacing, touch, type Domain } from '@/theme';
-import { makeStyles, useTheme } from '@/theme/provider';
+import { makeStyles, useBigText, useTheme } from '@/theme/provider';
 
 const S = strings.settings;
 
@@ -27,6 +27,7 @@ export default function Settings() {
   const s = useStyles();
   const user = useSession((x) => x.user);
   const elder = useActiveElder();
+  const big = useBigText();
   const groups: Item[][] = [
     [
       { key: 'account', icon: 'user', domain: 'petrol', label: S.sections.account },
@@ -50,7 +51,7 @@ export default function Settings() {
     // Ruta propia con flecha atrás (V4): como pestaña oculta no había forma de llegar a Apariencia (docs/AUDITORIA_V4.md).
     <ScreenContainer header={<ScreenHeader title={S.title} fallback="/summary" />}>
       {user ? (
-        <AppText variant="secondary" color={t.c.muted} style={s.head}>
+        <AppText variant="secondary" color={t.c.muted} style={s.head} maxScale={1.4}>
           {`${user.name} · ${user.email}`}
         </AppText>
       ) : null}
@@ -65,7 +66,7 @@ export default function Settings() {
                 accessibilityLabel={r.label}
                 style={({ pressed }) => [s.row, i > 0 && s.divider, pressed && { opacity: 0.8 }]}
               >
-                <IconTile icon={r.icon} domain={r.domain} size={40} />
+                {big ? null : <IconTile icon={r.icon} domain={r.domain} size={40} />}
                 <AppText variant="bodyStrong" style={s.flex}>
                   {r.label}
                 </AppText>

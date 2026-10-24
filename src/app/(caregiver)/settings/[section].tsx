@@ -164,7 +164,7 @@ function Appearance() {
         </View>
       </Card>
       <AppText variant="secondaryStrong">{S.mode}</AppText>
-      <Segmented label={S.mode} value={mode} onChange={(m: AppearanceMode) => set({ mode: m })} options={(['auto', 'light', 'dark'] as AppearanceMode[]).map((k) => ({ key: k, label: S.modes[k] }))} />
+      <Segmented scroll label={S.mode} value={mode} onChange={(m: AppearanceMode) => set({ mode: m })} options={(['auto', 'light', 'dark'] as AppearanceMode[]).map((k) => ({ key: k, label: S.modes[k] }))} />
       <Row label={S.contrast} hint={S.contrastHint} value={hc} onChange={(v) => set({ highContrast: v })} />
       <AppText variant="secondaryStrong">{S.textSize}</AppText>
       <View style={s.wrap}>
@@ -532,7 +532,7 @@ const useStyles = makeStyles((t) =>
     stack: { gap: spacing.md },
     wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     center: { alignItems: 'center', gap: spacing.xs },
-    previewCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    previewCard: { alignItems: 'flex-start', gap: spacing.sm },
     personRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md },
     personHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },

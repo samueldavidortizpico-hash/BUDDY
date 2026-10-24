@@ -25,7 +25,7 @@ import { useRecord, useRecords } from '@/state/data';
 import { useDb } from '@/infrastructure/local/db';
 import { useNow } from '@/hooks/use-now';
 import { radius, spacing } from '@/theme';
-import { makeStyles, useTheme } from '@/theme/provider';
+import { makeStyles, useBigText, useTheme } from '@/theme/provider';
 import { formatClock, formatRelativeDay, parseISODate, toISODate } from '@/utils/dates';
 
 const M = strings.meds;
@@ -39,6 +39,7 @@ export default function MedicationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const med = useRecord('medications', id);
   const doses = useRecords('doses', { elderId: med?.elderId ?? null }).filter((d) => d.medicationId === id);
+  const big = useBigText();
   const elderName = useDb((x) => (med?.elderId ? x.elders[med.elderId]?.firstName : undefined)) ?? strings.location.yourFamily;
   const [buy, setBuy] = useState(false);
   const [fix, setFix] = useState(false);
@@ -81,7 +82,7 @@ export default function MedicationDetail() {
         <Card style={s.block}>
           {med.photoUri ? <Image source={{ uri: med.photoUri }} style={s.photo} contentFit="cover" accessibilityLabel={M.photo} /> : null}
           <View style={s.dataHead}>
-            <IconTile icon="meds" domain="medication" size={56} />
+            {big ? null : <IconTile icon="meds" domain="medication" size={56} />}
             <View style={s.flex}>
               <AppText variant="h3">{doseText(med)}</AppText>
               {med.strength ? <AppText variant="secondary" color={t.c.muted}>{`${M.strength}: ${med.strength}`}</AppText> : null}
@@ -140,7 +141,7 @@ export default function MedicationDetail() {
         </Card>
 
         <Card style={s.block}>
-          <AppText variant="h3">{M.pharmaTitle}</AppText>
+          <AppText variant="h3" maxScale={1.5}>{M.pharmaTitle}</AppText>
           <AppText variant="secondary" color={t.c.muted}>
             {M.pharmaBody}
           </AppText>

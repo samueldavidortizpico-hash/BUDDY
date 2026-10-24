@@ -15,7 +15,7 @@ import { MetricBody, useHealth, type MetricKey } from '@/features/health/metrics
 import { WaterToday } from '@/features/health/water-today';
 import { strings } from '@/i18n';
 import { spacing, type Domain } from '@/theme';
-import { makeStyles, useTheme } from '@/theme/provider';
+import { makeStyles, useBigText, useTheme } from '@/theme/provider';
 import { PlusLock } from '@/components/plus-lock';
 import { useIsPlus } from '@/state/entitlements';
 
@@ -36,6 +36,7 @@ export default function Health() {
   const s = useStyles();
   const [period, setPeriod] = useState<Period>('day');
   const data = useHealth(period);
+  const big = useBigText();
 
   if (!data.elder?.setupDone) {
     return (
@@ -65,7 +66,7 @@ export default function Health() {
             ) : (
               <Card onPress={() => router.push({ pathname: '/health/[metric]', params: { metric: m.key } })} accessibilityLabel={m.title} style={s.card}>
                 <View style={s.cardHead}>
-                  <IconTile icon={m.icon} domain={m.domain} />
+                  {big ? null : <IconTile icon={m.icon} domain={m.domain} />}
                   <AppText variant="h3" style={s.flex}>{m.title}</AppText>
                   <Icon name="chevron" color={t.c.muted} />
                 </View>
@@ -76,7 +77,7 @@ export default function Health() {
         ))}
         <Card style={s.card} onPress={isPlus ? () => router.push('/health/watch') : undefined} accessibilityLabel={H.stepsWatch}>
           <View style={s.cardHead}>
-            <IconTile icon="watch" domain="activity" />
+            {big ? null : <IconTile icon="watch" domain="activity" />}
             <AppText variant="h3" style={s.flex}>{H.stepsWatch}</AppText>
             {isPlus ? <Icon name="chevron" color={t.c.muted} /> : null}
           </View>

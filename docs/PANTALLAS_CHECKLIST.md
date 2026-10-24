@@ -147,3 +147,18 @@ Pasos manuales de navegación: `docs/PRUEBAS_EN_DISPOSITIVO.md`, sección “Ron
 - [x] La pantalla Plus declara precios pendientes, términos y restauración; no recoge tarjetas ni afirma una prueba activa.
 - [x] El podómetro no presenta valores de ejemplo; el conteo aparece solo cuando el sistema devuelve una lectura.
 - [ ] Revisar lector de pantalla y texto al 200 % en Plus y Conectar reloj.
+
+## Ronda V4
+
+| Pantalla | Brief V4 | Web (Jest + control visual) | iPhone |
+|---|---|---|---|
+| Inicio | Saludo, campana, Ajustes; persona; estado héroe; una fila de novedades; Hoy en 3 mosaicos; próximo y última señal | Hecho | Pendiente |
+| Adulto mayor | Saludo H1 y fecha; Opciones con palabra; "Ahora" centrado (96/28/40, botones 72 y 56); Más tarde hoy; Llamar y Pedir ayuda de 64 | Hecho | Pendiente |
+| Opciones y Permisos | Ruta completa; permisos (avisos, ubicación, cámara); letra y apariencia; entrar como administrador; cerrar sesión con confirmación | Hecho | Pendiente |
+| Detalle de medicamento | Nombre en el encabezado, Editar compacto, datos, Hoy con filas que bajan el botón, aviso R8, existencias apiladas, historial con iconos | Hecho | Pendiente |
+| Chat | Avatar, "Asistente de [nombre]", 6 acciones, burbujas, escribiendo, tarjeta fija, compositor anclado | Hecho | Pendiente (teclado) |
+| Rutina | Medicamentos, Agua, Preguntas, Citas, Contactos; chips de horas; + Agregar | Hecho | Pendiente |
+| Salud | Tarjetas a ancho completo; adherencia; 7 días de ánimo y sueño; vasos de agua animados; pasos y reloj | Hecho | Pendiente |
+| Ubicación | Mapa arriba; Llamar principal y Cómo llegar; vacío con el robot | Hecho | Pendiente (mapa nativo) |
+| Ajustes | Lista agrupada; Cuenta; Personas; Apariencia; Avisos para mí; Plan; Privacidad y legal; Avanzado; Acerca de | Hecho | Pendiente |
+| Vista de [nombre] | Banner, flecha atrás, Cambiar a la cuenta de [nombre] | Hecho | Pendiente |
