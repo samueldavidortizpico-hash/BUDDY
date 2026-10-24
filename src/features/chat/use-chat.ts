@@ -20,6 +20,7 @@ import { interpretAutomationCommand, type AutomationKind } from '@/domain/assist
 import { parseTimes } from '@/domain/assistant/parse';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
+import { formatClock } from '@/utils/dates';
 import { SUGGESTIONS, answerQuery, context, conversation, draftActions, interpret, isDraftable, type ExecResult, type RoutineSegment } from '@/state/assistant';
 import { useActiveElder, useUserId } from '@/state/data';
 import { computeFeed } from '@/state/feed';
@@ -27,6 +28,7 @@ import { successHaptic } from '@/utils/haptics';
 import { automationActions } from '@/state/automations';
 
 const B = strings.buddy;
+const A = strings.buddy.auto;
 const K = strings.knowledge;
 
 /** Mensaje con la tarjeta de información verificada de un producto del registro. */
@@ -212,32 +214,32 @@ export function useBuddyChat(h: ChatHandlers) {
         const chosen = context().medicationNames.find((name) => normalizeText(name) === normalizeText(msg));
         const med = pending.kind === 'medication_alert' && chosen && elder && userId ? db.list('medications', userId, elder.id).find((m) => m.name === chosen) : undefined;
         const time = pending.time || (med?.schedule.kind === 'times' ? med.schedule.times[0] : med?.schedule.from) || parseTimes(msg)[0];
-        if (pending.kind === 'medication_alert' && !med) return reply('Elige uno de los medicamentos registrados para crear el aviso.', { quickReplies: context().medicationNames.slice(0, 4) });
-        if (!time) return reply('Elige una hora para esta pregunta.', { quickReplies: ['7:00 a. m.', '8:00 a. m.', '8:00 p. m.'] });
+        if (pending.kind === 'medication_alert' && !med) return reply(A.pickMedAgain, { quickReplies: context().medicationNames.slice(0, 4) });
+        if (!time) return reply(A.pickTime, { quickReplies: ['7:00 a. m.', '8:00 a. m.', '8:00 p. m.'] });
         awaitingAutomation.current = null;
         const created = automationActions.create(pending.kind, time, med?.id);
-        return reply(created ? `Listo. ${created.title} quedó a las ${created.time} en Rutina > Automatizaciones.` : 'No pude guardar esa automatización.');
+        return reply(created ? A.created(A.item(created.title, formatClock(created.time))) : A.saveError);
       }
       conversation.add('user', msg);
       const automation = interpretAutomationCommand(msg);
       if (automation) {
         if (automation.type === 'list') {
           const rows = automationActions.list();
-          return reply(rows.length ? rows.map((r) => `${r.automation?.enabled ? 'Activa' : 'Pausada'} · ${r.title} · ${r.time}`).join('\n') : 'Aún no hay automatizaciones registradas.');
+          return reply(rows.length ? A.list(rows.map((r) => A.row(r.title, formatClock(r.time), !!r.automation?.enabled))) : A.none);
         }
         if (automation.type === 'pause' || automation.type === 'resume') {
           const updated = automationActions.setEnabled(automation.kind, automation.type === 'resume');
-          return reply(updated ? `${updated.title}: ${automation.type === 'pause' ? 'pausada' : 'activa'} en Rutina > Automatizaciones.` : 'No encontré esa automatización. Aún no hay registros para cambiar.');
+          return reply(updated ? (automation.type === 'pause' ? A.paused(updated.title) : A.resumed(updated.title)) : A.notFound);
         }
         if (automation.type === 'set_time') {
           const updated = automationActions.setTime(automation.kind, automation.time);
-          return reply(updated ? `Listo: ${updated.title} quedó a las ${updated.time}. Puedes verla en Rutina > Automatizaciones.` : 'No encontré esa automatización. Aún no hay registros para cambiar.');
+          return reply(updated ? A.moved(updated.title, formatClock(updated.time)) : A.notFound);
         }
         if (automation.type === 'delete') {
           const item = automationActions.list().find((r) => r.automation?.kind === automation.kind);
-          if (!item) return reply('No encontré esa automatización. Aún no hay registros para borrar.');
+          if (!item) return reply(A.notFound);
           automationActions.remove(item.id);
-          return reply(`Listo: quité “${item.title}” de Rutina > Automatizaciones.`);
+          return reply(A.removed(item.title));
         }
         const missing = automation.items.find((item) => {
           const med = item.medication && elder && userId ? db.list('medications', userId, elder.id).find((m) => normalizeText(m.name).includes(normalizeText(item.medication!))) : undefined;
@@ -246,7 +248,7 @@ export function useBuddyChat(h: ChatHandlers) {
         if (missing) {
           awaitingAutomation.current = { kind: missing.kind, time: missing.time || undefined };
           const isMed = missing.kind === 'medication_alert';
-          return reply(isMed ? '¿A cuál medicamento le ponemos el aviso?' : '¿A qué hora quieres que BUDDY pregunte?', { quickReplies: isMed ? context().medicationNames.slice(0, 4) : ['7:00 a. m.', '8:00 a. m.', '8:00 p. m.'] });
+          return reply(isMed ? A.pickMed : A.pickTime, { quickReplies: isMed ? context().medicationNames.slice(0, 4) : ['7:00 a. m.', '8:00 a. m.', '8:00 p. m.'] });
         }
         const made = automation.items.map((item) => {
           const med = item.medication && elder && userId ? db.list('medications', userId, elder.id).find((m) => normalizeText(m.name).includes(normalizeText(item.medication!))) : undefined;
@@ -256,10 +258,10 @@ export function useBuddyChat(h: ChatHandlers) {
         const medRequest = msg.split(/\by\s+(?:preg[uú]nt|avis|recuerd)/i)[0];
         const combined = interpret(medRequest).actions.filter((a) => a.type === 'add_medication');
         if (combined.length) {
-          if (made.length) conversation.add('buddy', `Listo. ${made.map((r) => `${r.title} a las ${r.time}`).join(' y ')}. También estoy preparando el medicamento en esta conversación.`);
+          if (made.length) conversation.add('buddy', A.combined(made.map((r) => A.item(r.title, formatClock(r.time))).join(' y ')));
           return startDraft(combined);
         }
-        return reply(made.length ? `Quedó guardada en Rutina > Automatizaciones. El aviso se programa en el celular del adulto mayor cuando abra BUDDY.` : 'No pude guardar esa automatización.');
+        return reply(made.length ? A.created(made.map((r) => A.item(r.title, formatClock(r.time))).join(' y ')) : A.saveError);
       }
       if (awaitingMed.current) {
         awaitingMed.current = false;
@@ -267,6 +269,8 @@ export function useBuddyChat(h: ChatHandlers) {
       }
       const r = interpret(msg);
       if (!r.understood) return showMenu(B.notUnderstoodMenu, EXAMPLES.slice(0, 3));
+      // Saludo o agradecimiento: el intérprete responde sin acciones (V4).
+      if (!r.actions.length) return reply(r.reply ?? B.menuIntro);
       const first = r.actions[0];
       if (first.type === 'show_menu') return showMenu(B.menuIntro);
       if (first.type === 'medication_info') return medInfo(first.name);

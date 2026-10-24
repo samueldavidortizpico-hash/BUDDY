@@ -21,6 +21,7 @@ export function ScreenHeader({
   fallback = '/',
   onClose,
   right,
+  leading,
   showBack = true,
 }: {
   title: string;
@@ -30,6 +31,8 @@ export function ScreenHeader({
   fallback?: Href;
   onClose?: () => void;
   right?: ReactNode;
+  /** Avatar junto al título (chat de BUDDY): el título se alinea a la izquierda, al lado del avatar. */
+  leading?: ReactNode;
   /** Solo raíces de pestaña antiguas: sin flecha. */
   showBack?: boolean;
   /** @deprecated la etiqueta accesible es siempre "Volver". */
@@ -61,16 +64,19 @@ export function ScreenHeader({
       >
         <Icon name="back" size={28} color={t.c.text} strokeWidth={2.2} />
       </Pressable> : <View style={s.spacer} />}
-      <View style={s.center}>
-        {/* V4: H2 de hasta 2 líneas. Tope ×1.5: con texto al 200 % el título partía palabras y quedaba cortado. */}
-        <AppText variant="h2" align="center" accessibilityRole="header" numberOfLines={2} maxScale={1.5}>
-          {title}
-        </AppText>
-        {subtitle ? (
-          <AppText variant="caption" color={t.c.muted} align="center" numberOfLines={1} maxScale={1.5}>
-            {subtitle}
+      <View style={[s.center, leading ? s.withLeading : null]}>
+        {leading}
+        <View style={s.titles}>
+          {/* V4: H2 de hasta 2 líneas. Tope ×1.5: con texto al 200 % el título partía palabras y quedaba cortado. */}
+          <AppText variant="h2" align={leading ? 'left' : 'center'} accessibilityRole="header" numberOfLines={2} maxScale={1.5}>
+            {title}
           </AppText>
-        ) : null}
+          {subtitle ? (
+            <AppText variant="caption" color={t.c.muted} align={leading ? 'left' : 'center'} numberOfLines={2} maxScale={1.5}>
+              {subtitle}
+            </AppText>
+          ) : null}
+        </View>
       </View>
       <View style={s.side}>
         {right}
@@ -100,6 +106,8 @@ const useStyles = makeStyles((t) =>
     spacer: { width: touch.min, height: touch.min },
     pressed: { opacity: 0.7 },
     center: { flex: 1, minWidth: 0 },
+    withLeading: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    titles: { flex: 1, minWidth: 0 },
     side: { minWidth: touch.min, flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs },
   }),
 );

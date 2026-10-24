@@ -1,4 +1,4 @@
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -7,6 +7,7 @@ import { Icon } from '@/components/icon';
 import { LocationMap, MAP_ATTRIBUTION } from '@/components/location-map';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
+import { BuddyRobot } from '@/components/robot';
 import { locationView } from '@/domain/location';
 import { useNow } from '@/hooks/use-now';
 import { strings } from '@/i18n';
@@ -33,6 +34,7 @@ export default function LocationScreen() {
   const now = useNow(60_000);
   const elder = useActiveElder();
   const fixes = useRecords('locations');
+  const { height } = useWindowDimensions();
   if (!elder) return null;
   const name = elder.firstName;
   const v = locationView(elder, fixes, now);
@@ -43,7 +45,8 @@ export default function LocationScreen() {
       <View style={s.stack}>
         {v.kind === 'located' ? (
           <>
-            <LocationMap lat={v.last.lat} lng={v.last.lng} accuracy={v.last.accuracy} label={L.title(name)} />
+            {/* Mapa en la mitad superior (V4). */}
+            <LocationMap lat={v.last.lat} lng={v.last.lng} accuracy={v.last.accuracy} label={L.title(name)} height={Math.max(260, Math.round(height * 0.42))} />
             <AppText variant="caption" color={t.c.muted}>{MAP_ATTRIBUTION}</AppText>
             <Card style={s.stack}>
               <AppText variant="h3">{L.last(ago(v.last.at), hm(v.last.at))}</AppText>
@@ -54,9 +57,10 @@ export default function LocationScreen() {
                   <AppText variant="secondaryStrong" style={s.flex}>{L.stale}</AppText>
                 </View>
               ) : null}
-              <View style={s.row}>
-                <Button label={L.directions} icon="location" variant="tonal" onPress={() => Linking.openURL(directionsUrl(`${v.last.lat},${v.last.lng}`))} style={s.flex} />
-                {elder.phone ? <Button label={L.call(name)} icon="phone" variant="ghost" onPress={() => Linking.openURL(`tel:${elder.phone!.replace(/[^\d+]/g, '')}`)} style={s.flex} /> : null}
+              {/* "Llamar" es la acción principal; con letra grande los dos botones se apilan (flexBasis + wrap). */}
+              <View style={s.actions}>
+                {elder.phone ? <Button label={L.call(name)} icon="phone" onPress={() => Linking.openURL(`tel:${elder.phone!.replace(/[^\d+]/g, '')}`)} style={s.action} /> : null}
+                <Button label={L.directions} icon="location" variant="tonal" tone="sky" onPress={() => Linking.openURL(directionsUrl(`${v.last.lat},${v.last.lng}`))} style={s.action} />
               </View>
             </Card>
             {v.history.length ? (
@@ -70,9 +74,7 @@ export default function LocationScreen() {
           </>
         ) : (
           <Card style={s.empty}>
-            <View style={s.illustration} importantForAccessibility="no-hide-descendants">
-              <Icon name="location" color={t.ink.mint} size={44} />
-            </View>
+            <BuddyRobot size={104} mood="look" />
             {v.kind === 'requested' ? (
               <>
                 <AppText variant="h2" align="center">{L.requested(name)}</AppText>
@@ -82,7 +84,7 @@ export default function LocationScreen() {
               <AppText variant="h3" align="center">{L.waiting(name)}</AppText>
             ) : (
               <>
-                <AppText variant="h2" align="center">{L.notShared}</AppText>
+                <AppText variant="h2" align="center">{L.askShare(name)}</AppText>
                 <AppText variant="secondary" color={t.c.muted} align="center">{L.notSharedBody[v.reason](name)}</AppText>
                 <Button label={L.request} icon="location" onPress={() => locationActions.request(elder.id)} />
               </>
@@ -101,7 +103,8 @@ const useStyles = makeStyles((t) =>
     flex: { flex: 1 },
     stack: { gap: spacing.md },
     row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    action: { flexGrow: 1, flexBasis: 160 },
     empty: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl },
-    illustration: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.mintPale, borderWidth: t.hc ? 2 : 0, borderColor: t.c.text },
   }),
 );

@@ -81,7 +81,7 @@ describe('consentimiento (matriz can)', () => {
 describe('pantallas', () => {
   it('flujo completo: solicitar → el adulto mayor acepta → el mapa aparece → revoca', async () => {
     const c = ui(<LocationScreen />);
-    expect(screen.getByText(L.notShared)).toBeTruthy();
+    expect(screen.getByText(L.askShare('Rosa'))).toBeTruthy();
     expect(screen.queryByTestId('map')).toBeNull(); // nunca un mapa sin ubicación real
     fireEvent.press(screen.getByRole('button', { name: L.request }));
     expect(screen.getByText(L.requested('Rosa'))).toBeTruthy();

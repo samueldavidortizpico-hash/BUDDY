@@ -32,14 +32,14 @@ export const EXAMPLES = [
   'Ponle una meta de caminar 15 minutos a las 5',
 ];
 
-const EMERGENCY = /\bdolor (de|en el) pecho\b|\bse (cayo|callo)\b|\bcaida\b|\bno respira\b|\bdesmay|\binconsciente\b|\bhacerse dano\b|\bquitarse la vida\b|\bsuicid|\bconvulsion|\bsangra mucho\b|\bse ahoga\b/;
+const EMERGENCY = /\bes una emergencia\b|\buna urgencia\b|\bdolor (de|en el) pecho\b|\bse (cayo|callo)\b|\bcaida\b|\bno respira\b|\bdesmay|\binconsciente\b|\bhacerse dano\b|\bquitarse la vida\b|\bsuicid|\bconvulsion|\bsangra mucho\b|\bse ahoga\b/;
 const MED_WORDS = /\b(pastillas?|tabletas?|capsulas?|medicamentos?|medicinas?|jarabe|gotas|grageas?|comprimidos?|pildoras?|inyeccion|crema|parche|\d+\s*(mg|mcg|ml|ui))\b/;
 const ADD_VERBS = /^(ponle|ponerle|pon|agrega|agregale|agregar|anade|anadele|dale|darle|programa|programale|registra|registrale|configura|configurale|anota|anotale|agenda|agendale|crea|creale|apunta|apuntale)\b/;
 /** Verbos que se corrigen si vienen mal escritos ("agraga", "progama", "ponlee"). */
 const FIXABLE_VERBS = ['ponle', 'agrega', 'agregale', 'anade', 'anadele', 'programa', 'programale', 'registra', 'configura', 'configurale', 'recuerdale', 'agenda', 'anota'];
 /** "¿Qué puedes hacer?", "ayuda": se responde con el menú de acciones. */
 const HELP = /^(ayuda|ayudame|menu|opciones|que (puedes|sabes) hacer|que haces|como funciona(s)?|como te uso|para que sirves)\b/;
-const QUESTION = /^(donde|como|cuanto|cuanta|cuantas|cuantos|que tal|tomo|comio|almorzo|ceno|durmio|ya tomo|ya comio|resumen|dime|cual|camino|hizo)\b/;
+const QUESTION = /^(donde|como|cuanto|cuanta|cuantas|cuantos|que tal|tomo|comio|almorzo|ceno|durmio|ya tomo|ya comio|resumen|dime|dame|cual|camino|hizo)\b/;
 
 /** Palabra original (con tildes) equivalente a un token normalizado, para conservar los nombres propios. */
 function original(text: string, token: string): string {
@@ -130,7 +130,7 @@ const MEALS: [RegExp, MealKind][] = [
 function queryTopic(t: string): QueryTopic | null {
   if (/recomendacion|sugerencia|novedad|alerta/.test(t)) return 'recommendations';
   if (/\bdonde (esta|anda|se encuentra)\b|\bubicacion\b/.test(t)) return 'location';
-  if (/\bresumen\b|\bcomo (va|fue|le fue|le va)\b.*\bdia\b|\bcomo va hoy\b/.test(t)) return 'day';
+  if (/\bresumen\b|\bcomo (va|fue|le fue|le va)\b.*\bdia\b|\bcomo (va|esta|le fue|le va) hoy\b/.test(t)) return 'day';
   if (/\bdurmio\b|\bsueno\b|\bdormir\b/.test(t)) return 'sleep';
   if (/\bquedan?\b|\bexistencias\b|\bcuantas (pastillas|tabletas)\b/.test(t)) return 'stock';
   if (/\banimo\b|\bcomo (se siente|esta|amanecio)\b/.test(t)) return 'mood';
@@ -176,6 +176,10 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
 
   // 1. Urgencias: siempre primero.
   if (EMERGENCY.test(t)) return { actions: [{ type: 'emergency' }], missing, reply: null, understood: true };
+
+  // 1a. Saludo y agradecimiento (V4): una respuesta corta, nunca "No entendí".
+  if (/^(hola|buenas|buenos dias|buenas tardes|buenas noches)\b/.test(t) && t.split(' ').length <= 3) return { actions, missing, reply: `¡Hola! ¿Qué hacemos hoy por ${ctx.elderName}?`, understood: true };
+  if (/^(gracias|muchas gracias|mil gracias)\b/.test(t)) return { actions, missing, reply: 'Con gusto. Aquí estoy si necesitas algo más.', understood: true };
 
   // 1b. Ayuda: el menú de acciones.
   if (HELP.test(t)) return { actions: [{ type: 'show_menu' }], missing, reply: null, understood: true };
@@ -226,6 +230,17 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
     if (match || times.length) {
       actions.push({ type: 'update_medication', match: match ?? '', times: times.length ? times : null, doseAmount: dose });
       if (!match) missing.push({ actionIndex: 0, field: 'match', question: '¿Qué medicamento quieres cambiar?', quickReplies: ctx.medicationNames.slice(0, 4), optional: false });
+      return { actions, missing, reply: null, understood: true };
+    }
+  }
+
+  // 5a. Existencias que se corrigen: "quedan 10 pastillas de losartán" (antes creaba un medicamento nuevo).
+  if (/^(le )?quedan?\b/.test(t) && !isQuestion) {
+    const units = numberBefore(t, /^(pastillas?|tabletas?|capsulas?|unidades|ml|gotas)$/);
+    const match = findName(t, ctx.medicationNames);
+    if (units !== null) {
+      actions.push({ type: 'update_stock', match: match ?? '', units, mode: 'set' });
+      if (!match) missing.push({ actionIndex: 0, field: 'match', question: '¿De qué medicamento?', quickReplies: ctx.medicationNames.slice(0, 4), optional: false });
       return { actions, missing, reply: null, understood: true };
     }
   }

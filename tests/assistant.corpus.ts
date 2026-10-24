@@ -8,7 +8,7 @@
  */
 import type { AssistantAction } from '@/domain/assistant/types';
 
-type Expected = ({ type: AssistantAction['type'] } & Record<string, unknown>) | { understood: false };
+type Expected = ({ type: AssistantAction['type'] } & Record<string, unknown>) | { understood: boolean };
 export interface CorpusCase {
   group: 'cita' | 'medicamento' | 'agua' | 'contacto' | 'meta' | 'comida' | 'consulta' | 'edicion' | 'mensaje' | 'otro';
   text: string;
@@ -187,7 +187,8 @@ export const CORPUS: CorpusCase[] = [
   c('otro', 'se cayó y no se puede levantar', { type: 'emergency' }),
   c('otro', 'tiene dolor en el pecho', { type: 'emergency' }),
   c('otro', 'escanea la caja del medicamento', { type: 'open_scan' }),
-  c('otro', 'hola', { understood: false }),
+  // V4: el saludo recibe un saludo, nunca "No entendí" (docs/VOZ_DE_BUDDY.md).
+  c('otro', 'hola', { understood: true }),
   c('otro', 'asdf qwer', { understood: false }),
 ];
 
@@ -220,5 +221,5 @@ export const HELDOUT: CorpusCase[] = [
   c('edicion', 'compré 3 cajas de losartán', { type: 'update_stock', match: 'Losartán', units: 3, boxes: true }),
   c('edicion', 'cámbiale el losartán a las 10 de la noche', { type: 'update_medication', match: 'Losartán', times: ['22:00'] }),
   c('mensaje', 'recuérdale llamar al doctor el lunes a las 9 am', { type: 'add_note_for_elder', title: 'Llamar al doctor', days: [1], time: '09:00' }),
-  c('otro', 'buenas tardes', { understood: false }),
+  c('otro', 'buenas tardes', { understood: true }),
 ];

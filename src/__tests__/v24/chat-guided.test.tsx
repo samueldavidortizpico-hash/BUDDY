@@ -51,9 +51,17 @@ async function say(text: string) {
 const chat = () => render(<RenderProviders><Buddy /></RenderProviders>);
 const userBubbles = () => db.list('messages', testUser.id, elderId).filter((m) => m.from === 'user').length;
 
-it('el chat vacío muestra el menú de 8 acciones', () => {
+it('V4: el chat vacío saluda y muestra 6 acciones rápidas; "+" abre el menú completo', async () => {
   chat();
-  for (const label of Object.values(B.menu)) expect(screen.getByRole('button', { name: label })).toBeTruthy();
+  expect(screen.getByText(B.hello('Rosa'))).toBeTruthy();
+  expect(screen.getByText(B.assistantOf('Rosa'))).toBeTruthy();
+  for (const label of [B.menu.medication, B.menu.water, B.quick.mood, B.menu.appointment, B.menu.contact, B.quick.day]) expect(screen.getByRole('button', { name: label })).toBeTruthy();
+  // "Preguntarle cómo se siente" deja la frase en el compositor para ajustar la hora antes de enviarla.
+  fireEvent.press(screen.getByRole('button', { name: B.quick.mood }));
+  expect(screen.getByLabelText(B.placeholder).props.value).toBe(B.quick.moodText('Rosa'));
+  fireEvent.press(screen.getByRole('button', { name: B.openMenu }));
+  await wait();
+  for (const label of Object.values(B.menu)) expect(screen.getAllByRole('button', { name: label }).length).toBeGreaterThan(0);
 });
 
 it('agrega un medicamento solo con respuestas predeterminadas, sin burbujas por cada respuesta', async () => {
@@ -173,7 +181,8 @@ it('crea, pausa, cambia y consulta automatizaciones desde BUDDY', async () => {
   await say('pausa la pregunta del sueño');
   expect(list('reminders').find((r) => r.id === sleep.id)?.automation?.enabled).toBe(false);
   await say('¿qué automatizaciones tiene?');
-  expect(screen.getAllByText(/Pausada · ¿Cómo dormiste\?/).length).toBeGreaterThan(0);
+  // V4: una sola frase legible, con la hora en a. m./p. m. (docs/VOZ_DE_BUDDY.md).
+  expect(screen.getAllByText(/«¿Cómo dormiste\?» a las 7:00 a\. m\. \(en pausa\)/).length).toBeGreaterThan(0);
 });
 
 it('combina un medicamento y una pregunta sin mezclar sus horas', async () => {

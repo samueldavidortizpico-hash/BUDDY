@@ -229,10 +229,20 @@ describe('cámara, sugerencias, urgencias y errores', () => {
   it.each(['Tiene dolor de pecho', 'Se cayó en el baño', 'no respira bien', 'dice que quiere hacerse daño'])('urgencia: %s', (text) => {
     expect(run(text).actions).toEqual([{ type: 'emergency' }]);
   });
-  it.each(['hola', 'asdfgh', 'gracias'])('no entiende "%s" y ofrece ejemplos', (text) => {
-    const r = run(text);
+  it('no entiende "asdfgh" y ofrece ejemplos', () => {
+    const r = run('asdfgh');
     expect(r.understood).toBe(false);
     expect(r.reply).toContain('Ponle losartán');
+  });
+  // V4: el saludo y el agradecimiento reciben una respuesta corta, no "No entendí".
+  it.each([['hola', /^¡Hola!/], ['gracias', /^Con gusto\./]] as const)('responde a "%s"', (text, reply) => {
+    const r = run(text);
+    expect(r.understood).toBe(true);
+    expect(r.reply).toMatch(reply);
+  });
+  it('"es una emergencia" activa la urgencia y "quedan 10 pastillas" corrige existencias', () => {
+    expect(run('es una emergencia').actions).toEqual([{ type: 'emergency' }]);
+    expect(run('quedan 10 pastillas de losartán').actions[0]).toMatchObject({ type: 'update_stock', units: 10, mode: 'set' });
   });
   it('nunca inventa la dosis', () => {
     expect(as(first('ponle ibuprofeno a las 8'), 'add_medication').doseAmount).toBeNull();

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 
-import { TodayPanel } from '@/features/summary/today';
+import { WaterToday } from '@/features/health/water-today';
 import Health from '@/app/(caregiver)/(tabs)/health';
 import { db } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
@@ -25,7 +25,7 @@ describe('historiales visuales de Salud', () => {
     db.insert('waterPlans', { glasses: 3, times: ['08:00', '12:00', '23:59'] }, { userId: testUser.id, elderId });
     db.insert('water', { date, at: at(8) }, { userId: testUser.id, elderId });
     const elder = db.get('elders', elderId)!;
-    render(<RenderProviders><TodayPanel elder={elder} /></RenderProviders>);
+    render(<RenderProviders><WaterToday elder={elder} /></RenderProviders>);
     expect(screen.getByText('Vasos de agua hoy')).toBeTruthy();
     expect(screen.getByLabelText('Vaso 1, 08:00, registrado')).toBeTruthy();
     expect(screen.getByLabelText('Vaso 2, 12:00, sin registro')).toBeTruthy();

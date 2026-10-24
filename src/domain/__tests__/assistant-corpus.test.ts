@@ -4,7 +4,7 @@ import { interpretText } from '../assistant/engine';
 /** ¿La interpretación cumple lo esperado? Devuelve la diferencia (vacía = acierto). */
 function diff(k: CorpusCase): string {
   const r = interpretText(k.text, CORPUS_CONTEXT);
-  if ('understood' in k.expect) return r.understood ? `entendió ${r.actions.map((a) => a.type).join(', ')}` : '';
+  if ('understood' in k.expect) return r.understood === k.expect.understood ? '' : r.understood ? `entendió ${r.actions.map((a) => a.type).join(', ')}` : 'no entendió';
   const { type, ...fields } = k.expect;
   const a = r.actions.find((x) => x.type === type) as Record<string, unknown> | undefined;
   if (!a) return `esperaba ${type}; obtuvo ${r.actions.map((x) => x.type).join(', ') || 'nada'}`;

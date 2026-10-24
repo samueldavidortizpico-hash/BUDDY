@@ -3,14 +3,14 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
-import { Bars, Face, ProgressRing } from '@/components/charts';
+import { Bars, Face } from '@/components/charts';
 import { activitySummary, adherence, answersBy, mealsSummary, moodTrend, periodDays, waterByDay, type Period } from '@/domain/health';
 import type { Answer3 } from '@/domain/types';
 import { strings } from '@/i18n';
 import { useActiveElder, useRecords } from '@/state/data';
 import { spacing, type Domain } from '@/theme';
 import { useTheme } from '@/theme/provider';
-import { dayInitial, toISODate } from '@/utils/dates';
+import { dayInitial, lastDays, toISODate } from '@/utils/dates';
 
 const H = strings.health;
 export type MetricKey = 'meds' | 'sleep' | 'mood' | 'water' | 'food' | 'activity';
@@ -35,7 +35,17 @@ export function useHealth(period: Period) {
   const checkins = useRecords('checkins');
   return useMemo(() => {
     const days = periodDays(period, today);
+    // Ánimo y sueño: siempre los últimos 7 días, una barra por día (bien 3, regular 2, mal 1, sin respuesta 0).
+    const week = lastDays(today, 7);
+    const level = { good: 3, regular: 2, bad: 1 } as const;
+    const series = (field: 'mood' | 'sleep') => week.map((d) => {
+      const a = checkins.find((c) => c.date === d)?.[field];
+      return a ? level[a] : 0;
+    });
     return {
+      week,
+      moodWeek: series('mood'),
+      sleepWeek: series('sleep'),
       days,
       elder,
       adherence: adherence(doses, days, now),
@@ -77,13 +87,14 @@ export function MetricBody({ metric, data, big = false }: { metric: MetricKey; d
     case 'meds': {
       const a = data.adherence;
       if (!a.total) return empty;
+      const pct = Math.round((a.ratio ?? 0) * 100);
       return (
-        <View style={styles.row}>
-          <ProgressRing size={big ? 112 : 72} ratio={a.ratio ?? 0} color={d.accent} label={a.ratio === null ? '—' : `${Math.round(a.ratio * 100)}%`} />
-          <View style={styles.flex}>
-            {num(a.taken, `${H.taken} de ${a.total}`)}
-            <AppText variant="caption" color={d.muted}>{`${a.snoozed} ${H.snoozed} · ${a.skipped} ${H.skipped} · ${a.unconfirmed} ${H.unconfirmed}`}</AppText>
+        <View style={styles.gap}>
+          {num(`${a.taken} de ${a.total}`, `${H.taken} · ${pct} %`)}
+          <View style={[styles.track, { backgroundColor: t.c.surface2 }]} accessible accessibilityLabel={`${pct} %`}>
+            <View style={[styles.fill, { width: `${pct}%`, backgroundColor: t.hc ? t.c.text : d.accent }]} />
           </View>
+          <AppText variant="caption" color={d.muted}>{`${a.snoozed} ${H.snoozed} · ${a.skipped} ${H.skipped} · ${a.unconfirmed} ${H.unconfirmed}`}</AppText>
         </View>
       );
     }
@@ -100,33 +111,26 @@ export function MetricBody({ metric, data, big = false }: { metric: MetricKey; d
     case 'mood':
     case 'sleep': {
       const r = metric === 'mood' ? data.mood : data.sleep;
-      if (!r.answered) return (
-        <View style={styles.gap}>
-          <AppText variant="secondary" color={d.muted}>{H.noData}</AppText>
-          <Bars values={[0, 0, 0]} max={1} color={d.accent} labels={['Bien', 'Regular', 'Mal']} labelColor={d.muted} height={40} />
-        </View>
-      );
-      const top = (['good', 'regular', 'bad'] as Answer3[]).sort((a, b) => r[b] - r[a])[0];
-      // Cara en un contenedor que no se comprime y texto que puede ocupar varias líneas (antes la palabra grande
-      // aplastaba la cara a ancho 0 en tarjetas de media columna).
+      const week = metric === 'mood' ? data.moodWeek : data.sleepWeek;
+      const top = r.answered ? (['good', 'regular', 'bad'] as Answer3[]).sort((a, b) => r[b] - r[a])[0] : null;
       return (
         <View style={styles.gap}>
-          <View style={styles.row}>
-            <View style={styles.faceBox}>
-              <Face kind={top} size={big ? 80 : 48} color={d.text} />
+          {top ? (
+            <View style={styles.row}>
+              <View style={styles.faceBox}>
+                <Face kind={top} size={big ? 64 : 40} color={d.text} />
+              </View>
+              <View style={styles.textCol}>
+                <AppText variant={big ? 'heroL' : 'h2'} color={d.text}>{strings.answers[top]}</AppText>
+                <AppText variant="secondaryStrong" color={d.muted}>{H.answers(r.answered)}</AppText>
+              </View>
             </View>
-            <View style={styles.textCol}>
-              <AppText variant={big ? 'heroL' : 'h2'} color={d.text}>
-                {strings.answers[top]}
-              </AppText>
-              <AppText variant="secondaryStrong" color={d.muted}>
-                {H.answers(r.answered)}
-              </AppText>
-            </View>
-          </View>
-          <Bars values={[r.good, r.regular, r.bad]} color={d.accent} labels={['Bien', 'Regular', 'Mal']} labelColor={d.muted} height={big ? 100 : 48} />
+          ) : (
+            <AppText variant="secondary" color={d.muted}>{H.noData}</AppText>
+          )}
+          {/* Barras de los últimos 7 días (se animan al aparecer). Sin respuesta, la barra queda vacía. */}
+          <Bars values={week} max={3} color={d.accent} labels={data.week.map(dayInitial)} labelColor={d.muted} height={big ? 96 : 48} />
           {metric === 'mood' && data.trend ? <AppText variant="caption" color={d.muted}>{H.trend[data.trend]}</AppText> : null}
-          {metric === 'sleep' ? <AppText variant="caption" color={d.muted}>{H.sleepNote}</AppText> : null}
         </View>
       );
     }
@@ -155,4 +159,6 @@ const styles = StyleSheet.create({
   gap: { gap: spacing.sm },
   faceBox: { flexShrink: 0 },
   textCol: { flex: 1, minWidth: 0 },
+  track: { height: 12, borderRadius: 6, overflow: 'hidden' },
+  fill: { height: 12, borderRadius: 6 },
 });

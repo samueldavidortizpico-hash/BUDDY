@@ -20,6 +20,23 @@ const kindFor = (s: string): AutomationKind | null => {
   return null;
 };
 
+const pad = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+/**
+ * Mañana o tarde según el contexto (V4): "cada noche a las 9" es 21:00; "cómo durmió a las 6", 06:00; "si ya cenó a
+ * las 7", 19:00. Solo cambia horas ambiguas: lo explícito ("de la mañana", "a las 20") se respeta.
+ */
+function settle(kind: AutomationKind, time: string, part: string): string {
+  if (!time) return time;
+  const [h, m] = time.split(':').map(Number);
+  if (/\b(noche|tarde)\b/.test(part)) return h < 12 ? pad(h + 12, m) : time;
+  if (/\b(manana|madrugada|despertar|temprano|am)\b/.test(part)) return h >= 12 && !/\b(1[3-9]|2[0-3])\b/.test(part) ? pad(h - 12, m) : time;
+  if (/\b(1[3-9]|2[0-3])(:|\b)/.test(part)) return time;
+  if (kind === 'sleep' && h >= 12) return pad(h - 12, m);
+  if (kind === 'meal' && /\bcen/.test(part) && h < 12) return pad(h + 12, m);
+  return time;
+}
+
 /** Intérprete local determinista; no afirma programación remota ni inventa respuestas. */
 export function interpretAutomationCommand(input: string): AutomationCommand | null {
   const s = input.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -30,27 +47,25 @@ export function interpretAutomationCommand(input: string): AutomationCommand | n
   if (/\b(reactiva|reanuda|activa de nuevo|continua)\b/.test(s)) return { type: 'resume', kind };
   if (/\b(borra|elimina|quita)\b/.test(s) && /automatizacion|pregunta/.test(s)) return { type: 'delete', kind };
   const times = parseTimes(s);
-  if (/\b(cambia|cambiale|mueve|pasa|ponla|ajusta)\b/.test(s) && /\b(a las|para las|a la)\b/.test(s) && times.length) return { type: 'set_time', kind, time: times.at(-1)! };
+  if (/\b(cambia|cambiale|mueve|pasa|ponla|ajusta)\b/.test(s) && /\b(a las|para las|a la)\b/.test(s) && times.length) return { type: 'set_time', kind, time: settle(kind, times.at(-1)!, s) };
   if (/pregunt|avis|recuerd|recordatorio/.test(s)) {
     if (kind === 'medication_alert') {
-      const medication = s.match(/(?:tome|toma|tomar|tomarse) (?:el |la )?([a-z]+(?: [a-z]+)?)/)?.[1];
+      const medication = s.match(/(?:tome|toma|tomar|tomarse) (?:el |la )?(?:pastilla |pastillas |medicamento |remedio |medicina )?(?:de |del )?([a-z]+(?: [a-z]+)?)/)?.[1];
       return { type: 'create', items: [{ kind, time: times[0] ?? '', medication, days: parseDays(s) }] };
     }
-    const matches: { kind: AutomationKind; index: number }[] = [];
-    const re = /como se siente|como te sientes|como durmio|como dormiste|emocional|tomar agua|vaso de agua|desayun|almuerz|cenar|caminata|caminar/g;
-    for (const m of s.matchAll(re)) {
-      const k = kindFor(m[0]);
-      if (k) matches.push({ kind: k, index: m.index ?? 0 });
-    }
-    if (!matches.length) matches.push({ kind, index: 0 });
-    const result = matches.map((m, i) => {
-      const next = matches[i + 1]?.index ?? s.length;
-      const segment = s.slice(Math.max(0, m.index - 35), next);
-      const found = parseTimes(segment);
-      const time = found.at(-1) ?? times[i] ?? times[0];
-      if (!time) return null;
-      return { kind: m.kind, time, days: parseDays(segment) };
-    }).filter((x): x is NonNullable<typeof x> => !!x);
+    // V4: cada parte separada por " y " es una pregunta con su propia hora ("a las 8 de la noche cómo se siente y a las
+    // 7 de la mañana cómo durmió"). Antes ambas tomaban la última hora del mensaje.
+    const re = /como se siente|como te sientes|como durmio|como dormiste|emocional|tomar agua|tomo agua|vaso de agua|desayun|almuerz|almorz|cenar|ceno|caminata|caminar/g;
+    const parts = s.split(/\s+y\s+(?=(?:a las|a la|preguntale|como|si|recuerdale|en la|por la|cada|todos|todas)\b)/);
+    const result: { kind: AutomationKind; time: string; days: import('../types').Weekday[] }[] = [];
+    parts.forEach((part, i) => {
+      const found = [...part.matchAll(re)].map((m) => kindFor(m[0])).filter((k): k is AutomationKind => !!k);
+      const k = found[0] ?? (parts.length === 1 ? kind : null);
+      if (!k) return;
+      const time = parseTimes(part).at(-1) ?? (parts.length === 1 ? times[0] : times[i]) ?? '';
+      // Sin hora: se crea igual y el chat pregunta "¿A qué hora le pregunto?".
+      result.push({ kind: k, time: settle(k, time, part), days: parseDays(part) });
+    });
     if (result.length) return { type: 'create', items: result };
   }
   return null;

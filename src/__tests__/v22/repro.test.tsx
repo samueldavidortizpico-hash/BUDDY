@@ -10,6 +10,8 @@ import Onboarding from '@/app/(auth)/onboarding';
 import SignIn from '@/app/(auth)/sign-in';
 import Routine from '@/app/(caregiver)/(tabs)/routine';
 import Alerts from '@/app/(caregiver)/alerts';
+import Preview from '@/app/(caregiver)/preview';
+import { strings } from '@/i18n';
 import RoutineSection from '@/app/(caregiver)/routine/[section]';
 import { db, useDb } from '@/infrastructure/local/db';
 import { execute } from '@/state/assistant';
@@ -80,10 +82,13 @@ it('P9: en el login el robot forma parte del contenido que se desplaza (no una c
   expect(screen.getByTestId('auth-robot')).toBeTruthy();
 });
 
-it('P10/P11: "Entregar a [nombre]" abre una pantalla propia con flecha atrás y vista previa', () => {
-  ui(<Routine />);
-  fireEvent.press(screen.getByRole('button', { name: 'Entregar a Rosa' }));
-  expect(mockPush).toHaveBeenCalledWith('/handoff');
+// V4: la entrega del teléfono pasó a la Vista de [nombre] (Inicio > tarjeta de la persona), con flecha atrás y banner.
+it('P10/P11: la Vista de [nombre] tiene flecha atrás, banner y "Cambiar a la cuenta de [nombre]"', () => {
+  ui(<Preview />);
+  expect(screen.getByRole('button', { name: strings.common.back })).toBeTruthy();
+  expect(screen.getByText('Estás viendo la pantalla de Rosa')).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: 'Cambiar a la cuenta de Rosa' }));
+  expect(mockPush).toHaveBeenCalledWith('/account-switch');
 });
 
 it('P12: el onboarding tiene 6 diapositivas que explican qué es BUDDY', () => {

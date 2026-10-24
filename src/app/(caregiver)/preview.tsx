@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
+import { Icon } from '@/components/icon';
 import { ScreenHeader } from '@/components/screen-header';
 import { ElderScreen } from '@/features/elder/screen';
 import { strings } from '@/i18n';
@@ -24,7 +25,12 @@ export default function Preview() {
   return (
     <View style={[styles.root, { backgroundColor: t.c.bg }]}>
       <View style={[styles.bar, { paddingTop: insets.top, backgroundColor: t.c.surface }, t.hairline]}>
-        <ScreenHeader title={`Vista de ${elder.firstName}`} subtitle={`Estás viendo la pantalla de ${elder.firstName}`} fallback="/summary" />
+        <ScreenHeader title={`Vista de ${elder.firstName}`} fallback="/summary" />
+      </View>
+      {/* Banner visible (V4): es su pantalla real, en solo lectura; tocar aquí no cambia nada ni cancela sus avisos. */}
+      <View style={[styles.banner, { backgroundColor: t.status.attention.bg, borderColor: t.status.attention.border }]} accessibilityRole="alert">
+        <Icon name="eye" color={t.status.attention.accent} />
+        <AppText variant="secondaryStrong" color={t.status.attention.text} style={styles.flex}>{`Estás viendo la pantalla de ${elder.firstName}`}</AppText>
       </View>
       <View style={styles.note}>
         <Button label={`Cambiar a la cuenta de ${elder.firstName}`} icon="user" size="md" onPress={() => router.push('/account-switch' as Href)} />
@@ -34,7 +40,7 @@ export default function Preview() {
           <ElderScreen elderId={elder.id} preview />
         </ThemeOverride>
       </View>
-      <AppText variant="meta" color={t.c.muted} align="center" style={styles.note}>
+      <AppText variant="caption" color={t.c.muted} align="center" style={styles.note}>
         {strings.routine.previewBody}
       </AppText>
     </View>
@@ -46,4 +52,5 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   bar: { paddingHorizontal: spacing.screen },
   note: { paddingHorizontal: spacing.md, paddingBottom: spacing.xs },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: spacing.md, marginVertical: spacing.xs, padding: spacing.sm, borderRadius: 16, borderWidth: 1 },
 });

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { BottomSheet } from '@/components/feedback';
-import { Icon } from '@/components/icon';
+import { Icon, type IconName } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenHeader } from '@/components/screen-header';
 import type { MenuKey } from '@/domain/assistant/draft';
@@ -22,11 +22,20 @@ import { strings } from '@/i18n';
 import { SUGGESTIONS, conversation, type RoutineSegment } from '@/state/assistant';
 import { routineActions } from '@/state/actions';
 import { useActiveElder, useRecords } from '@/state/data';
-import { radius, spacing, touch, type } from '@/theme';
+import { radius, spacing, touch, type, type Tone } from '@/theme';
 import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
 import { formatClock } from '@/utils/dates';
 
 const B = strings.buddy;
+/** Acciones rápidas del chat vacío (V4). "mood" deja la frase escrita para que el administrador ajuste la hora. */
+const QUICK: { key: MenuKey | 'mood'; icon: IconName; tone: Tone }[] = [
+  { key: 'medication', icon: 'meds', tone: 'coral' },
+  { key: 'water', icon: 'drop', tone: 'sky' },
+  { key: 'mood', icon: 'smile', tone: 'lavender' },
+  { key: 'appointment', icon: 'calendar', tone: 'yellow' },
+  { key: 'contact', icon: 'phone', tone: 'mint' },
+  { key: 'day', icon: 'heart', tone: 'petrol' },
+];
 /** Mensajes visibles antes de "Ver mensajes anteriores". */
 const VISIBLE = 10;
 
@@ -140,8 +149,9 @@ export default function Buddy() {
       <View style={[s.header, { paddingTop: insets.top }]}>
         <ScreenHeader
           title={strings.brand.name}
-          subtitle={strings.summary.caring(elder.firstName)}
+          subtitle={B.assistantOf(elder.firstName)}
           fallback="/summary"
+          leading={<BuddyRobot size={36} compact mood="idle" flying={false} shadow={false} glow={false} navigationIndependent />}
           right={
             <>
               <PreviewSheetButton compact />
@@ -172,9 +182,21 @@ export default function Buddy() {
             ListHeaderComponent={hidden ? <Button label={B.olderMessages(hidden)} size="sm" variant="ghost" onPress={() => setShowAll(true)} style={s.older} /> : null}
             ListEmptyComponent={
               <View style={s.emptyWrap}>
-                {/* El robot ya está en el encabezado: aquí solo el título y las 8 acciones, que caben sin desplazar. */}
-                <AppText variant="h2" align="center">{B.emptyTitle(elder.firstName)}</AppText>
-                <ActionMenu onPick={pickMenu} />
+                {/* Saludo corto y seis acciones rápidas; el menú completo sigue en "+". */}
+                <AppText variant="h2" align="center">{B.hello(elder.firstName)}</AppText>
+                <View style={s.chips}>
+                  {QUICK.map((q) => (
+                    <Button
+                      key={q.key}
+                      label={q.key === 'mood' ? B.quick.mood : q.key === 'day' ? B.quick.day : B.menu[q.key]}
+                      icon={q.icon}
+                      size="sm"
+                      variant="tonal"
+                      tone={q.tone}
+                      onPress={() => (q.key === 'mood' ? setText(B.quick.moodText(elder.firstName)) : pickMenu(q.key as MenuKey))}
+                    />
+                  ))}
+                </View>
               </View>
             }
             renderItem={({ item: m }) => <Message m={m} onMenu={pickMenu} onSee={openRoutine} onUndo={chat.undo} />}
@@ -372,7 +394,8 @@ const useStyles = makeStyles((t) =>
     headerBtn: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center' },
     list: { padding: spacing.screen, paddingBottom: spacing.md, flexGrow: 1, gap: spacing.sm },
     older: { alignSelf: 'center' },
-    emptyWrap: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
+    emptyWrap: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.xs },
     msgRow: { width: '100%', gap: spacing.xs, alignItems: 'flex-start' },
     mineRow: { alignItems: 'flex-end' },
     messageLine: { width: '100%', flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },

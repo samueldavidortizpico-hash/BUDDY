@@ -5,17 +5,14 @@ import Animated, { FadeInRight, useReducedMotion } from 'react-native-reanimated
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { Card } from '@/components/card';
 import { BottomSheet } from '@/components/feedback';
 import { Segmented } from '@/components/forms';
 import { Icon, type IconName } from '@/components/icon';
+import { IconTile } from '@/components/icon-tile';
 import { PressableScale } from '@/components/pressable-scale';
-import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { EmptyState } from '@/components/states';
-import { PreviewSheetButton } from '@/features/elder/phone-preview';
 import { doseText, scheduleTimes } from '@/domain/schedule';
-import { describeDays } from '@/domain/time';
 import { formatPhone } from '@/domain/validation';
 import { strings } from '@/i18n';
 import { useActiveElder, useRecords } from '@/state/data';
@@ -25,8 +22,8 @@ import { makeStyles, useTheme } from '@/theme/provider';
 import { formatClock } from '@/utils/dates';
 
 const R = strings.routine;
-type Seg = 'meds' | 'water' | 'meals' | 'activities' | 'more';
-const SEGS: Seg[] = ['meds', 'water', 'meals', 'activities', 'more'];
+type Seg = 'meds' | 'water' | 'questions' | 'appointments' | 'contacts';
+const SEGS: Seg[] = ['meds', 'water', 'questions', 'appointments', 'contacts'];
 
 /** Rutina del adulto mayor: todo lo programado, la vista previa de su pantalla y la entrega del teléfono. */
 export default function Routine() {
@@ -35,7 +32,9 @@ export default function Routine() {
   const s = useStyles();
   const elder = useActiveElder();
   const params = useLocalSearchParams<{ seg?: string }>();
-  const asSeg = (v?: string): Seg => (v && SEGS.includes(v as Seg) ? (v as Seg) : 'meds');
+  // Enlaces anteriores a V4 ("Ver en Rutina" del chat): comidas y metas viven en Preguntas; "Más", en Contactos.
+  const LEGACY: Record<string, Seg> = { meals: 'questions', activities: 'questions', more: 'contacts' };
+  const asSeg = (v?: string): Seg => (v && SEGS.includes(v as Seg) ? (v as Seg) : v && LEGACY[v] ? LEGACY[v] : 'meds');
   const [seg, setSeg] = useState<Seg>(asSeg(params.seg));
   // "Ver en Rutina" desde BUDDY abre la pestaña donde quedó lo nuevo (estado derivado del parámetro, sin efecto).
   const [fromParam, setFromParam] = useState(params.seg);
@@ -62,11 +61,10 @@ export default function Routine() {
 
   const go = (section: string) => router.push({ pathname: '/routine/[section]', params: { section } } as unknown as Href);
   // Entregar, probar como o mirar en vivo: todo en la pantalla "Entregar a [nombre]" (con flecha atrás).
-  const handOff = () => router.push('/handoff' as Href);
 
   const fab = () => {
     if (seg === 'meds') return setAddSheet(true);
-    go(seg === 'more' ? 'contacts' : seg);
+    go(seg === 'questions' ? 'reminders' : seg);
   };
 
   return (
@@ -78,20 +76,6 @@ export default function Routine() {
         </AppText>
       </View>
 
-      <Card variant="gradient" domain="activity" radius={radius.hero} style={s.preview}>
-        <BuddyRobot size={96} mood="wave" shadow={false} style={s.previewRobot} />
-        <AppText variant="h3" color={t.domains.activity.text} style={s.previewTitle}>
-          {R.preview(elder.firstName)}
-        </AppText>
-        <AppText variant="secondary" color={t.domains.activity.muted}>
-          {R.handoffBody}
-        </AppText>
-        <View style={s.row}>
-          <PreviewSheetButton />
-          <Button label={R.handoff(elder.firstName)} icon="lock" size="md" style={s.grow} onPress={handOff} />
-        </View>
-      </Card>
-
       <Segmented
         label={R.title}
         value={seg}
@@ -100,9 +84,9 @@ export default function Routine() {
         options={[
           { key: 'meds', label: R.sections.medications },
           { key: 'water', label: R.sections.water },
-          { key: 'meals', label: R.sections.meals },
-          { key: 'activities', label: 'Metas' },
-          { key: 'more', label: 'Más' },
+          { key: 'questions', label: R.sections.questions },
+          { key: 'appointments', label: R.sections.appointments },
+          { key: 'contacts', label: R.sections.contacts },
         ]}
       />
 
@@ -116,7 +100,8 @@ export default function Routine() {
                 domain="medication"
                 icon="meds"
                 title={m.name}
-                detail={`${doseText(m)} · ${m.schedule.kind === 'times' ? scheduleTimes(m.schedule).map(formatClock).join(', ') : R.every(m.schedule.everyHours, formatClock(m.schedule.from))}${m.paused ? ` · ${R.paused}` : ''}`}
+                detail={`${doseText(m)}${m.paused ? ` · ${R.paused}` : ''}`}
+                times={m.schedule.kind === 'times' ? scheduleTimes(m.schedule) : []}
                 onPress={() => router.push({ pathname: '/medication/[id]', params: { id: m.id } })}
               />
             ))
@@ -125,38 +110,47 @@ export default function Routine() {
           )
         ) : null}
         {seg === 'water' ? (
-          <Row ids={water ? [water.id] : []} domain="water" icon="drop" title={water ? R.glasses(water.glasses) : R.sections.water} detail={water ? water.times.map(formatClock).join(' · ') : R.emptyGeneric} onPress={() => go('water')} />
-        ) : null}
-        {seg === 'meals' ? (
-          meals.length ? (
-            meals
-              .slice()
-              .sort((a, b) => a.time.localeCompare(b.time))
-              .map((m) => <Row key={m.id} ids={[m.id]} domain="food" icon="food" title={strings.setup.food.mealNames[m.kind]} detail={formatClock(m.time)} onPress={() => go('meals')} />)
+          water ? (
+            <Row ids={[water.id]} domain="water" icon="drop" title={R.glasses(water.glasses)} detail={R.sections.water} times={water.times} onPress={() => go('water')} />
           ) : (
-            <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('meals') }} />
+            <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('water') }} />
           )
         ) : null}
-        {seg === 'activities' ? (
-          activities.length ? (
-            activities.map((a) => <Row key={a.id} ids={[a.id]} domain="activity" icon="walk" title={a.title} detail={`${formatClock(a.time)} · ${describeDays(a.days)}${a.minutes ? ` · ${a.minutes} min` : ''}`} onPress={() => go('activities')} />)
-          ) : (
-            <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('activities') }} />
-          )
-        ) : null}
-        {seg === 'more' ? (
+        {seg === 'questions' ? (
           <>
-            <Row ids={contacts.map((c) => c.id)} domain="contact" icon="phone" title={R.sections.contacts} detail={contacts.length ? contacts.map((c) => `${c.name} (${formatPhone(c.phone)})`).join(', ') : R.emptyGeneric} onPress={() => go('contacts')} />
-            <Row ids={[elder.id]} domain="mood" icon="smile" title={R.sections.checkin} detail={elder.checkinTime ? formatClock(elder.checkinTime) : R.noCheckin} onPress={() => go('checkin')} />
-            <Row ids={appointments.map((a) => a.id)} domain="followUp" icon="calendar" title={R.sections.appointments} detail={appointments.length ? `${appointments.length}` : R.emptyGeneric} onPress={() => go('appointments')} />
-            <Row ids={reminders.map((r) => r.id)} domain="contact" icon="bell" title={R.sections.reminders} detail={reminders.length ? reminders.map((r) => r.title).join(', ') : R.emptyGeneric} onPress={() => go('reminders')} />
-            <Row ids={reminders.filter((r) => r.automation).map((r) => r.id)} domain="mood" icon="clock" title="Automatizaciones" detail={`${reminders.filter((r) => r.automation).length} programadas`} onPress={() => router.push('/routine/automations' as Href)} />
+            {reminders.filter((r) => r.automation).map((r) => (
+              <Row key={r.id} ids={[r.id]} domain="mood" icon="chat" title={r.title} detail={r.automation?.enabled ? R.active : R.pausedQuestion} times={[r.time]} onPress={() => router.push('/routine/automations' as Href)} />
+            ))}
+            <Row ids={[elder.id]} domain="mood" icon="smile" title={R.sections.checkin} detail={elder.checkinTime ? R.daily : R.noCheckin} times={elder.checkinTime ? [elder.checkinTime] : []} onPress={() => go('checkin')} />
+            <Row ids={meals.map((m) => m.id)} domain="food" icon="food" title={R.sections.meals} detail={meals.length ? meals.map((m) => strings.setup.food.mealNames[m.kind]).join(', ') : R.emptyGeneric} times={meals.map((m) => m.time).sort()} onPress={() => go('meals')} />
+            <Row ids={activities.map((a) => a.id)} domain="activity" icon="walk" title={R.sections.activities} detail={activities.length ? activities.map((a) => a.title).join(', ') : R.emptyGeneric} times={activities.map((a) => a.time).sort()} onPress={() => go('activities')} />
+            <Row ids={reminders.filter((r) => !r.automation).map((r) => r.id)} domain="contact" icon="bell" title={R.sections.reminders} detail={reminders.some((r) => !r.automation) ? reminders.filter((r) => !r.automation).map((r) => r.title).join(', ') : R.emptyGeneric} onPress={() => go('reminders')} />
           </>
+        ) : null}
+        {seg === 'appointments' ? (
+          appointments.length ? (
+            appointments.slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).map((a) => (
+              <Row key={a.id} ids={[a.id]} domain="followUp" icon="calendar" title={a.title} detail={a.date} times={[a.time]} onPress={() => go('appointments')} />
+            ))
+          ) : (
+            <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('appointments') }} />
+          )
+        ) : null}
+        {seg === 'contacts' ? (
+          contacts.length ? (
+            contacts.map((c) => (
+              <Row key={c.id} ids={[c.id]} domain="contact" icon="phone" title={c.name} detail={`${c.relation ? `${c.relation} · ` : ''}${formatPhone(c.phone)}${c.primary ? ` · ${R.primary}` : ''}`} onPress={() => go('contacts')} />
+            ))
+          ) : (
+            <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('contacts') }} />
+          )
         ) : null}
       </View>
 
+      {/* "+ Agregar" con palabra: un "+" solo no dice qué hace. */}
       <PressableScale haptic onPress={fab} accessibilityLabel={seg === 'meds' ? R.addMed : R.add} style={s.fab}>
-        <Icon name="plus" size={32} color={t.hc ? t.c.bg : '#FFFFFF'} strokeWidth={2.4} />
+        <Icon name="plus" size={26} color={t.hc ? t.c.bg : '#FFFFFF'} strokeWidth={2.6} />
+        <AppText variant="button" color={t.hc ? t.c.bg : '#FFFFFF'}>{R.add}</AppText>
       </PressableScale>
 
       <BottomSheet visible={addSheet} onClose={() => setAddSheet(false)} title={R.addHow}>
@@ -169,7 +163,7 @@ export default function Routine() {
   );
 }
 
-function Row({ ids, domain, icon, title, detail, onPress }: { ids: string[]; domain: Domain; icon: IconName; title: string; detail: string; onPress: () => void }) {
+function Row({ ids, domain, icon, title, detail, times = [], onPress }: { ids: string[]; domain: Domain; icon: IconName; title: string; detail: string; times?: string[]; onPress: () => void }) {
   const t = useTheme();
   const s = useStyles();
   const recent = useRecentAny(ids);
@@ -182,14 +176,21 @@ function Row({ ids, domain, icon, title, detail, onPress }: { ids: string[]; dom
       style={({ pressed }) => [s.rowItem, recent && { borderColor: t.hc ? t.c.text : t.c.mintStrong, borderWidth: 2 }, pressed && { opacity: 0.85 }]}
     >
       <View style={[s.bar, { backgroundColor: t.domains[domain].accent }]} />
-      <View style={[s.iconBox, { backgroundColor: t.tones[t.domains[domain].tone].bg }]}>
-        <Icon name={icon} color={t.tones[t.domains[domain].tone].fg} />
-      </View>
+      <IconTile icon={icon} domain={domain} />
       <View style={s.flex}>
         <AppText variant="bodyStrong">{title}</AppText>
         <AppText variant="caption" color={t.c.muted} numberOfLines={2}>
           {detail}
         </AppText>
+        {times.length ? (
+          <View style={s.times}>
+            {times.slice(0, 6).map((time, i) => (
+              <View key={`${time}-${i}`} style={[s.timeChip, { backgroundColor: t.tones[t.domains[domain].tone].bg }]}>
+                <AppText variant="captionStrong" color={t.tones[t.domains[domain].tone].fg} style={s.tabular}>{formatClock(time)}</AppText>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
       {recent ? (
         <View style={[s.newBadge, { backgroundColor: t.hc ? t.c.text : t.c.mintStrong }]}>
@@ -212,13 +213,11 @@ function RecentFrame({ recent, children }: { recent: boolean; children: React.Re
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    flex: { flex: 1 },
-    grow: { flexGrow: 1, flexBasis: 150 },
-    head: { paddingTop: spacing.sm, marginBottom: spacing.xl },
-    preview: { gap: spacing.xs, padding: spacing.lg, marginBottom: spacing.lg, marginTop: spacing.md },
-    previewRobot: { position: 'absolute', top: -66, right: -14 },
-    previewTitle: { paddingRight: 90 },
-    row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
+    flex: { flex: 1, minWidth: 0 },
+    tabular: { fontVariant: ['tabular-nums'] },
+    head: { paddingTop: spacing.sm, marginBottom: spacing.lg },
+    times: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xxs, marginTop: spacing.xxs },
+    timeChip: { minHeight: 26, justifyContent: 'center', paddingHorizontal: spacing.xs, borderRadius: radius.pill },
     list: { gap: spacing.sm, marginTop: spacing.md },
     rowItem: {
       flexDirection: 'row',
@@ -234,14 +233,15 @@ const useStyles = makeStyles((t) =>
     },
     bar: { width: 5, alignSelf: 'stretch' },
     newBadge: { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.pill },
-    iconBox: { width: 44, height: 44, borderRadius: radius.icon, alignItems: 'center', justifyContent: 'center' },
     // En el flujo, al final del contenido: con la barra flotante (V2.4) un botón absoluto quedaba sobre la barra.
     fab: {
       alignSelf: 'flex-end',
       marginTop: spacing.lg,
-      width: 64,
-      height: 64,
-      borderRadius: 32,
+      minHeight: touch.orb,
+      flexDirection: 'row',
+      gap: spacing.xs,
+      paddingHorizontal: spacing.lg,
+      borderRadius: touch.orb / 2,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: t.hc ? t.c.text : t.c.primary,

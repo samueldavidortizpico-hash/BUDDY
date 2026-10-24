@@ -90,6 +90,7 @@ function Account() {
   const [next, setNext] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [del, setDel] = useState(false);
+  const [out, setOut] = useState(false);
   const [delPass, setDelPass] = useState('');
   const [delErr, setDelErr] = useState<string | null>(null);
   return (
@@ -122,7 +123,10 @@ function Account() {
       <AppText variant="caption" color={t.c.muted}>{S.authNote}</AppText>
       <Button label="Código de recuperación" icon="lock" variant="ghost" size="md" onPress={() => router.push('/settings/recovery' as Href)} />
       <Button label="Ver la pantalla de mi persona" icon="eye" variant="ghost" size="md" onPress={() => router.push('/preview')} />
-      <Button label={S.signOut} icon="logout" onPress={async () => { await sessionActions.signOut(); router.replace('/'); }} />
+      <Button label={S.signOut} icon="logout" onPress={() => setOut(true)} />
+      <ConfirmDialog visible={out} title={S.signOutTitle} body={S.signOutBody} confirmLabel={S.signOut} onCancel={() => setOut(false)}
+        onConfirm={async () => { setOut(false); await sessionActions.signOut(); router.replace('/'); }}
+      />
       <Button label={S.deleteAccount} icon="trash" variant="danger" size="md" onPress={() => setDel(true)} />
       <ConfirmDialog visible={del} title={S.deleteTitle} body={S.deleteBody} confirmLabel={S.deleteAccount} destructive onCancel={() => setDel(false)}
         onConfirm={async () => {
