@@ -1,17 +1,19 @@
 /**
- * Vista de un segundo del Inicio (V3.0): el estado es el héroe. Una palabra grande con su icono ("Todo bien",
- * "Atención", "Acción necesaria" o "Aún no hay registros"), la razón en una frase y, si hay algo que atender, una sola
- * acción principal: "Llamar a [nombre]". Debajo, lo de hoy en cuatro datos. Color por nivel con icono y texto (nunca
- * solo color): menta, ámbar suave y coral; rojo solo si pidió ayuda. El resumen diario de una línea va aparte.
+ * Vista de un segundo del Inicio (V4). El estado es el elemento más grande: "Todo bien" (menta), "Atención" (ámbar suave),
+ * "Acción necesaria" (coral) o "Aún no hay registros" (gris, nunca "Todo bien" sin datos), con su icono, una frase con la
+ * razón y, si no es "Todo bien", una sola acción: "Llamar a [nombre]". Debajo, "Hoy" en tres mosaicos y dos líneas
+ * (próxima toma y última señal). Nunca solo color: cada nivel lleva icono y palabra.
  */
 import { useEffect, useMemo } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { Icon, type IconName } from '@/components/icon';
-import { dailySummary, dayStatus, type DayFacts, type StatusInput, type StatusLevel } from '@/domain/status';
+import { IconTile } from '@/components/icon-tile';
+import { dailySummary, dayStatus, type StatusInput, type StatusLevel } from '@/domain/status';
+import { dayDoses, effectiveTime, escalationOf } from '@/domain/schedule';
 import type { Elder } from '@/domain/types';
 import { verify, type Heartbeat } from '@/domain/verification';
 import { useNow } from '@/hooks/use-now';
@@ -20,17 +22,18 @@ import { heartbeatKey } from '@/infrastructure/local/heartbeats';
 import { scheduleDailySummary } from '@/infrastructure/notifications';
 import { strings } from '@/i18n';
 import { useRecords, useUserId } from '@/state/data';
-import { radius, spacing, type Tone } from '@/theme';
-import { makeStyles, useTheme } from '@/theme/provider';
-import { formatClock } from '@/utils/dates';
+import { spacing, type StatusKind } from '@/theme';
+import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
+import { formatClock, toISODate } from '@/utils/dates';
 
 const S = strings.status;
+const H = strings.summary.home;
 const NO_BEATS: Heartbeat[] = [];
-const LOOK: Record<StatusLevel, { tone: Tone; icon: IconName }> = {
-  ok: { tone: 'mint', icon: 'check' },
-  attention: { tone: 'yellow', icon: 'warning' },
-  action: { tone: 'coral', icon: 'warning' },
-  no_data: { tone: 'slate', icon: 'clock' },
+const LOOK: Record<StatusLevel, { kind: StatusKind; icon: IconName }> = {
+  ok: { kind: 'ok', icon: 'check' },
+  attention: { kind: 'attention', icon: 'warning' },
+  action: { kind: 'action', icon: 'warning' },
+  no_data: { kind: 'none', icon: 'clock' },
 };
 
 /** Datos reales de hoy para la vista de un segundo y el resumen diario (null sin persona registrada). */
@@ -67,89 +70,114 @@ export function StatusHero({ elder, phone }: { elder: Elder; phone?: string }) {
   const input = useStatusInput(elder);
   const st = dayStatus(input);
   const look = LOOK[st.level];
-  const tone = st.help ? t.tones.red : t.tones[look.tone];
-  const fg = t.hc ? t.c.text : tone.fg;
+  const kind: StatusKind = st.help ? 'action' : look.kind;
+  const tone = t.status[kind];
   return (
-    <View style={s.root}>
-      <Card variant="tint" tone={st.help ? 'red' : look.tone} radius={radius.hero} style={s.hero} bordered={t.hc}>
-        <View accessible accessibilityRole="summary" accessibilityLabel={`${S.levels[st.level]}. ${st.reason}`} accessibilityLiveRegion="polite" style={s.head}>
-          <View style={[s.badge, { backgroundColor: t.hc ? t.c.bg : tone.soft }]}>
-            <Icon name={st.help ? 'shield' : look.icon} color={fg} size={30} />
-          </View>
-          <View style={s.flex}>
-            <AppText variant="display" color={fg} maxScale={1.4}>
-              {S.levels[st.level]}
-            </AppText>
-            <AppText variant="body" color={t.c.text}>
-              {st.reason}
-            </AppText>
-          </View>
+    <Card variant="status" status={kind} style={s.hero}>
+      <View accessible accessibilityRole="summary" accessibilityLabel={`${S.levels[st.level]}. ${st.reason}`} accessibilityLiveRegion="polite" style={s.heroBody}>
+        <View style={[s.heroIcon, { backgroundColor: t.hc ? t.c.bg : tone.accent }, t.hc && t.hairline]}>
+          <Icon name={st.help ? 'shield' : look.icon} color={t.hc ? t.c.text : t.dark ? t.c.bg : '#FFFFFF'} size={30} strokeWidth={2.4} />
         </View>
-        {st.call && phone ? <Button label={strings.feed.callName(elder.firstName)} icon="phone" variant={st.help ? 'danger' : 'primary'} onPress={() => Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`)} /> : null}
-        {st.call && !phone ? <AppText variant="caption" color={t.c.muted}>{S.noPhone(elder.firstName)}</AppText> : null}
-      </Card>
-      <Facts facts={st.facts} />
+        <AppText variant="display" color={tone.text} maxScale={1.4}>
+          {S.levels[st.level]}
+        </AppText>
+        <AppText variant="body" color={tone.text}>
+          {st.reason}
+        </AppText>
+      </View>
+      {st.call && phone ? <Button label={strings.feed.callName(elder.firstName)} icon="phone" variant={st.help ? 'danger' : 'primary'} onPress={() => Linking.openURL(`tel:${phone.replace(/[^\d+]/g, '')}`)} /> : null}
+      {st.call && !phone ? <AppText variant="caption" color={tone.muted}>{S.noPhone(elder.firstName)}</AppText> : null}
+    </Card>
+  );
+}
+
+/** "Hoy": medicinas, agua y ánimo en tres mosaicos (en columna con letra grande), más la próxima toma y la última señal. */
+export function TodayTiles({ elder }: { elder: Elder }) {
+  const t = useTheme();
+  const s = useStyles();
+  const input = useStatusInput(elder);
+  const { width, fontScale } = useWindowDimensions();
+  const column = width / (fontScale * useTextScaleFactor()) < 360;
+  const facts = dayStatus(input).facts;
+  const today = toISODate(input.now);
+  const water = useRecords('water', { elderId: elder.id }).filter((w) => w.date === today).length;
+  const plan = useRecords('waterPlans', { elderId: elder.id })[0];
+  const checkin = input.checkins.find((c) => c.date === today);
+  const clock = `${String(input.now.getHours()).padStart(2, '0')}:${String(input.now.getMinutes()).padStart(2, '0')}`;
+  const next = dayDoses(input.meds, input.doses, today, input.now, escalationOf(elder.screen).unconfirmedAfterMin).find(
+    (it) => (it.status === 'pending' || it.status === 'snoozed') && effectiveTime(it.dose) >= clock,
+  );
+  const goal = plan?.times.length ?? 0;
+  const tiles: { key: string; icon: IconName; domain: 'medication' | 'water' | 'mood'; label: string; value: string }[] = [
+    { key: 'meds', icon: 'meds', domain: 'medication', label: H.meds, value: facts.doses.total ? S.facts.dosesValue(facts.doses.taken, facts.doses.total) : H.none },
+    { key: 'water', icon: 'drop', domain: 'water', label: H.water, value: goal ? S.facts.dosesValue(Math.min(water, goal), goal) : water ? String(water) : H.none },
+    { key: 'mood', icon: 'smile', domain: 'mood', label: H.mood, value: checkin?.mood ? strings.answers[checkin.mood] : H.noMood },
+  ];
+  return (
+    <View style={s.today}>
+      <AppText variant="h2">{H.today}</AppText>
+      <View style={[s.tiles, column && s.tilesColumn]}>
+        {tiles.map((x) => (
+          <View key={x.key} style={[s.tile, column ? s.tileWide : s.tileThird, t.hairline]} accessible accessibilityLabel={`${x.label}: ${x.value}`}>
+            <IconTile icon={x.icon} domain={x.domain} />
+            <View style={column ? s.flex : null}>
+              <AppText variant="h3" style={s.tabular}>{x.value}</AppText>
+              <AppText variant="caption" color={t.c.muted}>{x.label}</AppText>
+            </View>
+          </View>
+        ))}
+      </View>
+      <View style={s.lines}>
+        <Line icon="clock" text={next ? H.next(next.medication.name, formatClock(effectiveTime(next.dose))) : facts.doses.total ? H.noNext : H.noMeds} />
+        <Line icon="phone" text={facts.lastSignal ? H.signal(facts.lastSignal) : H.noSignal(elder.firstName)} />
+      </View>
     </View>
   );
 }
 
-function Facts({ facts }: { facts: DayFacts }) {
+function Line({ icon, text }: { icon: IconName; text: string }) {
   const t = useTheme();
   const s = useStyles();
-  const items: { icon: IconName; label: string; value: string; warn: boolean }[] = [
-    { icon: 'meds', label: S.facts.doses, value: facts.doses.total ? S.facts.dosesValue(facts.doses.taken, facts.doses.total) : S.facts.none, warn: false },
-    { icon: 'smile', label: S.facts.checkin, value: S.facts.checkinValue[facts.checkin], warn: facts.checkin === 'missed' },
-    { icon: 'box', label: S.facts.stock, value: facts.stock.level === 'out' ? S.facts.stockOut : facts.stock.level === 'low' ? S.facts.stockLow(facts.stock.daysLeft ?? 0) : facts.stock.level === 'ok' ? S.facts.stockOk : S.facts.none, warn: facts.stock.level === 'low' || facts.stock.level === 'out' },
-    { icon: 'clock', label: S.facts.signal, value: facts.lastSignal ?? S.facts.noSignal, warn: !facts.lastSignal },
-  ];
   return (
-    <View style={s.facts}>
-      {items.map((f) => (
-        <View key={f.label} style={[s.fact, t.hairline]} accessible accessibilityLabel={`${f.label}: ${f.value}`}>
-          <Icon name={f.icon} color={f.warn ? t.ink.coral : t.ink.mint} size={20} />
-          <AppText variant="caption" color={t.c.muted}>{f.label}</AppText>
-          <AppText variant="secondaryStrong">{f.value}</AppText>
-        </View>
-      ))}
+    <View style={s.line}>
+      <Icon name={icon} color={t.c.muted} size={20} />
+      <AppText variant="secondary" color={t.c.text} style={s.flex}>{text}</AppText>
     </View>
   );
 }
 
 /**
- * Resumen diario de una línea, solo con registros reales. También lo programa como notificación local de hoy a la hora
- * que eligió el administrador (con la hora hasta la que van los datos).
+ * Resumen diario de una línea, solo con registros reales, como notificación local de hoy a la hora que eligió el
+ * administrador. Ya no ocupa una tarjeta del Inicio (V4): la vista de un segundo dice lo mismo.
  */
-export function DailySummaryCard({ elder }: { elder: Elder }) {
-  const t = useTheme();
-  const s = useStyles();
+export function useDailySummaryNotice(elder: Elder) {
   const input = useStatusInput(elder);
   const line = dailySummary(input);
   const time = elder.summaryTime ?? '20:00';
-  const [h, m] = time.split(':').map(Number);
-  const when = new Date(input.now.getFullYear(), input.now.getMonth(), input.now.getDate(), h, m);
   const asOf = formatClock(`${String(input.now.getHours()).padStart(2, '0')}:${String(input.now.getMinutes()).padStart(2, '0')}`);
   const body = line ? S.summaryBody(elder.firstName, asOf, line) : null;
   useEffect(() => {
+    const [h, m] = time.split(':').map(Number);
+    const when = new Date(input.now.getFullYear(), input.now.getMonth(), input.now.getDate(), h, m);
     scheduleDailySummary(body, when).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [body, time]);
-  return (
-    <Card style={s.summary}>
-      <AppText variant="captionStrong" color={t.c.muted}>{S.summaryTitle(formatClock(time))}</AppText>
-      <AppText variant="bodyStrong">{line ?? S.summaryEmpty(elder.firstName)}</AppText>
-    </Card>
-  );
 }
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    flex: { flex: 1 },
-    root: { gap: spacing.sm, marginBottom: spacing.lg },
-    hero: { gap: spacing.md, padding: spacing.lg },
-    head: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
-    badge: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
-    facts: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-    fact: { flexGrow: 1, flexBasis: '45%', gap: 2, padding: spacing.md, borderRadius: radius.card, backgroundColor: t.c.surface },
-    summary: { gap: spacing.xs, marginBottom: spacing.lg },
+    flex: { flex: 1, minWidth: 0 },
+    tabular: { fontVariant: ['tabular-nums'] },
+    hero: { gap: spacing.md, paddingVertical: spacing.xl },
+    heroBody: { gap: spacing.sm },
+    heroIcon: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xxs },
+    today: { gap: spacing.sm },
+    tiles: { flexDirection: 'row', gap: spacing.sm },
+    tilesColumn: { flexDirection: 'column' },
+    tile: { gap: spacing.sm, padding: spacing.md, borderRadius: 20, backgroundColor: t.c.surface, ...t.shadow.soft },
+    tileThird: { flex: 1, minWidth: 0 },
+    tileWide: { flexDirection: 'row', alignItems: 'center' },
+    lines: { gap: spacing.xs, paddingHorizontal: spacing.xxs },
+    line: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 32 },
   }),
 );

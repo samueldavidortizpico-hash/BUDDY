@@ -9,6 +9,7 @@ import type { Role } from '@/domain/types';
 import { db } from '@/infrastructure/local/db';
 
 import { actor } from './actions';
+import { elderAnswers } from './care';
 import { currentRole } from './session';
 
 export const locationActions = {
@@ -19,13 +20,17 @@ export const locationActions = {
   /** Decisión del adulto mayor (su pantalla pasa `by: 'elder'`). */
   decide(elderId: string, accept: boolean, by: Role) {
     if (!can(by, 'location_consent')) return null;
-    return db.update('elders', elderId, { locationConsent: accept ? 'granted' : 'denied', locationDecidedAt: new Date().toISOString() });
+    const saved = db.update('elders', elderId, { locationConsent: accept ? 'granted' : 'denied', locationDecidedAt: new Date().toISOString() });
+    elderAnswers.permissionChanged(elderId, 'location', accept);
+    return saved;
   },
   revoke(elderId: string, by: Role) {
     if (!can(by, 'location_consent')) return null;
     const elder = db.get('elders', elderId);
     if (elder) db.purge('locations', db.list('locations', elder.ownerUserId, elderId).map((f) => f.id));
-    return db.update('elders', elderId, { locationConsent: 'revoked', locationDecidedAt: new Date().toISOString() });
+    const saved = db.update('elders', elderId, { locationConsent: 'revoked', locationDecidedAt: new Date().toISOString() });
+    elderAnswers.permissionChanged(elderId, 'location', false);
+    return saved;
   },
   /** Guarda una ubicación real (solo con consentimiento vigente) y descarta las más viejas. */
   record(elderId: string, fix: { lat: number; lng: number; accuracy: number | null }, by: Role) {

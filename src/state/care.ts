@@ -353,6 +353,18 @@ export const elderAnswers = {
     beat(id, 'answer');
     return reminder;
   },
+  /**
+   * V4: el adulto mayor cambió un permiso en su celular. Queda como novedad para el administrador (solo en este celular
+   * hasta que exista el servidor), con lo que significa: sin avisos, BUDDY no puede recordarle a la hora.
+   */
+  permissionChanged(elderId: string, permission: 'notifications' | 'location' | 'camera', on: boolean) {
+    const elder = db.get('elders', elderId);
+    const name = elder?.firstName ?? 'Tu familiar';
+    const P = strings.permissionNews;
+    const at = new Date().toTimeString().slice(0, 5);
+    const detail = `${P.detail(name, P.names[permission], on, at)}${permission === 'notifications' && !on ? ` ${P.noReminders}` : ''}`;
+    return alertActions.raise('permission_changed', detail, `perm-${permission}-${Date.now()}`, elderId);
+  },
   requestHelp(elderId?: string) {
     const id = elderOrActive(elderId);
     beat(id, 'answer');

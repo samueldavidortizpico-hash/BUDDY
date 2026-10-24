@@ -13,7 +13,6 @@ import { Icon } from '@/components/icon';
 import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
-import { ElderOptionsSheet } from '@/features/elder/admin-access';
 import { planNotifications } from '@/domain/notifications';
 import { estimateStock } from '@/domain/stock';
 import { applyPlan } from '@/infrastructure/notifications';
@@ -91,7 +90,6 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const contacts = useRecords('contacts', scope);
   const seen = useDb((x) => x.drafts[userId]?.['elder.seen'] as string[] | undefined) ?? EMPTY_SEEN;
   const [help, setHelp] = useState(false);
-  const [admin, setAdmin] = useState(false);
   const [mood, setMood] = useState<RobotMood>('wave');
   const thanksTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = toISODate(now);
@@ -162,6 +160,8 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   });
 
   const primary = contacts.find((c) => c.primary) ?? contacts[0];
+  const permissionState = useDb((x) => (x.drafts[userId]?.[notifyLog.key(elderId)] as { state?: string } | undefined)?.state);
+  const needsPermission = permissionState === 'denied' || permissionState === 'undetermined';
   const question = questionText(item);
 
   // Voz: lee la pregunta si el familiar la activó; el robot "habla" mientras suena.
@@ -243,27 +243,31 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
     >
       <View style={s.top}>
         <View style={s.flex}>
-          <AppText variant="eyebrow" color={t.ink.mint}>
-            {formatLongDate(now)}
-          </AppText>
           <AppText variant="h1" accessibilityRole="header">{E.greeting(greetingFor(now), elder.firstName)}</AppText>
+          <AppText variant="secondary" color={t.c.muted}>{formatLongDate(now)}</AppText>
         </View>
-        {/* Visible y etiquetado (antes: gesto oculto de 2 s). Pequeño para no competir con la tarea del momento. */}
-        {preview ? null : <Button label={strings.adminAccess.button} icon="settings" size="sm" variant="secondary" onPress={() => setAdmin(true)} style={s.options} />}
+        {/* Visible y etiquetado (antes: gesto oculto de 2 s). Discreto para no competir con la tarea del momento. */}
+        {preview ? null : <OptionsButton onPress={() => router.push('/elder/options' as never)} />}
       </View>
 
-      {elder.locationConsent === 'granted' ? <View accessibilityLabel="Compartiendo ubicación" style={s.locationStatus}><Icon name="location" color={t.c.muted} size={15} /><AppText variant="caption" color={t.c.muted}>Compartiendo ubicación</AppText></View> : null}
-      {!preview && notifyLog.get(elder.id)?.state !== 'granted' ? <Button label="Activar avisos" icon="bell" size="md" variant="tonal" tone="mint" onPress={() => router.push('/elder/permissions' as never)} /> : null}
+      {/* Solo informa: los permisos se cambian en Opciones > Permisos, nunca desde aquí. */}
+      {elder.locationConsent === 'granted' ? (
+        <View accessible accessibilityLabel={E.sharingLocation} style={[s.locationChip, t.hairline]}>
+          <Icon name="location" color={t.ink.mint} size={16} />
+          <AppText variant="caption" color={t.c.text}>{E.sharingLocation}</AppText>
+        </View>
+      ) : null}
 
       <Appear key={JSON.stringify(item).slice(0, 80)} style={preview ? s.noTouch : undefined}>
-        <View style={[s.card, { minHeight: Math.max(320, height * 0.42) }, t.hc ? t.hairline : t.shadow.hero]}>
+        <View style={[s.card, { minHeight: Math.max(400, height * 0.56) }, t.hc ? t.hairline : t.shadow.hero]} accessibilityLabel={E.now}>
           {t.hc ? null : <LinearGradient colors={[d.gradient[0], d.gradient[1]]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={[StyleSheet.absoluteFill, s.round]} />}
-          <BuddyRobot size={120} mood={item.kind === 'done' ? 'celebrate' : item.kind === 'stock' || (item.kind === 'dose' && item.item.status === 'unconfirmed') ? 'worry' : mood} style={s.robot} accessibilityLabel={item.kind === 'stock' ? question ?? undefined : undefined} />
+          <BuddyRobot size={96} mood={item.kind === 'done' ? 'celebrate' : item.kind === 'stock' || (item.kind === 'dose' && item.item.status === 'unconfirmed') ? 'worry' : mood} accessibilityLabel={item.kind === 'stock' ? question ?? undefined : undefined} />
           <View style={s.cardBody}>
-            <AppText variant="eyebrow" color={d.muted}>
-              {E.now}
-            </AppText>
-            <ItemView item={item} caregiver={caregiver} onThanks={thanks} onSeen={markSeen} maxSnoozes={elder.screen.maxSnoozes} elderId={elder.id} preview={preview} />
+            {item.kind === 'done' && !preview && needsPermission ? (
+              <PermissionState onPress={() => router.push('/elder/permissions' as never)} />
+            ) : (
+              <ItemView item={item} caregiver={caregiver} onThanks={thanks} onSeen={markSeen} maxSnoozes={elder.screen.maxSnoozes} elderId={elder.id} preview={preview} />
+            )}
           </View>
         </View>
       </Appear>
@@ -292,8 +296,6 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
           </AppText>
         )}
       </View>
-
-      {preview ? null : <ElderOptionsSheet visible={admin} onClose={() => setAdmin(false)} />}
 
       <BottomSheet visible={help} onClose={() => setHelp(false)} title={E.helpTitle}>
         <AppText variant="body">{E.helpBody}</AppText>
@@ -356,7 +358,7 @@ function ItemView({
   const s = useStyles();
   const d = t.domains[domainOf(item)];
   const title = (text: string) => (
-    <AppText variant="display" color={d.text} align="center">
+    <AppText variant="h1" color={d.text} align="center" accessibilityRole="header">
       {text}
     </AppText>
   );
@@ -377,22 +379,23 @@ function ItemView({
       const snoozesLeft = dose.snoozeCount < maxSnoozes;
       return (
         <View style={s.itemBody}>
-          {title(medication.name)}
-          <AppText variant="h3" color={d.text}>
+          {title(E.doseTitle(medication.name))}
+          <AppText variant="heroL" color={d.text} align="center" style={s.tabular}>
+            {formatClock(effectiveTime(dose))}
+          </AppText>
+          <AppText variant="h3" color={d.text} align="center">
             {doseText(medication)}
           </AppText>
-          <AppText variant="heroXL" color={d.text} style={s.tabular}>
-            {formatClock(effectiveTime(dose)).split(' ')[0]}
-            <AppText variant="h3" color={d.muted}>{` ${formatClock(effectiveTime(dose)).split(' ').slice(1).join(' ')}`}</AppText>
-          </AppText>
           {medication.instructions ? (
-            <AppText variant="body" color={d.muted}>
+            <AppText variant="body" color={d.muted} align="center">
               {medication.instructions}
             </AppText>
           ) : null}
-          <Button label={E.taken} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; doseActions.confirm(dose.id, 'elder'); onThanks(); }} />
-          {snoozesLeft ? <Button label={E.snooze} icon="clock" variant="white" size="elder" disabled={preview} onPress={() => !preview && doseActions.snooze(dose.id, 'elder')} /> : null}
-          <Button label={E.notTaken} variant="ghost" size="elder" textColor={d.text} disabled={preview} onPress={() => !preview && doseActions.skip(dose.id, 'elder')} />
+          <View style={s.actions}>
+            <Button label={E.taken} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; doseActions.confirm(dose.id, 'elder'); onThanks(); }} />
+            {snoozesLeft ? <Button label={E.snooze} icon="clock" variant="white" disabled={preview} onPress={() => !preview && doseActions.snooze(dose.id, 'elder')} /> : null}
+            <Button label={E.notTaken} variant="ghost" disabled={preview} onPress={() => !preview && doseActions.skip(dose.id, 'elder')} />
+          </View>
         </View>
       );
     }
@@ -511,12 +514,40 @@ function ItemView({
       return (
         <View style={s.itemBody}>
           {title(E.done)}
-          <AppText variant="body" color={d.muted}>
+          <AppText variant="body" color={d.muted} align="center">
             {E.doneBody}
           </AppText>
         </View>
       );
   }
+}
+
+/** "Opciones": engranaje en un círculo de 48 con la palabra debajo. Discreto, pero visible y con nombre. */
+function OptionsButton({ onPress }: { onPress: () => void }) {
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <PressableScale onPress={onPress} accessibilityLabel={strings.adminAccess.button} hitSlop={6} style={s.optionsBtn}>
+      <View style={s.optionsCircle}>
+        <Icon name="settings" color={t.c.text} size={24} />
+      </View>
+      <AppText variant="caption" color={t.c.text} maxScale={1.3}>{strings.adminAccess.button}</AppText>
+    </PressableScale>
+  );
+}
+
+/** Nada pendiente y los avisos apagados: lo dice y lleva a Permisos (nunca falla en silencio). */
+function PermissionState({ onPress }: { onPress: () => void }) {
+  const t = useTheme();
+  const s = useStyles();
+  const d = t.domains.followUp;
+  return (
+    <View style={s.itemBody}>
+      <AppText variant="h1" color={d.text} align="center" accessibilityRole="header">{E.permissionTitle}</AppText>
+      <AppText variant="body" color={d.muted} align="center">{E.permissionBody}</AppText>
+      <Button label={E.permissionAction} icon="bell" size="elder" onPress={onPress} />
+    </View>
+  );
 }
 
 function FaceButton({ kind, onPress, disabled }: { kind: Answer3; onPress: () => void; disabled: boolean }) {
@@ -539,13 +570,14 @@ const useStyles = makeStyles((t) =>
     noTouch: { pointerEvents: 'none' },
     tabular: { fontVariant: ['tabular-nums'] },
     round: { borderRadius: radius.hero },
-    top: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.section + spacing.xxl },
-    options: { marginTop: -spacing.xs },
-    locationStatus: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start', marginTop: -spacing.section, marginBottom: spacing.sm },
-    card: { borderRadius: radius.hero, padding: spacing.xl, backgroundColor: t.c.surface },
-    robot: { position: 'absolute', top: -72, right: -18 },
+    top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.md },
+    locationChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'flex-start', minHeight: 32, paddingHorizontal: spacing.sm, borderRadius: radius.pill, backgroundColor: t.c.surface, marginBottom: spacing.md },
+    card: { borderRadius: radius.hero, padding: spacing.lg, paddingTop: spacing.xl, backgroundColor: t.c.surface, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
     cardBody: { minWidth: 0, width: '100%', gap: spacing.sm },
-    itemBody: { minWidth: 0, width: '100%', gap: spacing.md },
+    itemBody: { minWidth: 0, width: '100%', gap: spacing.md, alignItems: 'stretch' },
+    actions: { width: '100%', gap: spacing.sm, marginTop: spacing.xs },
+    optionsBtn: { alignItems: 'center', gap: 2, minWidth: 64, flexShrink: 0 },
+    optionsCircle: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.surface, ...t.hairline, ...t.shadow.soft },
     twoCol: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
     autoAnswers: { width: '100%', gap: spacing.xs },
     full: { width: '100%' },
@@ -561,6 +593,6 @@ const useStyles = makeStyles((t) =>
     // Dos líneas: "Volver a administrador" no cabe junto al texto a 360 px con la letra grande del adulto mayor.
     testBanner: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, padding: spacing.xs, paddingLeft: spacing.sm, marginBottom: spacing.xs, borderRadius: radius.card, backgroundColor: t.hc ? t.c.text : '#5B4BD0' },
     testExit: { flexBasis: '100%' },
-    helpBtn: { flexGrow: 1, flexBasis: 140, minHeight: touch.elderMin + 8 },
+    helpBtn: { flexGrow: 1, flexBasis: 150, minHeight: touch.elderMin },
   }),
 );

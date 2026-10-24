@@ -2,15 +2,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { gradients, radius as radii, spacing, type Domain, type GradientName, type Tone } from '@/theme';
+import { gradients, radius as radii, spacing, type Domain, type GradientName, type StatusKind, type Tone } from '@/theme';
 import { useTheme } from '@/theme/provider';
 
 import { PressableScale } from './pressable-scale';
 
 export interface CardProps {
   children: ReactNode;
-  /** white = superficie; tint = fondo pálido de un tono; gradient = degradado de dominio (o legado por nombre). */
-  variant?: 'white' | 'tint' | 'gradient';
+  /** white = superficie; tint = fondo pálido de un tono; gradient = degradado de dominio; status = estado del Inicio. */
+  variant?: 'white' | 'tint' | 'gradient' | 'status';
+  /** Para `variant="status"`: menta (todo bien), ámbar suave (atención), coral (acción necesaria) o gris (sin datos). */
+  status?: StatusKind;
   tone?: Tone;
   domain?: Domain;
   /** Solo para pantallas antiguas: degradado por nombre. */
@@ -31,6 +33,7 @@ export function Card({
   children,
   variant = 'white',
   tone = 'mint',
+  status = 'none',
   domain,
   gradient,
   padding = spacing.lg,
@@ -48,7 +51,8 @@ export function Card({
   const surface: ViewStyle = {
     borderRadius: radius,
     padding,
-    backgroundColor: variant === 'tint' ? t.tones[tone].bg : variant === 'white' ? t.c.surface : t.hc ? t.c.bg : 'transparent',
+    backgroundColor: variant === 'status' ? t.status[status].bg : variant === 'tint' ? t.tones[tone].bg : variant === 'white' ? t.c.surface : t.hc ? t.c.bg : 'transparent',
+    ...(variant === 'status' ? { borderWidth: t.borderWidth, borderColor: t.status[status].border } : null),
   };
   const body = (
     <>
@@ -58,7 +62,7 @@ export function Card({
       {children}
     </>
   );
-  const styleList = [surface, elevation !== 'none' ? t.shadow[elevation] : null, bordered || t.hc ? t.hairline : null, style];
+  const styleList = [surface, elevation !== 'none' ? t.shadow[elevation] : null, (bordered || t.hc) && variant !== 'status' ? t.hairline : null, style];
   if (onPress) {
     return (
       <PressableScale onPress={onPress} haptic={haptic} accessibilityLabel={accessibilityLabel} accessibilityHint={accessibilityHint} style={styleList}>

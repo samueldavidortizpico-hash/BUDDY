@@ -306,7 +306,9 @@ export type AlertKind =
   | 'same_class'
   | 'schedule_overlap'
   | 'help_requested'
-  | 'checkin_unwell';
+  | 'checkin_unwell'
+  /** V4: el adulto mayor activó o desactivó un permiso en su celular (avisos, ubicación, cámara). */
+  | 'permission_changed';
 
 export interface Alert extends SyncMeta {
   kind: AlertKind;
@@ -350,4 +352,5 @@ export const ALERT_KINDS: AlertKind[] = [
   'schedule_overlap',
   'help_requested',
   'checkin_unwell',
+  'permission_changed',
 ];

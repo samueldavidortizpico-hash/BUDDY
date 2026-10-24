@@ -40,8 +40,8 @@ beforeEach(async () => {
 
 it('makes the older adult screen easy to find from the caregiver summary', async () => {
   const screen = render(<RenderProviders><Summary /></RenderProviders>);
-  const preview = screen.getByRole('button', { name: strings.summary.elderScreenAction('Rosa') });
-  expect(screen.getByText(strings.summary.elderScreenTitle)).toBeTruthy();
+  // V4: la tarjeta de la persona ("Rosa ›", "Ver su pantalla") abre su pantalla en solo lectura.
+  const preview = screen.getByRole('button', { name: `Rosa. ${strings.summary.home.seeScreen}` });
   fireEvent.press(preview);
   expect(mockPush).toHaveBeenCalledWith('/preview');
 });

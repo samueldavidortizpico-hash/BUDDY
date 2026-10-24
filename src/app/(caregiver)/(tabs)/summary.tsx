@@ -11,12 +11,11 @@ import { Icon, type IconName } from '@/components/icon';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { useFeed } from '@/state/feed';
-import { locationView } from '@/domain/location';
 import { useNow } from '@/hooks/use-now';
-import { formatAgo } from '@/utils/dates';
-import { DailySummaryCard, StatusHero } from '@/features/summary/status';
-import { TodayPanel } from '@/features/summary/today';
+import { StatusHero, TodayTiles, useDailySummaryNotice } from '@/features/summary/status';
+import type { Elder } from '@/domain/types';
 import { strings } from '@/i18n';
+import { doseActions, evaluateAlerts } from '@/state/care';
 import { elderActions } from '@/state/actions';
 import type { Invite } from '@/domain/invites';
 import { useDb } from '@/infrastructure/local/db';
@@ -27,6 +26,7 @@ import { radius, spacing, touch } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 
 const S = strings.summary;
+const H = strings.summary.home;
 
 export default function Summary() {
   const router = useRouter();
@@ -35,28 +35,17 @@ export default function Summary() {
   const user = useSession((x) => x.user);
   const elders = useElders();
   const elder = useActiveElder();
-  const { unread } = useFeed();
+  const { items, unread } = useFeed();
   const [picker, setPicker] = useState(false);
   const ready = elder?.setupDone ? elder : null;
 
   return (
     <ScreenContainer insideTabs>
+      {/* Barra superior (V4): saludo a la izquierda; campana de Novedades y Ajustes a la derecha. Sin botón de BUDDY. */}
       <View style={s.top}>
-        <View style={s.flex}>
-          <AppText variant="secondary" color={t.c.muted}>
-            {S.greeting(user?.name.split(' ')[0] ?? '')}
-          </AppText>
-          {elder ? (
-            <Pressable onPress={() => router.push('/preview')} accessibilityRole="button" accessibilityLabel={`Vista de ${elder.firstName}`} style={s.personBtn}>
-              <AppText variant="h1" numberOfLines={2} style={s.shrink}>
-                {elder.firstName}
-              </AppText>
-              <Icon name="chevron" color={t.c.muted} size={22} strokeWidth={2.2} />
-            </Pressable>
-          ) : (
-            <AppText variant="h1">{strings.brand.name}</AppText>
-          )}
-        </View>
+        <AppText variant="h3" color={t.c.text} style={s.flex} numberOfLines={2}>
+          {S.greeting(user?.name.split(' ')[0] ?? '')}
+        </AppText>
         <IconButton icon="bell" label={S.alerts} showLabel={false} badge={unread} onPress={() => router.push('/alerts' as Href)} />
         {/* Siempre visible, también antes de registrar a la persona: Apariencia y Cerrar sesión viven en Ajustes. */}
         <IconButton icon="settings" label={strings.settings.title} showLabel={false} onPress={() => router.push('/settings' as Href)} />
@@ -83,27 +72,15 @@ export default function Summary() {
           </Card>
         </Appear>
       ) : (
-        <>
-          {/* Vista de un segundo (V3.0): el estado es lo primero; las novedades viven en la campana y en el robot. */}
+        <View style={s.stack}>
+          <PersonCard name={ready.firstName} onPress={() => router.push('/preview' as Href)} onSwitch={elders.length > 1 ? () => setPicker(true) : undefined} />
           <StatusHero elder={ready} phone={ready.phone} />
-          <DailySummaryCard elder={ready} />
+          {/* Las novedades no se riegan por el Inicio: una sola fila ordenada que abre la lista completa. */}
+          {unread ? <NewsRow count={unread} latest={items[0]?.title} onPress={() => router.push('/alerts' as Href)} /> : null}
+          <TodayTiles elder={ready} />
           <FirstSteps />
-          <Card variant="tint" tone="mint" style={s.elderPreview}>
-            <AppText variant="h3">{S.elderScreenTitle}</AppText>
-            <AppText variant="secondary" color={t.c.muted}>{S.elderScreenBody}</AppText>
-            <Button
-              label={S.elderScreenAction(ready.firstName)}
-              icon="eye"
-              variant="tonal"
-              tone="mint"
-              size="md"
-              accessibilityHint={S.elderScreenHint}
-              onPress={() => router.push('/preview' as Href)}
-            />
-          </Card>
-          <WhereCard name={ready.firstName} consent={ready.locationConsent} onPress={() => router.push('/location' as Href)} />
-          <TodayPanel elder={ready} />
-        </>
+          <HomeEffects elder={ready} />
+        </View>
       )}
 
       <BottomSheet visible={picker} onClose={() => setPicker(false)} title={S.switchPerson}>
@@ -139,6 +116,61 @@ export default function Summary() {
       </BottomSheet>
     </ScreenContainer>
   );
+}
+
+/** Tarjeta de la persona: "[Nombre] ›" en H1 y "Ver su pantalla"; abre la vista de su pantalla en solo lectura. */
+function PersonCard({ name, onPress, onSwitch }: { name: string; onPress: () => void; onSwitch?: () => void }) {
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <View style={s.personWrap}>
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${name}. ${H.seeScreen}`} accessibilityHint={H.personHint(name)} style={({ pressed }) => [s.person, pressed && s.pressed]}>
+        <View style={[s.avatar, { backgroundColor: t.tiles.mood.bg }, t.hc && t.hairline]}>
+          <AppText variant="h2" color={t.tiles.mood.fg} maxScale={1.2}>{name.slice(0, 1).toUpperCase()}</AppText>
+        </View>
+        <View style={s.flex}>
+          <View style={s.nameRow}>
+            <AppText variant="h1" numberOfLines={2} style={s.shrink}>{name}</AppText>
+            <Icon name="chevron" color={t.c.muted} size={26} strokeWidth={2.4} />
+          </View>
+          <AppText variant="secondary" color={t.ink.info}>{H.seeScreen}</AppText>
+        </View>
+      </Pressable>
+      {onSwitch ? <IconButton icon="users" label={S.switchPerson} showLabel={false} onPress={onSwitch} /> : null}
+    </View>
+  );
+}
+
+/** Una fila con el número de novedades y la más reciente; toda la lista vive en Novedades. */
+function NewsRow({ count, latest, onPress }: { count: number; latest?: string; onPress: () => void }) {
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${H.news(count)}${latest ? `. ${latest}` : ''}`} accessibilityHint={H.newsHint} style={({ pressed }) => [s.news, t.hairline, pressed && s.pressed]}>
+      <View style={[s.newsDot, { backgroundColor: t.hc ? t.c.text : t.status.action.accent }]}>
+        <AppText variant="captionStrong" color={t.hc ? t.c.bg : '#FFFFFF'} maxScale={1.2}>{count > 9 ? '9+' : String(count)}</AppText>
+      </View>
+      <View style={s.flex}>
+        <AppText variant="secondaryStrong">{H.news(count)}</AppText>
+        {latest ? <AppText variant="caption" color={t.c.muted} numberOfLines={2}>{latest}</AppText> : null}
+      </View>
+      <Icon name="chevron" color={t.c.muted} />
+    </Pressable>
+  );
+}
+
+/**
+ * Efectos del Inicio sin interfaz: crea las tomas de hoy, revisa "sin confirmar" y existencias cada minuto, y programa
+ * el resumen diario. Siguen aquí porque, sin servidor, el aviso al administrador se calcula al abrir el Inicio (A-09).
+ */
+function HomeEffects({ elder }: { elder: Elder }) {
+  const now = useNow(60_000);
+  useEffect(() => {
+    doseActions.sync(elder.id, now);
+    evaluateAlerts(elder.id, now);
+  }, [elder.id, now]);
+  useDailySummaryNotice(elder);
+  return null;
 }
 
 /** Los tres pasos de la idea central (estado vacío del Resumen). */
@@ -231,38 +263,20 @@ function FirstSteps() {
   );
 }
 
-/** "Dónde está [nombre]": acceso a la ubicación compartida (o a solicitarla) desde el Resumen. */
-function WhereCard({ name, consent, onPress }: { name: string; consent?: import('@/domain/types').LocationConsent; onPress: () => void }) {
-  const t = useTheme();
-  const s = useStyles();
-  const now = useNow(60_000);
-  const fixes = useRecords('locations');
-  const v = locationView({ locationConsent: consent }, fixes, now);
-  const L = strings.location;
-  const detail = v.kind === 'located' ? L.lastShort(formatAgo(new Date(v.last.at), now)) : v.kind === 'requested' ? L.requested(name) : v.kind === 'waiting' ? L.waiting(name) : L.summaryNone;
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${L.title(name)}. ${detail}`} style={({ pressed }) => [s.where, t.hairline, pressed && { opacity: 0.85 }]}>
-      <View style={s.whereIcon}>
-        <Icon name="location" color={t.ink.mint} />
-      </View>
-      <View style={s.flex}>
-        <AppText variant="h3">{L.title(name)}</AppText>
-        <AppText variant="secondary" color={t.c.muted} numberOfLines={2}>{detail}</AppText>
-      </View>
-      <Icon name="chevron" color={t.c.muted} />
-    </Pressable>
-  );
-}
-
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    where: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.timeRow + 16, padding: spacing.md, borderRadius: radius.card, backgroundColor: t.c.surface },
-    whereIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.mintPale },
-    flex: { flex: 1 },
+    flex: { flex: 1, minWidth: 0 },
+    stack: { gap: spacing.section },
+    pressed: { opacity: 0.85 },
+    personWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+    person: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: touch.min },
+    avatar: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
+    news: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.timeRow + 8, padding: spacing.md, borderRadius: radius.card, backgroundColor: t.c.surface, ...t.shadow.soft },
+    newsDot: { minWidth: 32, height: 32, borderRadius: 16, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     shrink: { flexShrink: 1 },
     tabular: { fontVariant: ['tabular-nums'] },
     top: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.lg },
-    personBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, minHeight: touch.min, alignSelf: 'flex-start' },
     hero: { gap: spacing.md, padding: spacing.xl, marginTop: spacing.xxl },
     heroRobot: { position: 'absolute', top: -84, right: -10 },
     how: { gap: spacing.sm, marginVertical: spacing.xs },
@@ -276,8 +290,7 @@ const useStyles = makeStyles((t) =>
       backgroundColor: t.hc ? t.c.bg : 'rgba(255,255,255,0.7)',
       ...(t.hc ? t.hairline : {}),
     },
-    steps: { gap: spacing.xs, marginBottom: spacing.section },
-    elderPreview: { gap: spacing.xs, marginBottom: spacing.sm },
+    steps: { gap: spacing.xs },
     stepsHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
     stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.min },
     check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: t.hc ? t.c.text : t.c.muted, alignItems: 'center', justifyContent: 'center' },

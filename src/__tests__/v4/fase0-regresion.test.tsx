@@ -9,7 +9,9 @@ import Summary from '@/app/(caregiver)/(tabs)/summary';
 import SettingsIndex from '@/app/(caregiver)/settings';
 import SettingsSection from '@/app/(caregiver)/settings/[section]';
 import { Button } from '@/components/button';
+import ElderOptions from '@/app/elder/options';
 import { ElderScreen } from '@/features/elder/screen';
+import { useSession } from '@/state/session';
 import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
 import { RenderProviders, seedRenderData } from '@/testing/render-fixtures';
@@ -77,12 +79,18 @@ describe('administrador', () => {
 });
 
 describe('adulto mayor', () => {
-  it('"Opciones" está visible y ofrece Cerrar sesión y Entrar como administrador', async () => {
+  it('"Opciones" está visible y abre su pantalla con Cerrar sesión y Entrar como administrador', async () => {
     const elder = await seedRenderData();
     ui(<ElderScreen elderId={elder.id} />);
     fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
-    expect(await screen.findByRole('button', { name: strings.adminAccess.signOut })).toBeTruthy();
+    expect(mockPush).toHaveBeenCalledWith('/elder/options');
+    screen.unmount();
+    useSession.setState({ user: { id: 'elder-acc', email: 'e@correo.test', name: 'Rosa', createdAt: '', role: 'elder', ownerId: 'render-user', elderId: elder.id } });
+    ui(<ElderOptions />);
+    expect(screen.getByRole('button', { name: strings.adminAccess.signOut })).toBeTruthy();
     expect(screen.getByRole('button', { name: strings.adminAccess.enterAdmin })).toBeTruthy();
+    expect(screen.getByRole('button', { name: strings.elderOptions.permissions })).toBeTruthy();
+    expect(screen.getByRole('button', { name: strings.common.back })).toBeTruthy();
   });
 });
 

@@ -71,6 +71,23 @@ export interface DomainStyle {
   tone: Tone;
 }
 
+/** Mosaico de icono (V4): fondo vivo del dominio y glifo con contraste ≥ 3:1 (prueba en theme/__tests__). */
+export interface Tile {
+  bg: string;
+  fg: string;
+}
+
+export type StatusKind = 'ok' | 'attention' | 'action' | 'none';
+
+/** Estado del Inicio (V4): "Todo bien" menta, "Atención" ámbar suave, "Acción necesaria" coral, sin datos gris. */
+export interface StatusStyle {
+  bg: string;
+  border: string;
+  accent: string;
+  text: string;
+  muted: string;
+}
+
 export interface Theme {
   name: ThemeName;
   dark: boolean;
@@ -80,6 +97,8 @@ export interface Theme {
   ink: Ink;
   tones: Record<Tone, { bg: string; fg: string; solid: string; soft: string }>;
   domains: Record<Domain, DomainStyle>;
+  tiles: Record<Domain | 'petrol' | 'slate', Tile>;
+  status: Record<StatusKind, StatusStyle>;
   gradients: { primary: Gradient; coral: Gradient; welcome: Gradient; screen: Gradient };
   shadow: { soft: ViewStyle; elevated: ViewStyle; hero: ViewStyle; glow: Record<Tone, ViewStyle> };
   borderWidth: number;
@@ -270,6 +289,24 @@ function softTheme(name: 'light' | 'dark'): Theme {
         tone: 'yellow',
       },
     },
+    tiles: {
+      water: { bg: '#1E7FD6', fg: '#FFFFFF' },
+      medication: { bg: '#E2513B', fg: '#FFFFFF' },
+      mood: { bg: '#6E56F0', fg: '#FFFFFF' },
+      sleep: { bg: '#4338CA', fg: '#FFFFFF' },
+      activity: { bg: '#0B9670', fg: '#FFFFFF' },
+      food: { bg: '#F5A524', fg: '#3D2A00' },
+      contact: { bg: '#8B4FE0', fg: '#FFFFFF' },
+      followUp: { bg: '#F5A524', fg: '#3D2A00' },
+      petrol: { bg: c.primary, fg: '#FFFFFF' },
+      slate: { bg: p('#E4ECEB', '#234E5A'), fg: p('#2D4A55', '#E2EEEC') },
+    },
+    status: {
+      ok: { bg: p('#DCF7EC', '#0F3F37'), border: p('#9FE6CB', '#1F6B5B'), accent: p('#0B9670', '#5ED9B5'), text: p('#0B3D31', '#E6FBF4'), muted: p('#1F5E4D', '#B9EBDA') },
+      attention: { bg: p('#FFF1CF', '#3B3216'), border: p('#F8D57E', '#6B5A22'), accent: p('#B07800', '#F6D27A'), text: p('#4A3500', '#FFF4D6'), muted: p('#6B4E00', '#EEDCA8') },
+      action: { bg: p('#FFE3DC', '#4A2420'), border: p('#F9B3A4', '#7A3A30'), accent: p('#C93D28', '#FF9C8A'), text: p('#5C1A0F', '#FFECE7'), muted: p('#7E2A1C', '#FFC9BD') },
+      none: { bg: p('#EEF3F3', '#16424F'), border: p('#D3E0E0', '#28566A'), accent: p('#56657A', '#A9C0C6'), text: p('#0D3946', '#F2F8F7'), muted: p('#4A5A6B', '#A9C0C6') },
+    },
     gradients: {
       primary: [c.primary, c.primaryEnd],
       coral: [c.coralCta, c.coralCtaEnd],
@@ -373,6 +410,8 @@ function hcTheme(name: 'hcLight' | 'hcDark'): Theme {
       contact: dom(blue, 'lavender'),
       followUp: dom(fg, 'yellow'),
     },
+    tiles: Object.fromEntries((['water', 'medication', 'mood', 'sleep', 'activity', 'food', 'contact', 'followUp', 'petrol', 'slate'] as const).map((k) => [k, { bg, fg }])) as Theme['tiles'],
+    status: Object.fromEntries((['ok', 'attention', 'action', 'none'] as const).map((k) => [k, { bg, border: fg, accent: k === 'action' ? red : k === 'ok' ? green : fg, text: fg, muted: fg }])) as Theme['status'],
     gradients: { primary: flat(fg), coral: flat(fg), welcome: flat(bg), screen: flat(bg) },
     shadow: {
       soft: none,
@@ -393,7 +432,7 @@ export const themes: Record<ThemeName, Theme> = {
 // ── Tokens independientes del tema ───────────────────────────
 
 /** Base de 4 pt. `screen` = margen lateral; `section` = separación entre secciones. */
-export const spacing = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 20, xl: 24, xxl: 32, xxxl: 40, screen: 24, section: 28 } as const;
+export const spacing = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 20, xl: 24, xxl: 32, xxxl: 40, screen: 20, section: 24 } as const;
 
 export const radius = {
   sm: 12,
@@ -401,7 +440,8 @@ export const radius = {
   iconLg: 20,
   md: 16,
   input: 18,
-  button: 20,
+  button: 18,
+  tile: 14,
   card: 24,
   cardLg: 24,
   hero: 32,
@@ -409,8 +449,11 @@ export const radius = {
   pill: 999,
 } as const;
 
-/** Alturas mínimas: crecen con el texto. `elder` = acciones del adulto mayor. */
-export const touch = { min: 48, chip: 44, secondary: 52, primary: 60, elder: 72, elderMin: 64, timeRow: 56, tabBar: 72 } as const;
+/**
+ * Alturas MÍNIMAS (crecen con el texto). V4: todo botón estándar mide al menos 56; `compact` (44) solo para acciones
+ * secundarias como Editar; `elder` = acciones del adulto mayor; `orb` = botón central de BUDDY en la barra.
+ */
+export const touch = { min: 48, chip: 44, compact: 44, secondary: 56, primary: 56, elder: 72, elderMin: 64, timeRow: 56, tabBar: 72, orb: 64, tile: 44 } as const;
 
 export const fonts = {
   regular: 'Manrope_400Regular',
@@ -439,6 +482,8 @@ export const type = {
   captionStrong: { fontFamily: fonts.extrabold, fontSize: 14, lineHeight: 20 },
   eyebrow: { fontFamily: fonts.extrabold, fontSize: 12, lineHeight: 16, letterSpacing: 1.4, textTransform: 'uppercase' },
   meta: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
+  /** Etiquetas de la barra inferior (V4: 13, siempre visibles). */
+  tab: { fontFamily: fonts.bold, fontSize: 13, lineHeight: 16 },
   number: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 32, fontVariant: ['tabular-nums'] },
   button: { fontFamily: fonts.extrabold, fontSize: 18, lineHeight: 24 },
 } as const satisfies Record<string, TextStyle>;

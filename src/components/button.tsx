@@ -20,7 +20,7 @@ import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
 import { PressableScale } from './pressable-scale';
 
-export type ButtonVariant = 'primary' | 'coral' | 'secondary' | 'danger' | 'ghost' | 'tonal' | 'white';
+export type ButtonVariant = 'primary' | 'coral' | 'secondary' | 'danger' | 'ghost' | 'tonal' | 'white' | 'text';
 
 interface VariantStyle {
   gradient?: readonly [string, string, ...string[]];
@@ -35,7 +35,8 @@ function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyl
   const hcBorder = { border: t.c.text, borderWidth: 2 };
   switch (variant) {
     case 'primary':
-      return { gradient: t.gradients.primary, text: t.c.onPrimary, shadow: t.shadow.glow.petrol, ...(t.hc ? hcBorder : {}) };
+      // V4: petróleo sólido con texto blanco (≥ 9:1); el degradado se veía apagado y no aportaba.
+      return { bg: t.c.primary, text: t.c.onPrimary, shadow: t.shadow.glow.petrol, ...(t.hc ? hcBorder : {}) };
     case 'coral':
       return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: t.shadow.glow.coral, ...(t.hc ? hcBorder : {}) };
     case 'secondary':
@@ -48,11 +49,16 @@ function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyl
     case 'white':
       return t.hc ? { bg: t.c.bg, ...hcBorder, text: t.c.text } : { bg: '#FFFFFF', text: '#0B3A66', shadow: t.shadow.glow.sky };
     case 'tonal':
-      return { bg: t.tones[tone].bg, border: t.hc ? t.tones[tone].fg : t.tones[tone].soft, borderWidth: t.borderWidth, text: t.tones[tone].fg, shadow: t.shadow.glow[tone] };
+      return { bg: t.tones[tone].bg, border: t.hc ? t.tones[tone].fg : t.tones[tone].soft, borderWidth: t.borderWidth, text: t.tones[tone].fg };
+    case 'text':
+      // Acción terciaria: sin caja, texto en el color de acción; conserva el área táctil de 48.
+      return { bg: 'transparent', text: t.hc ? t.c.text : t.ink.info };
   }
 }
 
-const HEIGHTS = { elder: touch.elder, lg: touch.primary, md: touch.secondary, sm: touch.min } as const;
+const HEIGHTS = { elder: touch.elder, lg: touch.primary, md: touch.secondary, sm: touch.compact } as const;
+/** El compacto mide 44 a la vista; su área táctil llega a 48. */
+const COMPACT_SLOP = { top: 2, bottom: 2, left: 0, right: 0 };
 
 export interface ButtonProps {
   label: string;
@@ -62,7 +68,7 @@ export interface ButtonProps {
   tone?: Tone;
   icon?: IconName;
   trailing?: IconName;
-  /** elder = 72 (adulto mayor); lg = 60 (principal); md = 52 (secundario); sm = 48. */
+  /** Alturas MÍNIMAS: elder = 72 (adulto mayor); lg y md = 56; sm = 44 (compacto: Editar y acciones secundarias). */
   size?: keyof typeof HEIGHTS;
   textColor?: string;
   disabled?: boolean;
@@ -109,6 +115,7 @@ export function Button({
       disabled={disabled || loading}
       haptic={haptic}
       onPress={onPress}
+      hitSlop={size === 'sm' ? COMPACT_SLOP : undefined}
       style={[
         s.base,
         size === 'sm' && s.compact,
@@ -126,9 +133,9 @@ export function Button({
         <ActivityIndicator color={v.text} />
       ) : (
         <>
-          {icon ? <Icon name={icon} color={v.text} size={size === 'elder' ? 28 : 22} /> : null}
+          {icon ? <Icon name={icon} color={v.text} size={size === 'elder' ? 26 : size === 'sm' ? 20 : 22} /> : null}
           <AppText
-            variant={stacked ? 'secondaryStrong' : size === 'elder' ? 'h3' : 'button'}
+            variant={stacked || size === 'sm' ? 'secondaryStrong' : size === 'elder' ? 'h3' : 'button'}
             color={v.text}
             align="center"
             style={s.grow}
@@ -247,7 +254,7 @@ const useStyles = makeStyles((t) =>
     shineClip: { ...StyleSheet.absoluteFill, borderRadius: radius.button, overflow: 'hidden' },
     shine: { position: 'absolute', top: 0, bottom: 0, left: '35%', width: '28%' },
     grow: { flexShrink: 1, minWidth: 0, textAlign: 'center' },
-    compact: { paddingHorizontal: spacing.sm },
+    compact: { paddingHorizontal: spacing.sm, gap: spacing.xs, alignSelf: 'flex-start' },
     stacked: { flexDirection: 'column', gap: 2, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
     disabled: { opacity: 0.45 },
     circle: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center' },

@@ -9,7 +9,6 @@ import Welcome from '@/app/(auth)';
 import Onboarding from '@/app/(auth)/onboarding';
 import SignIn from '@/app/(auth)/sign-in';
 import Routine from '@/app/(caregiver)/(tabs)/routine';
-import Summary from '@/app/(caregiver)/(tabs)/summary';
 import Alerts from '@/app/(caregiver)/alerts';
 import RoutineSection from '@/app/(caregiver)/routine/[section]';
 import { db, useDb } from '@/infrastructure/local/db';
@@ -66,10 +65,8 @@ it('P5: cada cambio queda en un registro de cambios para reflejarlo en el otro c
   expect((useDb.getState() as unknown as { changelog?: unknown[] }).changelog?.length ?? 0).toBeGreaterThan(0);
 });
 
-it('P6: el Resumen da acceso a la ubicación', () => {
-  ui(<Summary />);
-  expect(screen.getByRole('button', { name: /Ubicación/ })).toBeTruthy();
-});
+// P6 (V4): la ubicación dejó de ser una tarjeta del Inicio y tiene su propia pestaña; lo cubre
+// src/__tests__/integration/navigation-v31.test.tsx ("Ubicación" en la barra inferior).
 
 it('P8: una cita tiene dirección', () => {
   mockParams = { section: 'appointments' };

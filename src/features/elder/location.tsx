@@ -10,7 +10,7 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { useToast } from '@/components/feedback';
 import { Icon } from '@/components/icon';
-import { InlineBanner } from '@/components/inline-banner';
+import { InlineBanner } from '@/components/row';
 import type { Elder } from '@/domain/types';
 import { currentFix } from '@/infrastructure/location';
 import { strings } from '@/i18n';

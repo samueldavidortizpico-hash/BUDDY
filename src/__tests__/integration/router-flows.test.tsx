@@ -9,6 +9,7 @@ import Routine from '@/app/(caregiver)/(tabs)/routine';
 import Preview from '@/app/(caregiver)/preview';
 import ElderHome from '@/app/elder';
 import ElderLayout from '@/app/elder/_layout';
+import ElderOptions from '@/app/elder/options';
 import Unlock from '@/app/elder/unlock';
 import AccountSwitch from '@/app/(caregiver)/account-switch';
 import { db } from '@/infrastructure/local/db';
@@ -33,6 +34,7 @@ const routes = {
   '(caregiver)/account-switch': AccountSwitch,
   'elder/_layout': ElderLayout,
   'elder/index': ElderHome,
+  'elder/options': ElderOptions,
   'elder/unlock': Unlock,
 };
 

@@ -62,8 +62,8 @@ export function ScreenHeader({
         <Icon name="back" size={28} color={t.c.text} strokeWidth={2.2} />
       </Pressable> : <View style={s.spacer} />}
       <View style={s.center}>
-        {/* Tope ×1.5: con texto al 200 % el título partía palabras y quedaba cortado ("Mis…"). */}
-        <AppText variant="h3" align="center" accessibilityRole="header" numberOfLines={2} maxScale={1.5}>
+        {/* V4: H2 de hasta 2 líneas. Tope ×1.5: con texto al 200 % el título partía palabras y quedaba cortado. */}
+        <AppText variant="h2" align="center" accessibilityRole="header" numberOfLines={2} maxScale={1.5}>
           {title}
         </AppText>
         {subtitle ? (
@@ -99,7 +99,7 @@ const useStyles = makeStyles((t) =>
     },
     spacer: { width: touch.min, height: touch.min },
     pressed: { opacity: 0.7 },
-    center: { flex: 1 },
+    center: { flex: 1, minWidth: 0 },
     side: { minWidth: touch.min, flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs },
   }),
 );

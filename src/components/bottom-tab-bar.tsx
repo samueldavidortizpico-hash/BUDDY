@@ -187,10 +187,12 @@ export function BottomTabBar({
               <Fragment key={route.key}>
                 {caregiver && index === 2 ? (
                   <Pressable accessibilityRole="button" accessibilityLabel={`Abrir chat de ${strings.brand.name}${unread ? `, ${unread} novedades` : ''}`} onPress={() => go(2)} style={s.centerItem}>
-                    <View style={[s.centerOrb, { backgroundColor: t.hc ? t.c.surface : t.ink.mint }]}>
-                      <BuddyRobot size={42} compact mood="idle" badge={unread || undefined} flying={false} shadow={false} glow={false} navigationIndependent />
+                    {/* V4: círculo menta de 64 elevado sobre la barra; abre el chat a pantalla completa (no es pestaña). */}
+                    <View style={[s.centerOrb, t.hc ? null : t.shadow.glow.mint]}>
+                      <BuddyRobot size={46} compact mood="idle" flying={false} shadow={false} glow={false} navigationIndependent />
+                      {unread ? <View style={s.dot} accessibilityElementsHidden importantForAccessibility="no" /> : null}
                     </View>
-                    <AppText variant="meta" color={t.c.text} numberOfLines={1} maxScale={1.1} style={styles.label}>BUDDY</AppText>
+                    <AppText variant="tab" color={t.c.text} numberOfLines={1} maxScale={1.1} style={styles.label}>BUDDY</AppText>
                   </Pressable>
                 ) : null}
                 <Pressable
@@ -203,7 +205,7 @@ export function BottomTabBar({
                   style={s.item}
                 >
                   <TabIcon name={icons[route.name] ?? 'home'} focused={focused} />
-                  <AppText variant="meta" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1.1} style={styles.label}>
+                  <AppText variant="tab" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1.1} style={styles.label}>
                     {label}
                   </AppText>
                 </Pressable>
@@ -262,6 +264,19 @@ const useStyles = makeStyles((t) =>
     },
     item: { flex: 1, alignItems: 'center', gap: 2, minHeight: touch.tabBar - 8, paddingTop: 8, paddingBottom: 6, paddingHorizontal: 2 },
     centerItem: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', minHeight: touch.tabBar - 8, paddingBottom: 6, paddingHorizontal: 2 },
-    centerOrb: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginTop: -23, marginBottom: 3, borderWidth: t.hc ? 2 : 0, borderColor: t.c.text },
+    centerOrb: {
+      width: touch.orb,
+      height: touch.orb,
+      borderRadius: touch.orb / 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: -30,
+      marginBottom: 2,
+      backgroundColor: t.hc ? t.c.surface : t.c.mint,
+      borderWidth: t.hc ? 2 : 4,
+      borderColor: t.hc ? t.c.text : t.c.surface,
+    },
+    // Bolita roja de novedades (sin número: el contador vive en la campana de Inicio).
+    dot: { position: 'absolute', top: 2, right: 2, width: 16, height: 16, borderRadius: 8, backgroundColor: t.hc ? t.c.text : '#E5392C', borderWidth: 2, borderColor: t.c.surface },
   }),
 );

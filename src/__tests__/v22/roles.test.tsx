@@ -11,6 +11,7 @@ import SignIn from '@/app/(auth)/sign-in';
 import CaregiverLayout from '@/app/(caregiver)/_layout';
 import ElderHome from '@/app/elder';
 import ElderLayout from '@/app/elder/_layout';
+import ElderOptions from '@/app/elder/options';
 import Unlock from '@/app/elder/unlock';
 import { AuthError } from '@/domain/auth';
 import { can, type Permission } from '@/domain/permissions';
@@ -107,6 +108,7 @@ describe('navegación por rol', () => {
     '(caregiver)/summary': () => <Text>Resumen de prueba</Text>,
     'elder/_layout': ElderLayout,
     'elder/index': ElderHome,
+    'elder/options': ElderOptions,
     'elder/unlock': Unlock,
   };
   let elderId: string;
@@ -182,6 +184,7 @@ describe('extremo a extremo: entrar como adulto mayor, salir y entrar como admin
     '(caregiver)/summary': () => <Text>Resumen de prueba</Text>,
     'elder/_layout': ElderLayout,
     'elder/index': ElderHome,
+    'elder/options': ElderOptions,
   };
   afterEach(() => cleanup());
 

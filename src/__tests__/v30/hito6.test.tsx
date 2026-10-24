@@ -39,13 +39,13 @@ describe('primeros cinco minutos del hijo', () => {
 });
 
 describe('adulto mayor sin fricción', () => {
-  it('todas las respuestas de una toma miden 72 (tomé, en 10 minutos, no lo tomé)', () => {
+  it('V4: "Ya lo tomé" mide 72 y "Más tarde" y "No lo tomé" al menos 56', () => {
     db.insert('medications', { name: 'Losartán [PRUEBA]', activeIngredient: '', strength: '', form: 'tablet', doseAmount: 1, doseUnit: 'unit', schedule: { kind: 'times', times: [new Date().toTimeString().slice(0, 5)], days: [] }, startDate: toISODate(new Date()), endDate: null, instructions: '', purpose: '', description: '', unitsPerPackage: 30, unitsOnHand: 30, refillAlertDays: 3, photoUri: null, paused: false }, { userId: testUser.id, elderId });
     render(<ElderScreen elderId={elderId} />, { wrapper: RenderProviders });
-    for (const name of [strings.elder.taken, strings.elder.snooze, strings.elder.notTaken]) {
-      const style = [screen.getByRole('button', { name }).props.style].flat(4).reduce((a, b) => ({ ...a, ...(b ?? {}) }), {});
-      expect(style.minHeight).toBeGreaterThanOrEqual(72);
-    }
+    const minHeight = (name: string) => [screen.getByRole('button', { name }).props.style].flat(4).reduce((a, b) => ({ ...a, ...(b ?? {}) }), {}).minHeight;
+    expect(minHeight(strings.elder.taken)).toBeGreaterThanOrEqual(72);
+    expect(minHeight(strings.elder.snooze)).toBeGreaterThanOrEqual(56);
+    expect(minHeight(strings.elder.notTaken)).toBeGreaterThanOrEqual(56);
     // Y "Opciones" visible, sin gesto oculto.
     expect(screen.getByRole('button', { name: strings.adminAccess.button })).toBeTruthy();
   });
