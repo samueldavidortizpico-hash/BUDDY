@@ -10,6 +10,11 @@ import * as Crypto from 'expo-crypto';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { FEATURES } from '@/config/features';
+
+import { secureStorage } from '../secure-storage';
+import { createAesCipher, createEncryptedStorage } from './encrypted-storage';
+
 import type {
   AccountSettings,
   Activity,
@@ -142,7 +147,8 @@ export const useDb = create<DbState>()(
   persist(empty, {
     name: 'buddy.db',
     version: SCHEMA_VERSION,
-    storage: createJSONStorage(() => AsyncStorage),
+    // V4 Fase 3: cifrada detrás de la bandera (docs/ALMACENAMIENTO_SEGURO.md); si no, el AsyncStorage de siempre.
+    storage: createJSONStorage(() => (FEATURES.encryptedStorage ? createEncryptedStorage(AsyncStorage, createAesCipher(secureStorage)) : AsyncStorage)),
     migrate,
   }),
 );

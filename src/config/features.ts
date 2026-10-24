@@ -8,10 +8,13 @@
  *   contraindicaciones por condición (nivel 3) no existen hasta la Fase 7.
  * - `foodAnalysis`: evaluador de etiquetas nutricionales (nutrición, Futuro).
  * - `watch`: reloj y datos de salud del reloj (Futuro).
+ * - `encryptedStorage` (V4 Fase 3): base local cifrada con AES-GCM y la clave en el SecureStore. Encendida solo en
+ *   desarrollo hasta probarla en dispositivo (docs/ALMACENAMIENTO_SEGURO.md); apagada en producción y en Jest.
  * Zonas seguras e IA conversacional real no tienen código todavía.
  */
 export const FEATURES = {
   level2Review: process.env.EXPO_PUBLIC_LEVEL2_REVIEW === 'on',
   foodAnalysis: false,
   watch: false,
+  encryptedStorage: __DEV__ && process.env.NODE_ENV !== 'test',
 };
