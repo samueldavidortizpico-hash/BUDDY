@@ -236,3 +236,22 @@ Ajustes > Apariencia > Tamaño de letra "Máximo (200 %)". Repetir en claro, osc
     volver, el administrador ve la novedad "Cambió un permiso en su celular".
 11. **Almacenamiento cifrado (desarrollo):** abrir con datos existentes en Expo Go (migra), cerrar y abrir (lee lo
     cifrado), y comprobar que los datos siguen.
+
+## Ronda V4.3: diseño profesional, planes y enfermera (rama `v4`)
+
+1. **Login:** al abrir el teclado el ícono se reduce y se desvanece y la tarjeta sube sin tapar "Entrar"; error con
+   correo mal escrito (borde rojo, temblor y mensaje); varios intentos fallidos muestran la espera.
+2. **Crear cuenta:** el medidor pasa de "débil" a "media" a "fuerte" con su color; la casilla de términos dibuja el check;
+   al terminar aparece el check de éxito y el paso siguiente.
+3. **Recuperar contraseña:** un campo y un botón; estado de confirmación con "Volver a iniciar sesión".
+4. **Reacciones:** botones y filas escalan al tocar sin retraso; vibración ligera en acciones principales y de éxito al
+   confirmar una toma; con "Reducir movimiento" del sistema solo hay fundidos.
+5. **BUDDY Plus:** Mensual/Anual con la píldora deslizante; los precios cambian con fundido; elegir cada plan eleva su
+   tarjeta; el brillo del recomendado pasa cada 4 s; "Compara los planes" se despliega; el botón fijo no tapa contenido.
+6. **Planes de prueba (desarrollo):** Ajustes > Avanzado > Plan de prueba en Gratis, Plus, Salud y Familiar; en Gratis el
+   chat y el historial de Salud muestran el candado; en Plus se abren; Familia y Enfermera solo con su plan.
+7. **Enfermera (plan Salud):** crear su acceso en Ajustes > Personas (consentimiento obligatorio), entrar con esa cuenta,
+   marcar "Administrada" y ver en el historial del administrador que la confirmó la enfermera; comprobar que no puede
+   editar medicamentos ni horarios. Los avisos en su propio celular requieren servidor (no se prometen).
+8. **Pantallas internas en claro y oscuro:** Rutina, detalle de medicamento, Salud y chat sin cortes con letra al máximo
+   en un iPhone SE o mini.

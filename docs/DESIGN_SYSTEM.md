@@ -1,8 +1,55 @@
-# BUDDY — Sistema de diseño V4
+# BUDDY — Sistema de diseño V4 (vigente: V4.3)
 
 Fuente única: `src/theme/index.ts`. Ningún color, tamaño ni espacio suelto en pantallas. Galería: `/dev/gallery` (solo
 desarrollo). Controles automáticos: `scripts/capture/v4-screens.mjs` (web, 360/375/390 × letra 1,0/1,3/2,0 × claro,
 oscuro y alto contraste), `scripts/check-headers.ts` y las pruebas de `src/__tests__/v4/` y `layout-v31`.
+
+## V4.3 · Nivel profesional (vigente; reemplaza las medidas de "Tokens V4" donde difieran)
+
+Galería con todos los estados: `/dev/gallery` (capturas en `docs/capturas/v4_3/galeria/`). Capturas antes y después:
+`scripts/capture/v4_3.mjs`. Desbordes: `scripts/check-overflow.mjs` (15 pantallas, 390 y 360, letra normal y 200 %).
+
+**Color (claro / oscuro).** Fondo `#F4F7F6` / `#0B1622`; superficie `#FFFFFF` / `#13212E`; superficie 2 `#EDF3F2` /
+`#1B2B3A`; borde `#DCE6E4` / blanco al 8 %. Texto `#102A33` · `#5B6B73` · `#8A99A0` (oscuro `#F3F6F8` · `#A7B4C2` ·
+`#7D8B98`). Marca: petróleo `#174A59`, petróleo profundo `#0D3946`, turquesa `#1FA9A0` (oscuro `#2BC4B4`, solo acento),
+menta `#5ED9B5`. Dominios (fuerte / suave): medicamentos coral `#E8735F` / `#FDEDE9`, salud mental lavanda `#7B6CF0` /
+`#EFEDFE`, sueño índigo `#5B63D6` / `#ECEEFC`, agua `#3D9BEF` / `#E8F3FD`, actividad `#23A989` / `#E5F7F1`, corazón y
+reloj `#E25C6B` / `#FCEAEC`, seguimiento ámbar `#C98A12` / `#FDF4DD`, éxito `#2E9E64`, peligro `#D64545`. En oscuro los
+dominios usan su versión clara y su fondo es el mismo color al 14 % sobre la superficie. Regla 60/30/10: el color dice
+el tipo de dato; las tarjetas son neutras y el color del dominio vive en el contenedor del icono, el número o el estado.
+
+**Degradados (solo momentos de marca).** Principal turquesa → petróleo a 135° (botón principal, encabezado del login);
+Plus petróleo profundo → turquesa con un brillo lavanda suave (BUDDY Plus). En alto contraste no hay degradados.
+
+**Tipografía (Manrope, una familia).** Display 32/38 800 (−0,5) · H1 28/34 800 · H2 22/28 700 · H3 18/24 700 · cuerpo
+17/24 500 · secundario 15/22 500 · auxiliar 13/18 600. Números grandes (`heroL` 40, `heroXL` 56) con cifras tabulares.
+
+**Medidas.** Espaciado de 4: pantalla 20, entre secciones 28, dentro de tarjeta 16–20, entre elementos 8/12/16. Radios:
+tarjeta 20, destacada 28, botón y campo 16, compacto 12, chip redondo, hoja 28 arriba. Elevación: nivel 1 tarjetas
+(0 1 2 al 4 % + 0 4 12 al 6 % del petróleo), nivel 2 flotantes (0 8 24 al 10 %), nivel 3 hojas (0 16 40 al 14 %); en
+oscuro la elevación es una superficie más clara, no sombra.
+
+**Componentes y estados.**
+- `Button`: principal 56 (72 en el adulto mayor) con el degradado; presionado 0,97 con resorte y oscurecido del 8 %;
+  deshabilitado al 40 % sin sombra; cargando con spinner del mismo ancho; éxito con check ~600 ms. Variantes:
+  secundario (superficie 2), borde 1,5 px, texto, peligro (fondo suave), compacto 40 de alto y radio 12 (área 48).
+- `Field`: etiqueta arriba, 56 de alto, superficie 2; foco con borde turquesa de 2 y halo del 15 %; error con borde,
+  icono, mensaje y temblor de 300 ms; check verde cuando el formato es válido; icono a la izquierda y acción a la derecha.
+- `ListRow`, `Card`, `Chip`, `Segmented` (píldora que se desliza), `Toggle` animado, `Checkbox` con check que se dibuja,
+  `BottomSheet` con asa, toast que entra desde arriba, `EmptyState` con una acción y `Skeleton` con brillo.
+- `PlusLock` / `LockedPreview`: vista previa difuminada, candado, plan que la incluye y "Ver planes". Nunca sobre una
+  función de seguridad.
+- `Bars`: barras de 14 px sobre su riel (no bloques a todo el ancho).
+
+**Movimiento (`motion`).** Todo lo tocable reacciona en el mismo cuadro (`PressableScale`): 0,97 botones, 0,98 tarjetas y
+filas, resorte 15/300. Pantallas 280 ms, hojas 320 ms, pestañas 180 ms. Entradas escalonadas de 40 ms (máx. 6) con
+fundido y subida de 12 px (`Appear`); números que cuentan en 600 ms (`CountUp`); barras que se llenan con curva de
+salida. Vibración ligera en acciones principales, de éxito al confirmar y de advertencia en errores. Solo `transform` y
+opacidad; con "reducir movimiento", fundidos de 150 ms y sin vibraciones decorativas.
+
+**Pantallas.** Login, crear cuenta y recuperar comparten `AuthShell` (degradado, robot real de 72, tarjeta que sube y
+se compacta con el teclado). BUDDY Plus: encabezado Plus, Mensual/Anual, tres planes con el recomendado de borde
+degradado y brillo cada 4 s, comparación desplegable, confianza y botón fijo con plan y precio (`src/config/plans.ts`).
 
 ## Skills aplicadas
 

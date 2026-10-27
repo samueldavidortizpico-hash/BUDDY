@@ -30,7 +30,7 @@ const server = createServer((req, res) => {
 await new Promise((r) => server.listen(0, r));
 const base = `http://localhost:${server.address().port}`;
 
-const ROUTES = ['/summary', '/routine', '/health', '/alerts', '/handoff', '/buddy', '/settings', '/routine/appointments', '/food', '/location', '/elder'];
+const ROUTES = ['/summary', '/routine', '/health', '/alerts', '/handoff', '/buddy', '/settings', '/routine/appointments', '/food', '/location', '/plus', '/family', '/settings/plan', '/medication/cap-m1', '/elder'];
 const THEMES = [
   { name: 'claro', mode: 'light', highContrast: false },
   { name: 'oscuro', mode: 'dark', highContrast: false },

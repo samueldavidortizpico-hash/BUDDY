@@ -122,7 +122,8 @@ function useKeyboardOpen() {
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    root: { flex: 1, backgroundColor: t.hc ? t.c.bg : t.dark ? '#0B1E2D' : '#174A59' },
+    // Del color de la tarjeta: mientras sube al entrar, debajo no asoma una franja de otro color.
+    root: { flex: 1, backgroundColor: t.hc ? t.c.bg : t.c.surface },
     scroll: { flexGrow: 1 },
     header: { minHeight: 300, paddingHorizontal: spacing.lg, paddingBottom: 56, overflow: 'hidden', justifyContent: 'center' },
     headerCompact: { minHeight: 0, paddingBottom: 40 },

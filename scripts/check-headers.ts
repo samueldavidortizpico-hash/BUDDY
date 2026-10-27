@@ -15,7 +15,12 @@ const ROOTS = new Set<string>([
   '(caregiver)/(tabs)/routine.tsx',
   '(caregiver)/(tabs)/health.tsx',
   'elder/index.tsx',
+  'nurse/index.tsx',
+  '(auth)/onboarding.tsx',
 ]);
+
+/** Flechas propias de pantallas con encabezado de marca: AuthShell (login) y el encabezado de BUDDY Plus. */
+const OWN_BACK = ['<ScreenHeader', '<AuthShell', 'accessibilityLabel={strings.common.back}'];
 
 /** Rutas antiguas en proceso de eliminación (debe quedar vacía al cerrar la ronda v2.1). */
 const LEGACY = new Set<string>([]);
@@ -32,7 +37,7 @@ const routes = walk(APP)
   .map((f) => relative(APP, f).split(sep).join('/'))
   .filter((f) => !f.split('/').pop()!.startsWith('_') && !f.startsWith('+'));
 
-const failing = routes.filter((r) => !ROOTS.has(r) && !LEGACY.has(r) && !readFileSync(join(APP, r), 'utf8').includes('<ScreenHeader'));
+const failing = routes.filter((r) => !ROOTS.has(r) && !LEGACY.has(r) && !OWN_BACK.some((m) => readFileSync(join(APP, r), 'utf8').includes(m)));
 
 if (LEGACY.size) console.log(`Aviso: ${LEGACY.size} rutas antiguas exentas temporalmente.`);
 if (failing.length) {

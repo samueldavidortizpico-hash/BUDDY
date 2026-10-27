@@ -162,3 +162,19 @@ Pasos manuales de navegación: `docs/PRUEBAS_EN_DISPOSITIVO.md`, sección “Ron
 | Ubicación | Mapa arriba; Llamar principal y Cómo llegar; vacío con el robot | Hecho | Pendiente (mapa nativo) |
 | Ajustes | Lista agrupada; Cuenta; Personas; Apariencia; Avisos para mí; Plan; Privacidad y legal; Avanzado; Acerca de | Hecho | Pendiente |
 | Vista de [nombre] | Banner, flecha atrás, Cambiar a la cuenta de [nombre] | Hecho | Pendiente |
+
+## Ronda V4.3 (nivel profesional)
+
+| Pantalla | Qué cambió | Web (Jest + capturas + desbordes) | iPhone |
+|---|---|---|---|
+| Iniciar sesión / Crear cuenta / Recuperar | `AuthShell` con degradado y robot real; tarjeta que sube; chip de rol con "Cambiar"; medidor de fortaleza; confirmación de recuperación | Hecho | Pendiente (teclado) |
+| BUDDY Plus | Encabezado Plus; Mensual/Anual; Plus, Salud y Familiar (recomendado con borde degradado y brillo); comparación; confianza; botón fijo con plan y precio | Hecho | Pendiente |
+| Ajustes > Plan | Plan actual, beneficios, renovación de prueba, cambiar, cancelar, restaurar | Hecho | Pendiente |
+| Familia | Integrantes con su rol, turnos por día, notas compartidas | Hecho (solo este teléfono) | Pendiente |
+| Enfermera | Avisos pendientes, tomas con "Administrada" debajo del nombre, chequeo del día, existencias | Hecho | Pendiente |
+| Bloqueos amables | Chat, historial de Salud, reloj y reporte con vista difuminada, candado y "Ver planes" | Hecho | Pendiente |
+| Rutina | Sin franja lateral; fila que reacciona; "Agregar medicamento" secundario | Hecho | Pendiente |
+| Detalle de medicamento | Nombre como héroe en la tarjeta; Existencias neutra (ámbar solo en icono y estimado); "Ya lo tomó" | Hecho | Pendiente |
+| Salud | Barras delgadas sobre su riel | Hecho | Pendiente |
+| Chat | Acciones rápidas en tarjeta neutra con filas e iconos por dominio | Hecho | Pendiente (teclado) |
+| Textos | Sin "Supabase", "Expo Go" ni "(Fase N)" en la interfaz | Hecho | — |
