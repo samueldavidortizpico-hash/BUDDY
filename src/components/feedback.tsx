@@ -191,7 +191,7 @@ function Ring({ delay }: { delay: number }) {
 }
 
 /** Anillos que se expanden y check con rebote: confirmación de guardado. */
-export function SuccessBurst({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
+export function SuccessBurst({ title, text, icon = 'check', children }: { title: string; text: string; icon?: IconName; children?: ReactNode }) {
   const s = useStyles();
   const t = useTheme();
   return (
@@ -200,7 +200,7 @@ export function SuccessBurst({ title, text, children }: { title: string; text: s
         <Ring delay={0} />
         <Ring delay={450} />
         <Animated.View entering={ZoomIn.springify().damping(11)} style={s.checkOrb}>
-          <Icon name="check" size={52} color={t.ink.mint} strokeWidth={2.4} />
+          <Icon name={icon} size={52} color={t.ink.mint} strokeWidth={2.2} />
         </Animated.View>
       </View>
       <AppText variant="h1" align="center">

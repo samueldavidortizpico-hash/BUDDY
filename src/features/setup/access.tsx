@@ -15,7 +15,7 @@ import { Card } from '@/components/card';
 import { ConfirmDialog, useToast } from '@/components/feedback';
 import { Field } from '@/components/forms';
 import { Icon } from '@/components/icon';
-import { StrengthMeter } from '@/app/(auth)/sign-up';
+import { StrengthMeter } from '@/features/auth/strength-meter';
 import { AuthError } from '@/domain/auth';
 import type { Elder } from '@/domain/types';
 import { isAcceptablePassword, isValidEmail, passwordStrength, tempPassword } from '@/domain/validation';

@@ -1,16 +1,15 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Checkbox, Field } from '@/components/forms';
-import { useSharedValue } from 'react-native-reanimated';
-
-import { ScreenContainer } from '@/components/screen-container';
-import { ScreenHeader } from '@/components/screen-header';
+import { Icon } from '@/components/icon';
 import { AuthError } from '@/domain/auth';
 import { isAcceptablePassword, isValidEmail, isValidName, passwordStrength } from '@/domain/validation';
+import { AuthShell } from '@/features/auth/auth-shell';
+import { StrengthMeter } from '@/features/auth/strength-meter';
 import { strings } from '@/i18n';
 import { sessionActions } from '@/state/session';
 import { radius, spacing } from '@/theme';
@@ -20,11 +19,11 @@ import { successHaptic, warningHaptic } from '@/utils/haptics';
 const A = strings.auth;
 type Errors = Partial<Record<'name' | 'email' | 'password' | 'confirm' | 'terms' | 'form', string>>;
 
+/** Crear cuenta (V4.3): paso 1 de 3 del registro, con medidor de fortaleza y check de éxito antes de seguir. */
 export default function SignUp() {
   const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const scrollY = useSharedValue(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,9 +31,11 @@ export default function SignUp() {
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
   const [recovery, setRecovery] = useState<string | null>(null);
 
   const strength = passwordStrength(password);
+  const clear = (k: keyof Errors) => errors[k] && setErrors((e) => ({ ...e, [k]: undefined }));
 
   const submit = async () => {
     const next: Errors = {};
@@ -44,93 +45,114 @@ export default function SignUp() {
     if (confirm !== password) next.confirm = A.errors.mismatch;
     if (!terms) next.terms = A.errors.terms;
     setErrors(next);
-    if (Object.keys(next).length) {
-      warningHaptic();
-      return;
-    }
+    if (Object.keys(next).length) return;
     setBusy(true);
     try {
       await sessionActions.signUp({ name, email, password });
       successHaptic();
-      setRecovery(await sessionActions.recoveryCode(password));
-      setPassword(''); setConfirm('');
+      const code = await sessionActions.recoveryCode(password);
+      setBusy(false);
+      setDone(true);
+      setPassword('');
+      setConfirm('');
+      // Check de éxito breve y luego el código de recuperación (paso siguiente del registro).
+      setTimeout(() => setRecovery(code), 600);
     } catch (e) {
       warningHaptic();
-      setErrors({ form: e instanceof AuthError ? e.message : A.errors.unknown });
-    } finally {
       setBusy(false);
+      setErrors({ form: e instanceof AuthError ? e.message : A.errors.unknown });
     }
   };
 
-  if (recovery) return <ScreenContainer header={<ScreenHeader title="Guarda tu código de recuperación" fallback="/setup" />}>
-    <View style={s.form}>
-      <AppText>Se muestra una sola vez. Guárdalo en un lugar seguro; sirve para cambiar tu contraseña en este celular.</AppText>
-      <AppText variant="h2" selectable>{recovery}</AppText>
-      <Button label="Ya guardé mi código" onPress={() => { setRecovery(null); router.replace('/setup'); }} />
-    </View>
-  </ScreenContainer>;
+  if (recovery) {
+    return (
+      <AuthShell tagline={A.tagline.caregiver} back="/setup">
+        <Steps index={0} />
+        <AppText variant="h1" accessibilityRole="header">
+          Guarda tu código de recuperación
+        </AppText>
+        <AppText variant="body" color={t.c.muted}>
+          Se muestra una sola vez. Guárdalo en un lugar seguro: sirve para cambiar tu contraseña en este celular.
+        </AppText>
+        <View style={s.code}>
+          <AppText variant="h2" selectable align="center" style={s.codeText}>
+            {recovery}
+          </AppText>
+        </View>
+        <Button
+          label="Ya guardé mi código"
+          onPress={() => {
+            setRecovery(null);
+            router.replace('/setup');
+          }}
+        />
+      </AuthShell>
+    );
+  }
 
   return (
-    <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={A.signUpTitle} fallback="/" />}>
-      <View style={s.hero}>
-        <AppText variant="secondary" color={t.c.muted} align="center">
-          {A.signUpSubtitle}
-        </AppText>
+    <AuthShell tagline={A.tagline.caregiver}>
+      <Steps index={0} />
+      <AppText variant="h1" accessibilityRole="header">
+        {A.signUpTitle}
+      </AppText>
+      <AppText variant="secondary" color={t.c.muted}>
+        {A.signUpSubtitle}
+      </AppText>
+      <Field label={A.name} value={name} onChangeText={(v) => { setName(v); clear('name'); }} valid={isValidName(name)} placeholder={A.namePlaceholder}
+        autoComplete="name" textContentType="name" icon="user" error={errors.name} returnKeyType="next" />
+      <Field label={A.email} value={email} onChangeText={(v) => { setEmail(v); clear('email'); }} onClear={() => setEmail('')} valid={isValidEmail(email)}
+        placeholder={A.emailPlaceholder} keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" icon="mail" error={errors.email} />
+      <View>
+        <Field label={A.password} value={password} onChangeText={(v) => { setPassword(v); clear('password'); }} secure autoCapitalize="none" autoComplete="new-password"
+          textContentType="newPassword" icon="lock" hint={password ? undefined : A.passwordHint} error={errors.password} />
+        {password ? <StrengthMeter value={strength} /> : null}
       </View>
-
-      <View style={s.form}>
-        <View>
-          <Field label={A.name} value={name} onChangeText={setName} placeholder={A.namePlaceholder} autoComplete="name" textContentType="name" icon="user"
-            error={errors.name} returnKeyType="next" />
-        </View>
-        <View>
-          <Field label={A.email} value={email} onChangeText={setEmail} placeholder={A.emailPlaceholder} keyboardType="email-address" autoCapitalize="none"
-            autoComplete="email" textContentType="emailAddress" icon="mail" error={errors.email} />
-        </View>
-        <View>
-          <Field label={A.password} value={password} onChangeText={setPassword} secure autoCapitalize="none" autoComplete="new-password" textContentType="newPassword"
-            icon="lock" hint={A.passwordHint} error={errors.password} />
-          {password ? <StrengthMeter value={strength} /> : null}
-        </View>
-        <View>
-          <Field label={A.confirm} value={confirm} onChangeText={setConfirm} secure autoCapitalize="none" autoComplete="new-password" textContentType="newPassword"
-            icon="lock" error={errors.confirm} />
-        </View>
-        <Checkbox checked={terms} onChange={setTerms} label={A.terms} error={errors.terms} />
-        <View style={s.links}>
-          <Button label={A.readTerms} variant="ghost" size="sm" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })} style={s.link} />
-          <Button label={A.readPrivacy} variant="ghost" size="sm" onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'privacy' } })} style={s.link} />
-        </View>
-        {errors.form ? (
-          <View style={s.formError} accessibilityLiveRegion="assertive">
-            <AppText variant="secondaryStrong" color={t.ink.danger}>
-              {errors.form}
-            </AppText>
-          </View>
-        ) : null}
-        <Button label={A.create} variant="primary" loading={busy} onPress={submit} haptic />
-        <Button label={A.haveAccount} variant="ghost" size="md" onPress={() => router.replace('/sign-in')} />
-        <AppText variant="caption" color={t.c.muted} align="center">
-          {A.deviceNote}
+      <Field label={A.confirm} value={confirm} onChangeText={(v) => { setConfirm(v); clear('confirm'); }} valid={!!confirm && confirm === password} secure
+        autoCapitalize="none" autoComplete="new-password" textContentType="newPassword" icon="lock" error={errors.confirm} />
+      <Checkbox checked={terms} onChange={(v) => { setTerms(v); clear('terms'); }} label={A.terms} error={errors.terms}>
+        <AppText variant="secondary" style={s.flex}>
+          {`${A.termsLead} `}
+          <Text
+            accessibilityRole="link"
+            onPress={() => router.push({ pathname: '/legal/[doc]', params: { doc: 'terms' } })}
+            style={{ color: t.hc ? t.c.text : t.ink.info, textDecorationLine: 'underline' }}
+          >
+            {A.termsLink}
+          </Text>
         </AppText>
-      </View>
-    </ScreenContainer>
+      </Checkbox>
+      {errors.form ? (
+        <View style={s.formError} accessibilityLiveRegion="assertive" accessibilityRole="alert">
+          <Icon name="warning" size={18} color={t.ink.danger} />
+          <AppText variant="secondaryStrong" color={t.ink.danger} style={s.flex}>
+            {errors.form}
+          </AppText>
+        </View>
+      ) : null}
+      <Button label={A.create} loading={busy} success={done} onPress={submit} />
+      <Button label={A.haveAccount} variant="text" size="sm" onPress={() => router.replace('/sign-in')} style={s.center} />
+      <AppText variant="caption" color={t.c.muted} align="center">
+        {A.deviceNote}
+      </AppText>
+    </AuthShell>
   );
 }
 
-export function StrengthMeter({ value }: { value: number }) {
+/** Indicador de pasos del registro: barra en tres tramos y la etiqueta del paso actual. */
+function Steps({ index }: { index: number }) {
   const t = useTheme();
   const s = useStyles();
-  const colors = [t.ink.danger, t.ink.danger, t.ink.yellow, t.ink.mint, t.ink.success];
+  const n = A.signUpSteps.length;
   return (
-    <View style={s.meter} accessible accessibilityLabel={A.strengthLabel(A.strength[value])}>
-      <View style={s.bars}>
-        {[1, 2, 3, 4].map((k) => (
-          <View key={k} style={[s.bar, { backgroundColor: k <= value ? colors[value] : t.c.surface2 }, t.hc && k <= value ? { backgroundColor: t.c.text } : null]} />
+    <View style={s.steps} accessible accessibilityLabel={A.signUpStep(index + 1, n, A.signUpSteps[index])}>
+      <View style={s.stepBars}>
+        {A.signUpSteps.map((_, k) => (
+          <View key={k} style={[s.stepBar, { backgroundColor: k <= index ? (t.hc ? t.c.text : t.c.accent) : t.c.surface2 }, t.hc && k > index ? t.hairline : null]} />
         ))}
       </View>
-      <AppText variant="caption" color={colors[value]}>
-        {A.strengthLabel(A.strength[value])}
+      <AppText variant="captionStrong" color={t.c.muted}>
+        {A.signUpStep(index + 1, n, A.signUpSteps[index])}
       </AppText>
     </View>
   );
@@ -138,13 +160,13 @@ export function StrengthMeter({ value }: { value: number }) {
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    hero: { alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
-    form: { gap: spacing.md },
-    links: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    link: { flexGrow: 1 },
-    formError: { padding: spacing.md, borderRadius: radius.md, backgroundColor: t.c.dangerPale, ...t.hairline },
-    meter: { gap: spacing.xxs, marginTop: spacing.xs },
-    bars: { flexDirection: 'row', gap: 6 },
-    bar: { flex: 1, height: 6, borderRadius: 3 },
+    flex: { flex: 1, minWidth: 0 },
+    center: { alignSelf: 'center' },
+    steps: { gap: spacing.xs },
+    stepBars: { flexDirection: 'row', gap: 6 },
+    stepBar: { flex: 1, height: 4, borderRadius: 2 },
+    code: { padding: spacing.lg, borderRadius: radius.card, backgroundColor: t.c.surface2, ...(t.hc ? t.hairline : {}) },
+    codeText: { fontVariant: ['tabular-nums'], letterSpacing: 1 },
+    formError: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, backgroundColor: t.c.dangerPale },
   }),
 );
