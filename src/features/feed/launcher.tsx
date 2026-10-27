@@ -9,7 +9,7 @@
  */
 import { useFocusEffect, usePathname, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Linking, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Keyboard, Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   FadeOut,
@@ -29,7 +29,6 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { useToast } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
-import { BuddyRobot, type RobotMood } from '@/components/robot';
 import { itemVersion, type FeedItem } from '@/domain/recommendations/engine';
 import { strings } from '@/i18n';
 import { dayStatus } from '@/domain/status';
@@ -59,6 +58,7 @@ export function BuddyLauncher() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const reduce = useReducedMotion();
+  const t = useTheme();
   const { unreadItems, unread, alarm } = useFeed();
   const homeElder = useActiveElder();
   const statusInput = useStatusInput(homeElder?.setupDone ? homeElder : undefined);
@@ -78,9 +78,9 @@ export function BuddyLauncher() {
   const dir = useSharedValue(0);
   const k = useSharedValue(1);
   const o = useSharedValue(1);
-  const [look, setLook] = useState(0);
+  const [, setLook] = useState(0);
   const [keyboard, setKeyboard] = useState(false);
-  const [love, setLove] = useState(false);
+  const [, setLove] = useState(false);
   /** Un arrastre no debe abrir el chat: el toque que llega al soltar se ignora (1 = se está arrastrando). */
   const dragged = useSharedValue(0);
 
@@ -168,7 +168,6 @@ export function BuddyLauncher() {
   // los datos de hoy (V3.0, decisión 113).
   const quiet = pathname !== '/summary' || level === 'attention' || level === 'action';
   const pending = quiet ? [] : unreadItems.filter((f) => !f.positive && dismissed[f.key] !== itemVersion(f));
-  const mood: RobotMood = alarm ? 'worry' : unread ? 'wave' : love ? 'love' : 'idle';
   const open = () => {
     if (dragged.get()) return;
     if (reduce) return router.push('/buddy' as Href);
@@ -189,7 +188,14 @@ export function BuddyLauncher() {
       <View pointerEvents="box-none">
         <GestureDetector gesture={pan}>
           <Animated.View style={fly} testID="launcher-robot">
-            <BuddyRobot size={SIZE} compact mood={mood} look={look} badge={unread || undefined} shadow={false} glow onPress={open} accessibilityLabel={F.launcher(unread)} />
+            <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={F.launcher(unread)} style={[styles.orb, { backgroundColor: alarm ? t.c.coral : t.c.mintStrong }, t.shadow.elevated]}>
+              <Icon name="bell" color="#FFFFFF" size={30} />
+              {unread ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText} allowFontScaling={false}>{unread > 9 ? '9+' : String(unread)}</Text>
+                </View>
+              ) : null}
+            </Pressable>
           </Animated.View>
         </GestureDetector>
       </View>
@@ -316,6 +322,9 @@ function Bubble({ item, index, compact }: { item: FeedItem; index: number; compa
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', right: spacing.xs },
+  orb: { width: SIZE, height: SIZE, borderRadius: SIZE / 2, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#FFFFFF' },
+  badge: { position: 'absolute', top: -2, right: -2, minWidth: 24, height: 24, borderRadius: 12, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', backgroundColor: '#D93B3B', borderWidth: 2, borderColor: '#FFFFFF' },
+  badgeText: { color: '#FFFFFF', fontFamily: 'Manrope_800ExtraBold', fontSize: 13 },
   bubbles: { position: 'absolute', width: 288 },
   fromRight: { right: 0, alignItems: 'flex-end' },
   fromLeft: { left: 0, alignItems: 'flex-start' },

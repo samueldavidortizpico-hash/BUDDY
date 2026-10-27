@@ -38,8 +38,9 @@ function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyl
       // V4: petróleo sólido con texto blanco (≥ 9:1); el degradado se veía apagado y no aportaba.
       return { bg: t.c.primary, text: t.c.onPrimary, shadow: t.shadow.glow.petrol, ...(t.hc ? hcBorder : {}) };
     case 'mint':
-      // Turquesa de la primera apertura: texto petróleo oscuro, porque el blanco sobre turquesa claro no llega a 4,5:1.
-      return { gradient: t.dark ? ['#3FD0B4', '#5ED9B5'] : ['#35C9C0', '#5ED9B5'], text: '#0D3946', shadow: t.shadow.glow.mint, ...(t.hc ? hcBorder : {}) };
+      // V4.2: turquesa de la primera apertura con texto BLANCO. Blanco sobre #14A3A6 da 3,1:1 y la etiqueta va a 20 px
+      // en negrita (letra grande WCAG, mínimo 3:1); el turquesa de la referencia (#26B5BB) solo daba 2,4:1.
+      return { gradient: ['#0C939B', '#14A3A6'], text: '#FFFFFF', shadow: t.shadow.glow.mint, ...(t.hc ? hcBorder : {}) };
     case 'coral':
       return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: t.shadow.glow.coral, ...(t.hc ? hcBorder : {}) };
     case 'secondary':
@@ -138,7 +139,7 @@ export function Button({
         <>
           {icon ? <Icon name={icon} color={v.text} size={size === 'elder' ? 26 : size === 'sm' ? 20 : 22} /> : null}
           <AppText
-            variant={stacked || size === 'sm' ? 'secondaryStrong' : size === 'elder' ? 'h3' : 'button'}
+            variant={stacked || size === 'sm' ? 'secondaryStrong' : size === 'elder' || variant === 'mint' ? 'h3' : 'button'}
             color={v.text}
             align="center"
             style={s.grow}

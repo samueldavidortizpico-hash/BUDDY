@@ -12,6 +12,7 @@ import { Card } from '@/components/card';
 import { ConfirmDialog, useToast } from '@/components/feedback';
 import { Chip, Field, Segmented, Stepper } from '@/components/forms';
 import { Icon } from '@/components/icon';
+import { IconTile } from '@/components/icon-tile';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
@@ -157,7 +158,7 @@ function Appearance() {
   return (
     <View style={s.stack}>
       <Card variant="gradient" domain="activity" style={s.previewCard}>
-        <BuddyRobot size={96} mood="wave" shadow={false} />
+        <IconTile icon="sun" domain="activity" size={64} />
         <View style={s.flex}>
           <AppText variant="h3" color={t.domains.activity.text}>{S.previewText}</AppText>
           <Button label={strings.welcome.createAccount} size="sm" />
@@ -501,7 +502,7 @@ function About() {
   return (
     <View style={s.stack}>
       <View style={s.center}>
-        <BuddyRobot size={120} mood="wave" />
+        <BuddyRobot size={96} shape="square" />
         <AppText variant="h2">{strings.brand.name}</AppText>
         <AppText variant="secondary" color={t.c.muted}>{S.version(Constants.expoConfig?.version ?? '1.0.0')}</AppText>
       </View>

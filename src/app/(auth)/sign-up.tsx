@@ -7,7 +7,6 @@ import { Button } from '@/components/button';
 import { Checkbox, Field } from '@/components/forms';
 import { useSharedValue } from 'react-native-reanimated';
 
-import { AuthRobot, useFormRobot } from '@/components/robot/auth-robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
@@ -25,7 +24,6 @@ export default function SignUp() {
   const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const robot = useFormRobot('wave');
   const scrollY = useSharedValue(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -48,19 +46,16 @@ export default function SignUp() {
     setErrors(next);
     if (Object.keys(next).length) {
       warningHaptic();
-      robot.error();
       return;
     }
     setBusy(true);
     try {
       await sessionActions.signUp({ name, email, password });
       successHaptic();
-      robot.success();
       setRecovery(await sessionActions.recoveryCode(password));
       setPassword(''); setConfirm('');
     } catch (e) {
       warningHaptic();
-      robot.error();
       setErrors({ form: e instanceof AuthError ? e.message : A.errors.unknown });
     } finally {
       setBusy(false);
@@ -78,7 +73,6 @@ export default function SignUp() {
   return (
     <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={A.signUpTitle} fallback="/" />}>
       <View style={s.hero}>
-        <AuthRobot maxHeight={150} scrollY={scrollY} mood={robot.mood} look={robot.mood === 'look' ? -0.6 : 0} />
         <AppText variant="secondary" color={t.c.muted} align="center">
           {A.signUpSubtitle}
         </AppText>
@@ -87,20 +81,20 @@ export default function SignUp() {
       <View style={s.form}>
         <View>
           <Field label={A.name} value={name} onChangeText={setName} placeholder={A.namePlaceholder} autoComplete="name" textContentType="name" icon="user"
-            error={errors.name} onFocus={() => robot.focus()} onBlur={robot.blur} returnKeyType="next" />
+            error={errors.name} returnKeyType="next" />
         </View>
         <View>
           <Field label={A.email} value={email} onChangeText={setEmail} placeholder={A.emailPlaceholder} keyboardType="email-address" autoCapitalize="none"
-            autoComplete="email" textContentType="emailAddress" icon="mail" error={errors.email} onFocus={() => robot.focus()} onBlur={robot.blur} />
+            autoComplete="email" textContentType="emailAddress" icon="mail" error={errors.email} />
         </View>
         <View>
           <Field label={A.password} value={password} onChangeText={setPassword} secure autoCapitalize="none" autoComplete="new-password" textContentType="newPassword"
-            icon="lock" hint={A.passwordHint} error={errors.password} onFocus={() => robot.focus('password')} onBlur={robot.blur} />
+            icon="lock" hint={A.passwordHint} error={errors.password} />
           {password ? <StrengthMeter value={strength} /> : null}
         </View>
         <View>
           <Field label={A.confirm} value={confirm} onChangeText={setConfirm} secure autoCapitalize="none" autoComplete="new-password" textContentType="newPassword"
-            icon="lock" error={errors.confirm} onFocus={() => robot.focus('password')} onBlur={robot.blur} />
+            icon="lock" error={errors.confirm} />
         </View>
         <Checkbox checked={terms} onChange={setTerms} label={A.terms} error={errors.terms} />
         <View style={s.links}>

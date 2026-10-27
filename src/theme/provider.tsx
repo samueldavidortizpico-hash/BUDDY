@@ -20,9 +20,11 @@ export interface AppearancePrefs {
   textScale: TextScale;
   /** Deslizar el dedo sobre la barra de pestañas para cambiar de pestaña (se puede apagar). */
   barGestures: boolean;
+  /** Ya vio la primera apertura (presentaciones) en este teléfono. */
+  introSeen: boolean;
 }
 
-export const DEFAULT_APPEARANCE: AppearancePrefs = { mode: 'auto', highContrast: false, textScale: 'normal', barGestures: true };
+export const DEFAULT_APPEARANCE: AppearancePrefs = { mode: 'auto', highContrast: false, textScale: 'normal', barGestures: true, introSeen: false };
 
 interface AppearanceStore extends AppearancePrefs {
   set: (patch: Partial<AppearancePrefs>) => void;
@@ -33,7 +35,7 @@ export const useAppearanceStore = create<AppearanceStore>()(
     name: 'buddy.appearance',
     version: 1,
     storage: createJSONStorage(() => AsyncStorage),
-    partialize: ({ mode, highContrast, textScale, barGestures }) => ({ mode, highContrast, textScale, barGestures }),
+    partialize: ({ mode, highContrast, textScale, barGestures, introSeen }) => ({ mode, highContrast, textScale, barGestures, introSeen }),
   }),
 );
 

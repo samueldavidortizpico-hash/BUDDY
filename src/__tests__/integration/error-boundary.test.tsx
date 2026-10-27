@@ -1,6 +1,4 @@
 import { fireEvent, render } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
-import * as Reanimated from 'react-native-reanimated';
 
 import { ErrorBoundary } from '@/app/_layout';
 import { BuddyRobot } from '@/components/robot';
@@ -16,30 +14,12 @@ it('renders the root error fallback and retry without a screen navigation contex
   expect(retry).toHaveBeenCalledTimes(1);
 });
 
-it('keeps robot transforms finite at compact and regular sizes without navigation', async () => {
-  for (const size of [56, 96, 320]) {
-    const screen = await render(<BuddyRobot size={size} compact navigationIndependent mood="celebrate" />);
-    const layers = screen.container.queryAll((node) => node.type === 'View').map((view) => StyleSheet.flatten(view.props.style));
-    for (const style of layers) {
-      for (const transform of style?.transform ?? []) {
-        for (const value of Object.values(transform)) {
-          expect(Number.isFinite(typeof value === 'string' ? parseFloat(value) : value)).toBe(true);
-        }
-      }
-    }
-    await screen.unmount();
-  }
-});
-
-it('keeps the thinking robot still when reduced motion is enabled', async () => {
-  const reducedMotion = jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(true);
-  const repeat = jest.spyOn(Reanimated, 'withRepeat');
-  try {
-    const screen = await render(<BuddyRobot navigationIndependent mood="think" />);
-    expect(screen.toJSON()).not.toBeNull();
-    expect(repeat).not.toHaveBeenCalled();
-  } finally {
-    repeat.mockRestore();
-    reducedMotion.mockRestore();
-  }
+it('el robot es la imagen real dentro de su marco, decorativo salvo que lleve etiqueta', async () => {
+  const deco = await render(<BuddyRobot size={56} />);
+  expect(deco.toJSON()).not.toBeNull();
+  expect(deco.queryByRole('image')).toBeNull();
+  await deco.unmount();
+  const labeled = await render(<BuddyRobot size={96} shape="square" accessibilityLabel="BUDDY" />);
+  expect(labeled.getByRole('image', { name: 'BUDDY' })).toBeTruthy();
+  await labeled.unmount();
 });

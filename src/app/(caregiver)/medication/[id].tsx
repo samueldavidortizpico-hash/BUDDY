@@ -51,7 +51,7 @@ export default function MedicationDetail() {
   if (!med) {
     return (
       <ScreenContainer header={<ScreenHeader title={M.detail} fallback="/routine" />}>
-        <EmptyState title="Este medicamento ya no existe" mood="think" action={{ label: strings.common.back, onPress: () => router.back() }} />
+        <EmptyState title="Este medicamento ya no existe" action={{ label: strings.common.back, onPress: () => router.back() }} />
       </ScreenContainer>
     );
   }

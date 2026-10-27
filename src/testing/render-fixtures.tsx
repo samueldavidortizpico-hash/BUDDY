@@ -14,7 +14,8 @@ export async function seedRenderData() {
   await useDb.persist.rehydrate();
   await useAppearanceStore.persist.rehydrate();
   useDb.setState(useDb.getInitialState(), true);
-  useAppearanceStore.setState(DEFAULT_APPEARANCE);
+  // Las pruebas parten de Bienvenido: la primera apertura (presentaciones) ya se vio.
+  useAppearanceStore.setState({ ...DEFAULT_APPEARANCE, introSeen: true });
   useSession.setState({ status: 'signedIn', user: testUser });
   ensureAccount(testUser);
   const elder = elderActions.create({ firstName: 'Rosa', lastName: '', gender: 'female', birthDate: null, age: 80, weightKg: null, heightCm: null, relation: 'mother', relationOther: '' });

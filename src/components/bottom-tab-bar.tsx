@@ -190,7 +190,7 @@ export function BottomTabBar({
                   <Pressable accessibilityRole="button" accessibilityLabel={`Abrir chat de ${strings.brand.name}${unread ? `, ${unread} novedades` : ''}`} onPress={() => go(2)} style={s.centerItem}>
                     {/* V4: círculo menta de 64 elevado sobre la barra; abre el chat a pantalla completa (no es pestaña). */}
                     <View style={[s.centerOrb, t.hc ? null : t.shadow.glow.mint]}>
-                      <BuddyRobot size={46} compact mood="idle" flying={false} shadow={false} glow={false} navigationIndependent />
+                      <BuddyRobot size={touch.orb - 8} />
                       {unread ? <View style={s.dot} accessibilityElementsHidden importantForAccessibility="no" /> : null}
                     </View>
                     <AppText variant="tab" color={t.c.text} numberOfLines={1} maxScale={1} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.label}>BUDDY</AppText>

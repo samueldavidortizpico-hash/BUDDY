@@ -7,7 +7,7 @@ import { Icon } from '@/components/icon';
 import { LocationMap, MAP_ATTRIBUTION } from '@/components/location-map';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
-import { BuddyRobot } from '@/components/robot';
+import { IconTile } from '@/components/icon-tile';
 import { locationView } from '@/domain/location';
 import { useNow } from '@/hooks/use-now';
 import { strings } from '@/i18n';
@@ -74,7 +74,7 @@ export default function LocationScreen() {
           </>
         ) : (
           <Card style={s.empty}>
-            <BuddyRobot size={104} mood="look" />
+            <IconTile icon="location" domain="contact" size={72} />
             {v.kind === 'requested' ? (
               <>
                 <AppText variant="h2" align="center">{L.requested(name)}</AppText>

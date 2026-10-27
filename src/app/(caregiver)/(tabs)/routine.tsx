@@ -106,14 +106,14 @@ export default function Routine() {
               />
             ))
           ) : (
-            <EmptyState title={R.emptyMeds} text={R.emptyMedsBody} mood="look" action={{ label: R.addMed, onPress: () => setAddSheet(true) }} />
+            <EmptyState title={R.emptyMeds} text={R.emptyMedsBody} action={{ label: R.addMed, onPress: () => setAddSheet(true) }} />
           )
         ) : null}
         {seg === 'water' ? (
           water ? (
             <Row ids={[water.id]} domain="water" icon="drop" title={R.glasses(water.glasses)} detail={R.sections.water} times={water.times} onPress={() => go('water')} />
           ) : (
-            <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('water') }} />
+            <EmptyState title={R.emptyGeneric} action={{ label: R.add, onPress: () => go('water') }} />
           )
         ) : null}
         {seg === 'questions' ? (
@@ -133,7 +133,7 @@ export default function Routine() {
               <Row key={a.id} ids={[a.id]} domain="followUp" icon="calendar" title={a.title} detail={a.date} times={[a.time]} onPress={() => go('appointments')} />
             ))
           ) : (
-            <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('appointments') }} />
+            <EmptyState title={R.emptyGeneric} action={{ label: R.add, onPress: () => go('appointments') }} />
           )
         ) : null}
         {seg === 'contacts' ? (
@@ -142,7 +142,7 @@ export default function Routine() {
               <Row key={c.id} ids={[c.id]} domain="contact" icon="phone" title={c.name} detail={`${c.relation ? `${c.relation} · ` : ''}${formatPhone(c.phone)}${c.primary ? ` · ${R.primary}` : ''}`} onPress={() => go('contacts')} />
             ))
           ) : (
-            <EmptyState title={R.emptyGeneric} mood="look" action={{ label: R.add, onPress: () => go('contacts') }} />
+            <EmptyState title={R.emptyGeneric} action={{ label: R.add, onPress: () => go('contacts') }} />
           )
         ) : null}
       </View>

@@ -8,7 +8,6 @@ import { Button, IconButton } from '@/components/button';
 import { Card } from '@/components/card';
 import { BottomSheet } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
-import { BuddyRobot } from '@/components/robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { useFeed } from '@/state/feed';
 import { useNow } from '@/hooks/use-now';
@@ -54,7 +53,6 @@ export default function Summary() {
       {!ready ? (
         <Appear>
           <Card variant="gradient" domain="activity" elevation="hero" radius={radius.hero} style={s.hero}>
-            <BuddyRobot size={120} mood="wave" style={s.heroRobot} />
             <AppText variant="display" color={t.domains.activity.text}>
               {S.emptyTitle}
             </AppText>
@@ -278,7 +276,6 @@ const useStyles = makeStyles((t) =>
     tabular: { fontVariant: ['tabular-nums'] },
     top: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm, marginBottom: spacing.lg },
     hero: { gap: spacing.md, padding: spacing.xl, marginTop: spacing.xxl },
-    heroRobot: { position: 'absolute', top: -84, right: -10 },
     how: { gap: spacing.sm, marginVertical: spacing.xs },
     howRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     howNum: {

@@ -15,7 +15,7 @@ mkdirSync(out, { recursive: true });
 const { base, close } = await serveDist(dist);
 const { chromium } = loadPlaywright();
 const browser = await chromium.launch();
-const appearance = { mode, highContrast: false, textScale };
+const appearance = { mode, highContrast: false, textScale, introSeen: false };
 
 async function fresh() {
   const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
@@ -46,7 +46,7 @@ async function fresh() {
 // 2–5. Presentaciones (avanzando con "Siguiente") y 6. Bienvenido.
 {
   const page = await fresh();
-  await page.goto(`${base}/onboarding`);
+  await page.goto(`${base}/`);
   await page.waitForTimeout(3500);
   const names = ['02-companero', '03-rutinas', '04-bienestar', '05-familia'];
   for (const [i, name] of names.entries()) {
@@ -56,8 +56,8 @@ async function fresh() {
       await page.waitForTimeout(1400);
     }
   }
-  await page.goto(`${base}/`);
-  await page.waitForTimeout(3500);
+  await page.getByRole('button', { name: 'Siguiente' }).first().click();
+  await page.waitForTimeout(3000);
   await page.screenshot({ path: `${out}/06-bienvenido${suffix}.png` });
   await page.close();
 }

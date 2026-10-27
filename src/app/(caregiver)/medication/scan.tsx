@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Icon } from '@/components/icon';
-import { BuddyRobot } from '@/components/robot';
+import { IconTile } from '@/components/icon-tile';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { savePhoto } from '@/infrastructure/local/media';
@@ -56,7 +56,7 @@ export default function Scan() {
     return (
       <ScreenContainer header={<ScreenHeader title={C.title} />}>
         <View style={s.permission}>
-          <BuddyRobot size={120} mood={permission && !permission.canAskAgain ? 'worry' : 'look'} />
+          <IconTile icon="camera" domain="medication" size={72} />
           <AppText variant="h2" align="center">
             {C.permissionTitle}
           </AppText>

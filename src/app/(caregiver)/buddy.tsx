@@ -9,6 +9,7 @@ import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { BottomSheet } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
+import { IconTile } from '@/components/icon-tile';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenHeader } from '@/components/screen-header';
 import type { MenuKey } from '@/domain/assistant/draft';
@@ -105,7 +106,7 @@ export default function Buddy() {
           <ScreenHeader title={strings.brand.name} fallback="/summary" />
         </View>
         <View style={s.emptyWrap}>
-          <BuddyRobot size={120} mood="wave" />
+          <IconTile icon="chat" domain="activity" size={72} />
           <AppText variant="h2" align="center">{strings.summary.emptyTitle}</AppText>
           <Button label={strings.summary.steps.register} onPress={() => router.push('/setup')} />
         </View>
@@ -151,7 +152,7 @@ export default function Buddy() {
           title={strings.brand.name}
           subtitle={B.assistantOf(elder.firstName)}
           fallback="/summary"
-          leading={<BuddyRobot size={36} compact mood="idle" flying={false} shadow={false} glow={false} navigationIndependent />}
+          leading={<BuddyRobot size={40} />}
           right={
             <>
               <PreviewSheetButton compact />
@@ -310,7 +311,7 @@ function Message({ m, onMenu, onSee, onUndo }: { m: AssistantMessage; onMenu: (k
   return (
     <Animated.View entering={reduce ? undefined : FadeIn.duration(180)} style={[s.msgRow, mine && s.mineRow]}>
       <View style={[s.messageLine, mine && s.messageMine]}>
-        {!mine ? <BuddyRobot size={30} compact mood="idle" flying={false} shadow={false} glow={false} navigationIndependent /> : null}
+        {!mine ? <IconTile icon="sparkle" domain="activity" size={30} /> : null}
         <View style={[s.messageContent, mine && s.messageContentMine]}>
           <View style={[s.bubble, mine ? s.mine : s.theirs]}>
             {m.imageUri ? <AppText variant="caption" color={mine ? t.c.onPrimary : t.c.muted}>{B.photoSent}</AppText> : null}
@@ -374,7 +375,7 @@ function Typing() {
   return (
     <View style={s.msgRow} accessibilityLabel={B.typing} accessibilityLiveRegion="polite">
       <View style={s.typingRow}>
-        <BuddyRobot size={30} compact mood="think" shadow={false} flying={false} glow={false} navigationIndependent />
+        <IconTile icon="sparkle" domain="activity" size={30} />
         <View style={[s.bubble, s.theirs, s.typing]}>
           <AppText variant="caption" color="text">{B.typing}</AppText>
           <View style={s.dots}>

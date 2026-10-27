@@ -8,7 +8,6 @@ import { Field } from '@/components/forms';
 import { Icon } from '@/components/icon';
 import { useSharedValue } from 'react-native-reanimated';
 
-import { AuthRobot, useFormRobot } from '@/components/robot/auth-robot';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { isValidEmail } from '@/domain/validation';
@@ -23,7 +22,6 @@ export default function ForgotPassword() {
   const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const robot = useFormRobot('idle');
   const scrollY = useSharedValue(0);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +46,6 @@ export default function ForgotPassword() {
   return (
     <ScreenContainer keyboard scrollY={scrollY} header={<ScreenHeader title={F.title} fallback="/sign-in" />}>
       <View style={s.hero}>
-        <AuthRobot maxHeight={140} scrollY={scrollY} mood={result ? (result.sent ? 'celebrate' : 'think') : robot.mood} />
         <AppText variant="secondary" color={t.c.muted} align="center">
           {F.body}
         </AppText>
@@ -56,7 +53,7 @@ export default function ForgotPassword() {
       <View style={s.form}>
         <View>
           <Field label={strings.auth.email} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" icon="mail"
-            placeholder={strings.auth.emailPlaceholder} error={error} onFocus={() => robot.focus()} onBlur={robot.blur} />
+            placeholder={strings.auth.emailPlaceholder} error={error} />
         </View>
         {result ? (
           <View style={s.note} accessibilityLiveRegion="polite">

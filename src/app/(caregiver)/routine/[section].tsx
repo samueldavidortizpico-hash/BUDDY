@@ -105,7 +105,7 @@ function Meals() {
           </View>
         ))
       ) : (
-        <EmptyState title={R.emptyGeneric} mood="look" />
+        <EmptyState title={R.emptyGeneric} />
       )}
       <AppText variant="secondaryStrong">{R.add}</AppText>
       <View style={s.wrap}>
@@ -174,7 +174,7 @@ function Activities() {
           </Card>
         ))
       ) : (
-        <EmptyState title={R.emptyGeneric} mood="look" />
+        <EmptyState title={R.emptyGeneric} />
       )}
       <Button label={R.add} icon="plus" variant="tonal" tone="mint" onPress={() => setOpen(true)} />
       <BottomSheet visible={open} onClose={() => setOpen(false)} title={R.sections.activities}>
@@ -258,7 +258,7 @@ function Contacts() {
           </Card>
         ))
       ) : (
-        <EmptyState title={C.empty} mood="look" />
+        <EmptyState title={C.empty} />
       )}
       <Button label={C.add} icon="plus" variant="tonal" tone="lavender" onPress={() => open('new')} />
       <BottomSheet visible={!!editing} onClose={() => setEditing(null)} title={editing === 'new' ? C.add : strings.common.edit}>

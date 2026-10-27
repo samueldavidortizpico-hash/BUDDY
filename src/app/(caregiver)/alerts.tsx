@@ -75,12 +75,12 @@ export default function Alerts() {
               </Card>
             ))
           ) : (
-            <EmptyState title={F.empty} text={F.emptyBody} mood="happy" />
+            <EmptyState title={F.empty} text={F.emptyBody} />
           )
         ) : list.length ? (
           list.map((f, i) => <FeedCard key={f.key} item={f} index={i} />)
         ) : (
-          <EmptyState title={F.empty} text={F.emptyBody} mood="happy" />
+          <EmptyState title={F.empty} text={F.emptyBody} />
         )}
       </View>
     </ScreenContainer>

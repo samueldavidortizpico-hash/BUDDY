@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { BuddyRobot } from '@/components/robot';
+import { IconTile } from '@/components/icon-tile';
 import { ScreenContainer } from '@/components/screen-container';
 import { ElderScreen } from '@/features/elder/screen';
 import { db, useDb } from '@/infrastructure/local/db';
@@ -49,7 +49,7 @@ function NotificationIntro({ elderId, onContinue }: { elderId: string; onContinu
   const complete = () => { if (ownerId) db.setDraft(ownerId, `permissions.introDone.${elderId}`, true); onContinue(); };
   return <ScreenContainer>
     <View style={styles.body}>
-      <BuddyRobot size={140} mood="wave" />
+      <IconTile icon="bell" domain="followUp" size={88} />
       <AppText variant="h1" align="center">Para que BUDDY te avise, permite las notificaciones</AppText>
       <AppText variant="body" color={t.c.muted} align="center">Así podrás recibir los recordatorios que tu familia preparó para ti.</AppText>
       <Button label="Activar avisos" size="elder" icon="bell" onPress={async () => { try { await notificationPermission(true); } finally { complete(); } }} />
@@ -65,7 +65,7 @@ function NoDataYet() {
   return (
     <ScreenContainer>
       <View style={styles.body}>
-        <BuddyRobot size={140} mood="think" />
+        <IconTile icon="calendar" domain="activity" size={88} />
         <AppText variant="h1" align="center">
           {E.noDataTitle}
         </AppText>

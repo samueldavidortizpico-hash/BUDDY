@@ -88,7 +88,6 @@ function ThemedStack() {
       <Stack screenOptions={{ headerShown: false, gestureEnabled: true, animation: 'slide_from_right', contentStyle: { backgroundColor: t.c.bg } }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="legal/[doc]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="dev/robot" />
       </Stack>
     </>
   );

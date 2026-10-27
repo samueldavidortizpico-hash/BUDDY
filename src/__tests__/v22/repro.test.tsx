@@ -76,10 +76,12 @@ it('P8: una cita tiene dirección', async () => {
   expect(screen.getByText('Dirección')).toBeTruthy();
 });
 
-it('P9: en el login el robot forma parte del contenido que se desplaza (no una capa global)', async () => {
+// V4.2: el robot solo vive en el ícono, la carga, la presentación 1, el botón central y el chat; el login no lo lleva.
+it('P9: el login no muestra robot decorativo', async () => {
   useSession.setState({ status: 'signedOut', user: null });
   await ui(<SignIn />);
-  expect(screen.getByTestId('auth-robot')).toBeTruthy();
+  expect(screen.queryByTestId('auth-robot')).toBeNull();
+  expect(screen.getByRole('button', { name: strings.auth.enter })).toBeTruthy();
 });
 
 // V4: la entrega del teléfono pasó a la Vista de [nombre] (Inicio > tarjeta de la persona), con flecha atrás y banner.

@@ -11,7 +11,8 @@ import { Face } from '@/components/charts';
 import { BottomSheet, useToast } from '@/components/feedback';
 import { Icon } from '@/components/icon';
 import { PressableScale } from '@/components/pressable-scale';
-import { BuddyRobot, type RobotMood } from '@/components/robot';
+import { type IconName } from '@/components/icon';
+import { IconTile } from '@/components/icon-tile';
 import { ScreenContainer } from '@/components/screen-container';
 import { planNotifications } from '@/domain/notifications';
 import { estimateStock } from '@/domain/stock';
@@ -63,6 +64,9 @@ function domainOf(item: ElderItem): Domain {
  * Pantalla única del adulto mayor: una cosa a la vez, botones enormes y ayuda siempre a mano.
  * `preview`: la ve el cuidador en Rutina exactamente igual, pero sin poder tocar nada.
  */
+/** Icono de la tarea del momento (V4.2: sin robot decorativo en la pantalla del adulto mayor). */
+const ITEM_ICON: Record<ElderItem['kind'], IconName> = { stock: 'box', dose: 'meds', checkin: 'smile', meal: 'food', activity: 'walk', water: 'drop', reminder: 'bell', appointment: 'calendar', done: 'check' };
+
 export function ElderScreen({ elderId, preview = false }: { elderId: string; preview?: boolean }) {
   const router = useRouter();
   const toast = useToast();
@@ -90,7 +94,6 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const contacts = useRecords('contacts', scope);
   const seen = useDb((x) => x.drafts[userId]?.['elder.seen'] as string[] | undefined) ?? EMPTY_SEEN;
   const [help, setHelp] = useState(false);
-  const [mood, setMood] = useState<RobotMood>('wave');
   const thanksTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const today = toISODate(now);
 
@@ -168,7 +171,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   useEffect(() => {
     if (preview || !elder?.screen.voice || !question) return;
     Speech.stop();
-    Speech.speak(question, { language: 'es-CO', rate: elder.screen.voiceRate, onStart: () => setMood('talk'), onDone: () => setMood('idle'), onStopped: () => setMood('idle') });
+    Speech.speak(question, { language: 'es-CO', rate: elder.screen.voiceRate });
     return () => {
       Speech.stop();
     };
@@ -182,10 +185,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
   const thanks = () => {
     if (preview) return;
     successHaptic();
-    setMood('celebrate');
     toast({ message: E.thanks, icon: 'check' });
-    if (thanksTimer.current) clearTimeout(thanksTimer.current);
-    thanksTimer.current = setTimeout(() => setMood('idle'), 1600);
   };
   const d = t.domains[domainOf(item)];
 
@@ -261,7 +261,7 @@ export function ElderScreen({ elderId, preview = false }: { elderId: string; pre
       <Appear key={JSON.stringify(item).slice(0, 80)} style={preview ? s.noTouch : undefined}>
         <View style={[s.card, { minHeight: Math.max(400, height * 0.56) }, t.hc ? t.hairline : t.shadow.hero]} accessibilityLabel={E.now}>
           {t.hc ? null : <LinearGradient colors={[d.gradient[0], d.gradient[1]]} start={{ x: 0, y: 0 }} end={{ x: 0.4, y: 1 }} style={[StyleSheet.absoluteFill, s.round]} />}
-          <BuddyRobot size={96} mood={item.kind === 'done' ? 'celebrate' : item.kind === 'stock' || (item.kind === 'dose' && item.item.status === 'unconfirmed') ? 'worry' : mood} accessibilityLabel={item.kind === 'stock' ? question ?? undefined : undefined} />
+          <IconTile icon={ITEM_ICON[item.kind]} domain={domainOf(item)} size={72} />
           <View style={s.cardBody}>
             {item.kind === 'done' && !preview && needsPermission ? (
               <PermissionState onPress={() => router.push('/elder/permissions' as never)} />

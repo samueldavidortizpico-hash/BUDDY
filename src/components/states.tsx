@@ -11,29 +11,28 @@ import { useTheme } from '@/theme/provider';
 
 import { AppText } from './app-text';
 import { Button } from './button';
-import { BuddyRobot, type RobotMood } from './robot';
+import { type IconName } from './icon';
+import { IconTile } from './icon-tile';
 
 export function EmptyState({
   title,
   text,
   action,
-  mood = 'wave',
-  robotSize = 112,
+  icon = 'sparkle',
   style,
   navigationIndependentRobot = false,
 }: {
   title: string;
   text?: string;
   action?: { label: string; onPress: () => void };
-  mood?: RobotMood;
-  robotSize?: number;
+  icon?: IconName;
   style?: StyleProp<ViewStyle>;
   navigationIndependentRobot?: boolean;
 }) {
   const t = useTheme();
   return (
     <View style={[styles.empty, style]}>
-      <BuddyRobot size={robotSize} mood={mood} navigationIndependent={navigationIndependentRobot} />
+      <IconTile icon={icon} domain="activity" size={72} />
       <AppText variant="h3" align="center">
         {title}
       </AppText>
@@ -52,7 +51,7 @@ export function ErrorState({ title = strings.common.errorTitle, text = strings.c
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.error, { backgroundColor: t.c.bg, paddingTop: insets.top + spacing.xxl }]} accessibilityLiveRegion="assertive">
-      <EmptyState mood="worry" title={title} text={text} navigationIndependentRobot action={onRetry ? { label: strings.common.retry, onPress: onRetry } : undefined} />
+      <EmptyState icon="warning" title={title} text={text} navigationIndependentRobot action={onRetry ? { label: strings.common.retry, onPress: onRetry } : undefined} />
     </View>
   );
 }

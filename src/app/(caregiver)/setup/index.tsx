@@ -8,7 +8,7 @@ import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { ConfirmDialog } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
-import { BuddyRobot } from '@/components/robot';
+import { IconTile } from '@/components/icon-tile';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import type { Elder } from '@/domain/types';
@@ -42,7 +42,7 @@ export type StepKey = 'who' | 'health' | 'food' | 'meds' | 'contacts' | 'routine
  */
 export const QUICK: StepKey[] = ['who', 'meds', 'contacts', 'checkin', 'done'];
 export const FULL: StepKey[] = ['who', 'health', 'food', 'meds', 'contacts', 'routine', 'alerts', 'access', 'done'];
-const MOOD: Record<StepKey, 'wave' | 'think' | 'idle' | 'look' | 'happy' | 'celebrate'> = { who: 'wave', health: 'think', food: 'idle', meds: 'look', contacts: 'idle', routine: 'wave', checkin: 'wave', alerts: 'look', access: 'happy', done: 'celebrate' };
+const STEP_ICON: Record<StepKey, IconName> = { who: 'user', health: 'heart', food: 'food', meds: 'meds', contacts: 'phone', routine: 'calendar', checkin: 'smile', alerts: 'bell', access: 'lock', done: 'check' };
 
 /** Asistente de registro del adulto mayor. Se puede salir y retomar: cada paso guarda un borrador. */
 export default function ElderSetup() {
@@ -98,7 +98,7 @@ export default function ElderSetup() {
       }
     >
       <View style={styles.robotRow}>
-        <BuddyRobot size={96} mood={MOOD[key]} shadow={false} />
+        <IconTile icon={STEP_ICON[key]} domain="activity" size={56} />
         <AppText variant="h2" style={styles.flex}>
           {key === 'who' ? S.who.title : key === 'done' && elder ? S.done.title(elder.firstName) : key === 'access' && elder ? S.access.title(elder.firstName) : S.stepTitles[key]}
         </AppText>
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   progress: { flexDirection: 'row', gap: 4, paddingBottom: spacing.sm },
   seg: { flex: 1, height: 6, borderRadius: 3 },
-  robotRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm, marginLeft: -spacing.lg },
+  robotRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm },
   frame: { gap: spacing.lg },
   actions: { gap: spacing.sm, marginTop: spacing.sm },
 });

@@ -58,7 +58,7 @@
         {
           "backgroundColor": "#062639",
           "image": "./assets/branding/buddy-splash.png",
-          "imageWidth": 176,
+          "imageWidth": 188,
           "dark": {
             "backgroundColor": "#062639",
             "image": "./assets/branding/buddy-splash.png"
