@@ -20,7 +20,7 @@ import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
 import { PressableScale } from './pressable-scale';
 
-export type ButtonVariant = 'primary' | 'coral' | 'secondary' | 'danger' | 'ghost' | 'tonal' | 'white' | 'text';
+export type ButtonVariant = 'mint' | 'primary' | 'coral' | 'secondary' | 'danger' | 'ghost' | 'tonal' | 'white' | 'text';
 
 interface VariantStyle {
   gradient?: readonly [string, string, ...string[]];
@@ -37,6 +37,9 @@ function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyl
     case 'primary':
       // V4: petróleo sólido con texto blanco (≥ 9:1); el degradado se veía apagado y no aportaba.
       return { bg: t.c.primary, text: t.c.onPrimary, shadow: t.shadow.glow.petrol, ...(t.hc ? hcBorder : {}) };
+    case 'mint':
+      // Turquesa de la primera apertura: texto petróleo oscuro, porque el blanco sobre turquesa claro no llega a 4,5:1.
+      return { gradient: t.dark ? ['#3FD0B4', '#5ED9B5'] : ['#35C9C0', '#5ED9B5'], text: '#0D3946', shadow: t.shadow.glow.mint, ...(t.hc ? hcBorder : {}) };
     case 'coral':
       return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: t.shadow.glow.coral, ...(t.hc ? hcBorder : {}) };
     case 'secondary':

@@ -26,13 +26,13 @@ beforeEach(async () => {
 afterEach(() => jest.useRealTimers());
 
 const send = async (text: string) => {
-  fireEvent.changeText(screen.getByLabelText('Escríbele a BUDDY…'), text);
-  fireEvent.press(screen.getByRole('button', { name: 'Enviar' }));
+  await fireEvent.changeText(screen.getByLabelText('Escríbele a BUDDY…'), text);
+  await fireEvent.press(screen.getByRole('button', { name: 'Enviar' }));
   await act(async () => { jest.advanceTimersByTime(1500); });
 };
 
 it('pide un medicamento, completa lo obligatorio y lo agrega desde la tarjeta fija junto al compositor', async () => {
-  render(<RenderProviders><Buddy /></RenderProviders>);
+  await render(<RenderProviders><Buddy /></RenderProviders>);
   await send('Ponle losartán a las 6 de la tarde');
   await send('No está en la lista'); // V2.4: paso Presentación → registrar a mano
   await send('1 tableta');
@@ -43,7 +43,7 @@ it('pide un medicamento, completa lo obligatorio y lo agrega desde la tarjeta fi
   // (V2.4: la confirmación vive en la tarjeta, que nunca queda enterrada en el historial).
   expect(within(pinned).queryByText(/¿Cuánto toma/)).toBeNull();
   expect(within(pinned).getByRole('button', { name: 'Confirmar y agregar' }).props.accessibilityState?.disabled).toBeFalsy();
-  fireEvent.press(within(pinned).getByRole('button', { name: 'Confirmar y agregar' }));
+  await fireEvent.press(within(pinned).getByRole('button', { name: 'Confirmar y agregar' }));
   await act(async () => { jest.advanceTimersByTime(1500); });
   const meds = db.list('medications', testUser.id, elderId);
   expect(meds.map((m) => m.name)).toEqual(['Losartán']);

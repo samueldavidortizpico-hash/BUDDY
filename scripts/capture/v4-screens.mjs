@@ -54,6 +54,8 @@ async function inspect(page, route) {
       if (own.length <= 3 || !visible(el)) continue;
       const cs = getComputedStyle(el);
       ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      // El espaciado entre letras del texto real también cuenta (las etiquetas de la barra lo usan).
+      ctx.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : cs.letterSpacing;
       const natural = ctx.measureText(own).width;
       const w = el.getBoundingClientRect().width;
       if (natural >= 48 && w < 48) problems.push(`texto estrecho (${Math.round(w)} px de ${Math.round(natural)}): "${own.slice(0, 40)}"`);
@@ -92,6 +94,8 @@ try {
           const problems = await inspect(page, route);
           const keep = (w === 390 && scaleName === '1.0') || (w === 360 && scaleName === '2.0' && themeName === 'claro');
           if (problems.length) fail.push(...problems.map((p) => `${id}: ${p}`));
+          // Informe parcial: si el equipo se suspende a mitad de camino, lo revisado no se pierde.
+          writeFileSync(`${out}/_informe.txt`, `PARCIAL (${fail.length}) en ${combos} combinaciones:\n- ${fail.join('\n- ')}\n`);
           if (keep || problems.length) await page.screenshot({ path: `${out}/${id}.png`, fullPage: keep });
           await page.close();
         }

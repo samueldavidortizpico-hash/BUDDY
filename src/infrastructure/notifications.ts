@@ -4,6 +4,7 @@
  * persona requieren servidor y build instalable (Fases 2 y 3, docs/NOTIFICACIONES.md). En web no hay soporte: no-op.
  */
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { planSignature, type PlannedNotification } from '@/domain/notifications';
@@ -33,7 +34,7 @@ function ensureHandler() {
 async function ensureChannel() {
   if (Platform.OS !== 'android') return;
   // En Android 13+ el permiso no se pide hasta que exista al menos un canal.
-  await Notifications.setNotificationChannelAsync(CHANNEL, { name: 'Recordatorios de BUDDY', importance: Notifications.AndroidImportance.HIGH });
+  await Notifications.setNotificationChannelAsync(CHANNEL, { name: 'Recordatorios de BUDDY', importance: AndroidImportance.HIGH });
 }
 
 export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unsupported';

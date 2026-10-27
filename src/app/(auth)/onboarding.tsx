@@ -1,46 +1,47 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
 import { Appear } from '@/components/appear';
 import { Button } from '@/components/button';
 import { ScreenContainer } from '@/components/screen-container';
-import { ScreenHeader } from '@/components/screen-header';
-import { SCENES } from '@/features/onboarding/scenes';
+import { Hero } from '@/features/onboarding/hero';
 import { strings } from '@/i18n';
-import { motion, radius, spacing } from '@/theme';
+import { motion, spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 
 const S = strings.onboarding;
 
-/** Seis diapositivas que explican qué es BUDDY, cada una con su escena animada; al final, crear cuenta o entrar. */
+/** Cuatro presentaciones que explican qué es BUDDY: ilustración, título, texto y "Siguiente"; la última lleva a crear cuenta. */
 export default function Onboarding() {
   const router = useRouter();
   const t = useTheme();
   const s = useStyles();
-  const reduce = useReducedMotion();
+  const { height } = useWindowDimensions();
   const [i, setI] = useState(0);
   const slide = S.slides[i];
-  const Scene = SCENES[i];
   const last = i === S.slides.length - 1;
   const finish = () => router.replace('/sign-up');
 
   return (
     <ScreenContainer
+      gradient="welcome"
       header={
-        <ScreenHeader
-          title={S.progress(i + 1, S.slides.length)}
-          onBack={() => (i > 0 ? setI(i - 1) : router.back())}
-          right={
-            <Pressable onPress={finish} accessibilityRole="button" accessibilityLabel={strings.common.skip} hitSlop={8} style={s.skip}>
-              <AppText variant="secondaryStrong" color={t.ink.mint}>
-                {strings.common.skip}
-              </AppText>
-            </Pressable>
-          }
-        />
+        <View style={s.top}>
+          <AppText variant="secondaryStrong" style={s.side}>
+            {slide.eyebrow}
+          </AppText>
+          <AppText variant="secondaryStrong" color={t.c.muted} accessibilityLabel={S.progress(i + 1, S.slides.length)}>
+            {S.counter(i + 1, S.slides.length)}
+          </AppText>
+          <Pressable onPress={finish} accessibilityRole="button" accessibilityLabel={S.skip} hitSlop={8} style={[s.skip, s.side]}>
+            <AppText variant="secondaryStrong" color={t.ink.mint}>
+              {S.skip}
+            </AppText>
+          </Pressable>
+        </View>
       }
       footer={
         <View style={s.footer}>
@@ -51,33 +52,22 @@ export default function Onboarding() {
               <Button label={S.signIn} variant="ghost" size="md" onPress={() => router.replace({ pathname: '/sign-in', params: { role: 'caregiver' } })} />
             </>
           ) : (
-            <Button label={strings.common.continue} trailing="arrow" haptic onPress={() => setI(i + 1)} />
+            <Button label={strings.common.next} variant="mint" haptic onPress={() => setI(i + 1)} />
           )}
         </View>
       }
     >
-      <Animated.View key={`scene-${i}`} entering={reduce ? undefined : FadeIn.duration(260)} exiting={reduce ? undefined : FadeOut.duration(160)} style={s.art}>
-        <Scene />
-      </Animated.View>
+      <Appear key={`art-${i}`} style={s.art}>
+        <Hero index={i} height={Math.round(Math.min(340, Math.max(220, height * 0.36)))} />
+      </Appear>
 
       <Appear key={`copy-${i}`} style={s.copy}>
-        <AppText variant="eyebrow" color={t.ink.mint}>
-          {slide.eyebrow}
-        </AppText>
         <AppText variant="display" accessibilityRole="header">
           {slide.title}
         </AppText>
         <AppText variant="body" color={t.c.muted}>
           {slide.body}
         </AppText>
-        {i === 2 ? (
-          <View style={s.key}>
-            <AppText variant="secondaryStrong">{S.scanKey}</AppText>
-            <View style={s.soon}>
-              <AppText variant="meta" color={t.ink.lavender}>{`${S.pharmaSoon}: ${strings.common.soon}`}</AppText>
-            </View>
-          </View>
-        ) : null}
       </Appear>
     </ScreenContainer>
   );
@@ -112,11 +102,11 @@ const styles = StyleSheet.create({
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    skip: { minHeight: 48, justifyContent: 'center', paddingHorizontal: spacing.xs },
+    top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: spacing.md },
+    side: { minWidth: 96 },
+    skip: { minHeight: 48, justifyContent: 'center', alignItems: 'flex-end' },
     art: { marginTop: spacing.xs },
     copy: { gap: spacing.sm, marginTop: spacing.lg },
-    key: { gap: spacing.xs, padding: spacing.md, borderRadius: radius.md, backgroundColor: t.c.surface, ...t.hairline },
-    soon: { alignSelf: 'flex-start', paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: t.c.lavenderPale, ...t.hairline },
     footer: { gap: spacing.sm },
   }),
 );

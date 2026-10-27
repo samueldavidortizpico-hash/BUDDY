@@ -25,36 +25,36 @@ beforeEach(async () => { elderId = (await seedRenderData()).id; });
 
 function HomeProbe() { return <Text>{String(useHomeHref())}</Text>; }
 
-it.each(['missing', 'deleted', 'other-owner'])('does not bounce summary/elder with a %s patient', (kind) => {
+it.each(['missing', 'deleted', 'other-owner'])('does not bounce summary/elder with a %s patient', async (kind) => {
   if (kind === 'deleted') db.update('elders', elderId, { deletedAt: new Date().toISOString() });
   if (kind === 'other-owner') db.update('elders', elderId, { ownerUserId: 'another-user' });
   db.setHandoff({ userId: testUser.id, elderId: kind === 'missing' ? 'missing' : elderId, failedPins: 0, lockedUntil: null });
-  const caregiver = render(<CaregiverLayout />, { wrapper: RenderProviders });
+  const caregiver = await render(<CaregiverLayout />, { wrapper: RenderProviders });
   expect(caregiver.getByText('stack')).toBeTruthy();
-  caregiver.unmount();
-  const elder = render(<ElderLayout />, { wrapper: RenderProviders });
+  await caregiver.unmount();
+  const elder = await render(<ElderLayout />, { wrapper: RenderProviders });
   expect(elder.getByText('redirect:/summary')).toBeTruthy();
-  elder.unmount();
-  const home = render(<HomeProbe />);
+  await elder.unmount();
+  const home = await render(<HomeProbe />);
   expect(home.queryByText('/elder')).toBeNull();
 });
 
-it('keeps a valid handoff protected and routes home to elder', () => {
+it('keeps a valid handoff protected and routes home to elder', async () => {
   db.setHandoff({ userId: testUser.id, elderId, failedPins: 0, lockedUntil: null });
-  const caregiver = render(<CaregiverLayout />, { wrapper: RenderProviders });
+  const caregiver = await render(<CaregiverLayout />, { wrapper: RenderProviders });
   expect(caregiver.getByText('redirect:/elder')).toBeTruthy();
-  caregiver.unmount();
-  const elder = render(<ElderLayout />, { wrapper: RenderProviders });
+  await caregiver.unmount();
+  const elder = await render(<ElderLayout />, { wrapper: RenderProviders });
   expect(elder.getByText('stack')).toBeTruthy();
-  elder.unmount();
-  expect(render(<HomeProbe />).getByText('/elder')).toBeTruthy();
+  await elder.unmount();
+  expect((await render(<HomeProbe />)).getByText('/elder')).toBeTruthy();
 });
 
-it('routes signed-out users to welcome from both protected layouts', () => {
+it('routes signed-out users to welcome from both protected layouts', async () => {
   useSession.setState({ status: 'signedOut', user: null });
   for (const Layout of [CaregiverLayout, ElderLayout]) {
-    const screen = render(<Layout />, { wrapper: RenderProviders });
+    const screen = await render(<Layout />, { wrapper: RenderProviders });
     expect(screen.getByText('redirect:/')).toBeTruthy();
-    screen.unmount();
+    await screen.unmount();
   }
 });

@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import * as Reanimated from 'react-native-reanimated';
 
 import { BuddyRobotVector, type RobotMood } from '../vector';
@@ -14,9 +14,10 @@ const moods: RobotMood[] = ['idle', 'happy', 'wave', 'think', 'talk', 'celebrate
 // Draw-order coordinates: right arm, heart, head, eyes, mouth, left arm.
 const points = [[682, 678], [586, 716], [500, 620], [490, 410], [490, 492], [372, 682]];
 
-function checkPivots(size: number, mood: RobotMood, animated: boolean, look = 0) {
-  const robot = render(<BuddyRobotVector size={size} mood={mood} animated={animated} look={look} />);
-  const layers = robot.UNSAFE_getAllByType(View)
+async function checkPivots(size: number, mood: RobotMood, animated: boolean, look = 0) {
+  const robot = await render(<BuddyRobotVector size={size} mood={mood} animated={animated} look={look} />);
+  const layers = robot.container
+    .queryAll((node) => node.type === 'View')
     .map((view) => StyleSheet.flatten(view.props.style))
     .filter((style) => style?.transformOrigin !== undefined);
 
@@ -44,39 +45,43 @@ function checkPivots(size: number, mood: RobotMood, animated: boolean, look = 0)
     expect(parseFloat(y) / 100 * style.height).toBeCloseTo((drawingY - 30) * size / 920);
     expect(style.transform.length).toBeGreaterThan(0);
   });
-  robot.unmount();
+  await robot.unmount();
 }
 
 describe('BuddyRobotVector transform origins', () => {
-  it('reproduces the native decimal-string parser failure', () => {
+  // SDK 57 (RN 0.86) lanzaba "Transform origin z-position must be a number" con porcentajes decimales en texto, y el
+  // robot lo evitaba usando la forma de arreglo. RN 0.88 (SDK 58) ya lo acepta; se conserva la forma de arreglo y se
+  // documenta aquí el cambio para saber que el parser de la plataforma ya no es la razón de ser de esa forma.
+  it('RN 0.88 parses decimal-string origins without throwing (it threw in RN 0.86)', () => {
     const previousOrigin = `${(682 - 110) / 820 * 100}% ${(678 - 30) / 920 * 100}%`;
-    expect(() => processTransformOrigin(previousOrigin)).toThrow('Transform origin z-position must be a number');
+    expect(() => processTransformOrigin(previousOrigin)).not.toThrow();
+    expect(processTransformOrigin(previousOrigin)).toHaveLength(3);
   });
 
   describe.each([true, false])('animated=%s', (animated) => {
-    it.each(moods)('keeps six valid native pivots in %s', (mood) => {
-      checkPivots(180, mood, animated);
+    it.each(moods)('keeps six valid native pivots in %s', async (mood) => {
+      await checkPivots(180, mood, animated);
     });
   });
 
-  it.each([48, 320, 512])('preserves the joints at size %s', (size) => {
-    checkPivots(size, 'look', true, -1);
+  it.each([48, 320, 512])('preserves the joints at size %s', async (size) => {
+    await checkPivots(size, 'look', true, -1);
   });
 
-  it('keeps valid pivots with reduced motion', () => {
+  it('keeps valid pivots with reduced motion', async () => {
     const reducedMotion = jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(true);
     try {
-      checkPivots(180, 'celebrate', true, 1);
+      await checkPivots(180, 'celebrate', true, 1);
     } finally {
       reducedMotion.mockRestore();
     }
   });
 
-  it('does not start transform loops when reduced motion is enabled', () => {
+  it('does not start transform loops when reduced motion is enabled', async () => {
     const reducedMotion = jest.spyOn(Reanimated, 'useReducedMotion').mockReturnValue(true);
     const repeat = jest.spyOn(Reanimated, 'withRepeat');
     try {
-      checkPivots(180, 'think', true);
+      await checkPivots(180, 'think', true);
       expect(repeat).not.toHaveBeenCalled();
     } finally {
       repeat.mockRestore();

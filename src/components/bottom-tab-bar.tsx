@@ -54,7 +54,8 @@ function useReduceTransparency() {
 export function BottomTabBar({
   state,
   descriptors,
-  navigation,
+  emitter,
+  navigateToTab,
   icons,
   caregiver = false,
 }: BottomTabBarProps & { icons: Record<string, IconName>; caregiver?: boolean }) {
@@ -118,12 +119,12 @@ export function BottomTabBar({
         x.set(withSpring(slot * item + (item - PILL_W) / 2, motion.spring));
         return;
       }
-      const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+      const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
       // Se navega fuera del evento del gesto: en web, navegar dentro del mismo "pointerup" quedaba sin efecto
       // (comprobado con scripts/capture/v24-tabbar.mjs).
-      if (!event.defaultPrevented) setTimeout(() => navigation.navigate(route.name, route.params), 0);
+      if (!event.defaultPrevented) setTimeout(() => navigateToTab(route.key), 0);
     },
-    [state.routes, state.index, navigation, item, x, caregiver, router],
+    [state.routes, state.index, emitter, navigateToTab, item, x, caregiver, router],
   );
 
   const drag = Gesture.Pan()

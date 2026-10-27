@@ -120,18 +120,18 @@ describe('navegación por rol', () => {
 
   it('el adulto mayor con su acceso nunca entra a la zona del administrador', async () => {
     useSession.setState({ status: 'signedIn', user: elderSession() });
-    const r = renderRouter(routes, { initialUrl: '/summary' });
+    const r = await renderRouter(routes, { initialUrl: '/summary' });
     await waitFor(() => expect(r.getPathname()).toBe('/elder'));
     expect(screen.getByText(/Rosa/)).toBeTruthy();
   });
 
-  it('la entrada pregunta el rol; el adulto mayor solo tiene "Iniciar sesión"', () => {
+  it('la entrada pregunta el rol; el adulto mayor solo tiene "Iniciar sesión"', async () => {
     useSession.setState({ status: 'signedOut', user: null });
-    renderRouter(routes, { initialUrl: '/' });
-    fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.elder) }));
+    await renderRouter(routes, { initialUrl: '/' });
+    await fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.elder) }));
     expect(screen.getByText(strings.auth.roles.elderNote)).toBeTruthy();
     expect(screen.queryByRole('button', { name: strings.welcome.createAccount })).toBeNull();
-    fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.admin) }));
+    await fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.admin) }));
     expect(screen.getByRole('button', { name: strings.welcome.createAccount })).toBeTruthy();
   });
 
@@ -140,16 +140,16 @@ describe('navegación por rol', () => {
     db.update('elders', elderId, { ownerUserId: owner.id });
     await sessionActions.createElderAccess({ elderId, name: '[PRUEBA] Rosa', email: unique('v31-elder'), password: 'Codigo123!' });
     await sessionActions.switchToElder(elderId, 'Codigo123!');
-    const r = renderRouter(routes, { initialUrl: '/elder' });
-    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.button }));
-    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.enterAdmin }));
+    const r = await renderRouter(routes, { initialUrl: '/elder' });
+    await fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.button }));
+    await fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.enterAdmin }));
     await waitFor(() => expect(r.getPathname()).toBe('/elder/unlock'));
-    fireEvent.changeText(screen.getByLabelText('Contraseña del administrador'), 'incorrecta');
-    fireEvent.press(screen.getByRole('button', { name: 'Entrar como administrador' }));
+    await fireEvent.changeText(screen.getByLabelText('Contraseña del administrador'), 'incorrecta');
+    await fireEvent.press(screen.getByRole('button', { name: 'Entrar como administrador' }));
     await screen.findByText(strings.auth.errors.invalid);
     expect(useSession.getState().user?.role).toBe('elder');
-    fireEvent.changeText(screen.getByLabelText('Contraseña del administrador'), 'Segura123!');
-    fireEvent.press(screen.getByRole('button', { name: 'Entrar como administrador' }));
+    await fireEvent.changeText(screen.getByLabelText('Contraseña del administrador'), 'Segura123!');
+    await fireEvent.press(screen.getByRole('button', { name: 'Entrar como administrador' }));
     await waitFor(() => expect(r.getPathname()).toBe('/summary'));
     expect(useSession.getState().user?.id).toBe(owner.id);
   });
@@ -157,11 +157,11 @@ describe('navegación por rol', () => {
   it('"Opciones" → "Cerrar sesión" confirma con texto claro y vuelve a la elección de rol (sin PIN)', async () => {
     useSession.setState({ status: 'signedIn', user: elderSession() });
     db.setDraft(testUser.id, `permissions.introDone.${elderId}`, true);
-    const r = renderRouter(routes, { initialUrl: '/elder' });
-    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.button }));
-    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.signOut }));
+    const r = await renderRouter(routes, { initialUrl: '/elder' });
+    await fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.button }));
+    await fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.signOut }));
     expect(screen.getByText(strings.adminAccess.signOutBody)).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.signOutConfirm }));
+    await fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.signOutConfirm }));
     await waitFor(() => expect(r.getPathname()).toBe('/'));
     expect(useSession.getState().user).toBeNull();
     expect(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.admin) })).toBeTruthy();
@@ -201,25 +201,25 @@ describe('extremo a extremo: entrar como adulto mayor, salir y entrar como admin
 
     // 1. Entra el adulto mayor con su acceso: solo ve su pantalla.
     useSession.setState({ status: 'signedIn', user: await sessionActions.signIn({ email: elderEmail, password: 'Rosa2026!', role: 'elder' }) });
-    const r = renderRouter(routes, { initialUrl: '/summary' });
+    const r = await renderRouter(routes, { initialUrl: '/summary' });
     await waitFor(() => expect(r.getPathname()).toBe('/elder'));
 
     // 2. Sale con "Opciones" → "Cerrar sesión".
-    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
-    fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.signOut }));
-    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.signOutConfirm }));
+    await fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
+    await fireEvent.press(await screen.findByRole('button', { name: strings.adminAccess.signOut }));
+    await fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.signOutConfirm }));
     await waitFor(() => expect(r.getPathname()).toBe('/'));
 
     // 3. Entra el administrador desde la pantalla de entrada, con su correo y contraseña.
-    fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.admin) }));
+    await fireEvent.press(screen.getByRole('radio', { name: new RegExp(strings.auth.roles.admin) }));
     expect(screen.getByRole('button', { name: strings.welcome.signIn })).toBeTruthy();
     // El botón navega tras el vuelo del robot, que mide con measureInWindow (en Jest no responde): se abre la ruta
     // a la que lleva ese botón.
-    act(() => router.push({ pathname: '/sign-in', params: { role: 'caregiver' } }));
+    await act(() => router.push({ pathname: '/sign-in', params: { role: 'caregiver' } }));
     await waitFor(() => expect(r.getPathname()).toBe('/sign-in'));
-    fireEvent.changeText(screen.getByLabelText(strings.auth.email), adminEmail);
-    fireEvent.changeText(screen.getByLabelText(strings.auth.password), 'Segura123');
-    fireEvent.press(screen.getByRole('button', { name: strings.auth.enter }));
+    await fireEvent.changeText(screen.getByLabelText(strings.auth.email), adminEmail);
+    await fireEvent.changeText(screen.getByLabelText(strings.auth.password), 'Segura123');
+    await fireEvent.press(screen.getByRole('button', { name: strings.auth.enter }));
     await waitFor(() => expect(useSession.getState().user?.role ?? 'caregiver').toBe('caregiver'));
     await waitFor(() => expect(r.getPathname()).toBe('/summary'));
   });

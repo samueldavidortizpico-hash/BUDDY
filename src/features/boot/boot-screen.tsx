@@ -8,6 +8,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import Animated, {
   Easing,
   runOnJS,
@@ -26,6 +27,7 @@ import { bootView, type StageKey } from './stages';
 
 const PETROL = ['#0B2730', '#174A59', '#1D5E6C'] as const;
 const MINT = '#5ED9B5';
+const SPARKS = [{ x: 14, y: 12, s: 14 }, { x: 78, y: 9, s: 10 }, { x: 88, y: 30, s: 16 }, { x: 8, y: 42, s: 9 }, { x: 70, y: 56, s: 12 }, { x: 22, y: 70, s: 10 }];
 
 export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, boolean>; onDone: () => void; onRetry: () => void }) {
   const reduce = useReducedMotion();
@@ -79,6 +81,7 @@ export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, b
   const orbA = useAnimatedStyle(() => ({ transform: [{ translateX: 18 * drift.get() }, { translateY: -12 * drift.get() }] }));
   const orbB = useAnimatedStyle(() => ({ transform: [{ translateX: -14 * drift.get() }, { translateY: 16 * drift.get() }] }));
   const bar = useAnimatedStyle(() => ({ transform: [{ translateX: -trackW.get() * (1 - Math.max(0.03, progress.get())) }] }));
+  const sparkStyle = useAnimatedStyle(() => ({ opacity: 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(drift.get() * Math.PI)) }));
   const root = useAnimatedStyle(() => ({ opacity: fade.get() }));
 
   const retry = () => {
@@ -93,10 +96,19 @@ export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, b
       <Animated.View style={[styles.orb, styles.orbMint, orbA]} />
       <Animated.View style={[styles.orb, styles.orbSky, orbB]} />
 
+      {SPARKS.map((p, i) => (
+        <Animated.View key={i} pointerEvents="none" style={[styles.spark, { left: `${p.x}%`, top: `${p.y}%`, width: p.s, height: p.s }, sparkStyle]}>
+          <Svg width={p.s} height={p.s} viewBox="0 0 24 24">
+            <Path d="M12 0 C12.8 8 16 11.2 24 12 C16 12.8 12.8 16 12 24 C11.2 16 8 12.8 0 12 C8 11.2 11.2 8 12 0Z" fill="#FFFFFF" />
+          </Svg>
+        </Animated.View>
+      ))}
+
       <View style={styles.center}>
         <View style={styles.halo}>
+          <LinearGradient colors={['#F4FFFB', '#CFF5EC', '#A8E8DE']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           <Animated.View style={robotStyle}>
-            <BuddyRobot size={168} mood={awake ? 'wave' : 'sleep'} shadow={false} flying={false} navigationIndependent />
+            <BuddyRobot size={150} mood={awake ? 'wave' : 'sleep'} shadow={false} flying={false} navigationIndependent />
           </Animated.View>
           <Animated.Text style={[styles.zz, zzStyle]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             Zz
@@ -122,7 +134,9 @@ export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, b
               accessibilityLabel="Abriendo BUDDY"
               accessibilityValue={{ min: 0, max: 100, now: Math.round(target * 100) }}
             >
-              <Animated.View style={[styles.fill, bar]} />
+              <Animated.View style={[styles.fill, bar]}>
+                <LinearGradient colors={['#2FB8AE', MINT, '#BFFBEA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+              </Animated.View>
             </View>
             <Text style={styles.message} accessibilityLiveRegion="polite">
               {view.kind === 'loading' ? view.message : 'Listo'}
@@ -140,8 +154,9 @@ const styles = StyleSheet.create({
   orbMint: { top: -60, right: -90, backgroundColor: MINT },
   orbSky: { bottom: 40, left: -120, backgroundColor: '#63B3FF' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  halo: { width: 240, height: 240, borderRadius: 120, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(94,217,181,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  zz: { position: 'absolute', top: 34, right: 48, color: '#FFFFFF', fontSize: 26, fontWeight: '800' },
+  halo: { width: 220, height: 220, borderRadius: 44, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', boxShadow: '0 18px 40px rgba(0,0,0,0.35)' },
+  spark: { position: 'absolute' },
+  zz: { position: 'absolute', top: 22, right: 30, color: '#0D3946', fontSize: 26, fontWeight: '800' },
   word: { marginTop: 18, color: '#FFFFFF', fontSize: 40, fontWeight: '800', letterSpacing: 6 },
   tagline: { color: 'rgba(255,255,255,0.82)', fontSize: 17, fontWeight: '600' },
   bottom: { paddingHorizontal: 40, paddingBottom: 72, gap: 12, alignItems: 'center' },

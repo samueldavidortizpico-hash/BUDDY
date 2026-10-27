@@ -97,7 +97,7 @@ export function TodayTiles({ elder }: { elder: Elder }) {
   const s = useStyles();
   const input = useStatusInput(elder);
   const { width, fontScale } = useWindowDimensions();
-  const column = width / (fontScale * useTextScaleFactor()) < 360;
+  const column = width / (fontScale * useTextScaleFactor()) < 370;
   const facts = dayStatus(input).facts;
   const today = toISODate(input.now);
   const water = useRecords('water', { elderId: elder.id }).filter((w) => w.date === today).length;

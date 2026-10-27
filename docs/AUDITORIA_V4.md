@@ -191,3 +191,48 @@ las de ayer cuyo "sin confirmar" cae hoy. Lo que pasó a "sin confirmar" ayer no
 recordatorios + escalation + status + dose-safety: 43 de 43 en TZ=America/Bogota, Europe/Madrid y UTC
 npx jest: 770 de 770 (26,5 s) · --detectOpenHandles sin manejadores abiertos · tsc sin errores
 ```
+
+## Fase 3: almacenamiento seguro
+
+**Skills:** `buddy-medical-safety` (datos sensibles, nada en consola), `buddy-testing`. Codex intentó tomarla y volvió a
+quedarse sin cuota antes de cambiar nada ("try again at Oct 24th, 12:32 AM"); la hizo Claude.
+
+- `expo-crypto` instalado **sí trae AES-GCM** (`node_modules/expo-crypto/build/aes/index.d.ts`): sin dependencias nuevas.
+- Opción elegida: cifrado autenticado sobre el AsyncStorage actual con la clave en el SecureStore (menor riesgo, funciona
+  en Expo Go). Comparación con SQLite + SQLCipher en `docs/ALMACENAMIENTO_SEGURO.md`.
+- Pruebas: 6 de 6 (ida y vuelta, manipulación, migración, clave perdida, interrupción, reversión).
+- Bandera encendida solo en desarrollo. **Sin probar en dispositivo.**
+
+## Fases 4, 5 y 10 (documentos)
+
+`docs/SINCRONIZACION.md` (recomienda Supabase para el piloto con la contraparte de AWS; la decisión es del dueño),
+`docs/NOTIFICACIONES_REMOTAS.md` (servidor detecta "sin confirmar" y "No puedo verificar", Expo Push con recibos,
+reintentos idempotentes y lo que no se puede garantizar) y `docs/BUDDY_PLUS_REVISION.md` (sin cambiar el modelo).
+
+## Fases 6 y 7: sistema de diseño V4 y rediseño
+
+**Skills:** `impeccable` (contexto, piso de calidad, modo *Operate*; sin torneo de conceptos porque el brief fija paleta y
+composición), `frontend-design`, `baseline-ui`, `fixing-accessibility`, `fixing-motion-performance`, `playwright-cli`
+(capturas y controles). Detalle y tokens en `docs/DESIGN_SYSTEM.md`.
+
+- Componentes: `Button` (56/72, compacto 44 + área 48, principal sólido, de texto), `Row`, `Card` de estado,
+  `ScreenHeader` H2 de 2 líneas con avatar opcional, `IconTile`, barra con BUDDY de 64. Galería en `/dev/gallery`.
+- Pantallas: Inicio, adulto mayor, Opciones y Permisos, detalle de medicamento, chat, Rutina, Salud, Ubicación, Ajustes y
+  Vista de [nombre], según 8.1–8.10.
+- Contraste: mosaicos ≥ 3:1 y tarjetas de estado ≥ 4,5:1 medidos en `src/theme/__tests__/contrast.test.ts` (214 pruebas).
+- Capturas: `docs/capturas/v4/antes/` y `docs/capturas/v4/despues/` (390 con letra normal en claro, oscuro y alto
+  contraste; 360 con letra 2,0 en claro; y cada combinación que falla). Informes `_informe.txt` y `informe-ronda1.txt`.
+
+## Fase 8: chat que se entiende y actúa
+
+- `docs/VOZ_DE_BUDDY.md` (reglas y 40 ejemplos) y `src/domain/assistant/voice.ts` (revisor automático).
+- Plantillas revisadas: de `strings.buddy` solo incumplía la de urgencia (tres frases → dos). Las respuestas de
+  preguntas programadas de `use-chat.ts` incumplían la guía: horas en 24 h ("20:00"), rutas técnicas ("Rutina >
+  Automatizaciones", que además ya no existe), listas mecánicas ("Activa · ¿Cómo te sientes? · 20:00"). Reescritas.
+- Intérprete: "es una emergencia" no se entendía; "quedan 10 pastillas" creaba un medicamento; resumen del día;
+  saludo y gracias respondían "No entendí". En preguntas programadas, dos en un mensaje tomaban la misma hora; "cada noche
+  a las 9" quedaba a las 9 a. m.; "al despertar a las 6" y "si ya cenó a las 7" quedaban al revés; "la pastilla
+  losartán" se tomaba como nombre; sin hora no se entendía. Todo corregido.
+- Resultado real: guía **39/40 (97,5 %)** (falla "que camine 5000 pasos al día": primero crea la meta de caminata; también
+  crea la de pasos); preguntas programadas **40/40 (100 %)**; corpus anterior 100 % y reservado 95,8 %; revisión de voz
+  de todas las plantillas y respuestas: 0 incumplimientos.

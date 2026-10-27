@@ -30,7 +30,7 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
 
-const ui = (el: React.ReactElement) => render(el, { wrapper: RenderProviders });
+const ui = async (el: React.ReactElement) => await render(el, { wrapper: RenderProviders });
 
 beforeEach(() => {
   mockPush.mockClear();
@@ -40,22 +40,22 @@ beforeEach(() => {
 describe('administrador', () => {
   it('Inicio muestra "Ajustes" y abre la lista de Ajustes (con la persona registrada)', async () => {
     await seedRenderData();
-    ui(<Summary />);
-    fireEvent.press(screen.getByRole('button', { name: strings.settings.title }));
+    await ui(<Summary />);
+    await fireEvent.press(screen.getByRole('button', { name: strings.settings.title }));
     expect(mockPush).toHaveBeenCalledWith('/settings');
   });
 
   it('Inicio muestra "Ajustes" también antes de registrar a la persona', async () => {
     const elder = await seedRenderData();
     elderActions.update(elder.id, { setupDone: false });
-    ui(<Summary />);
+    await ui(<Summary />);
     expect(screen.getByRole('button', { name: strings.settings.title })).toBeTruthy();
   });
 
   it('la lista de Ajustes tiene Cuenta y Apariencia, y vuelve atrás', async () => {
     await seedRenderData();
-    ui(<SettingsIndex />);
-    fireEvent.press(screen.getByRole('button', { name: strings.settings.sections.appearance }));
+    await ui(<SettingsIndex />);
+    await fireEvent.press(screen.getByRole('button', { name: strings.settings.sections.appearance }));
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/settings/[section]', params: { section: 'appearance' } });
     expect(screen.getByRole('button', { name: strings.settings.sections.account })).toBeTruthy();
     expect(screen.getByRole('button', { name: strings.common.back })).toBeTruthy();
@@ -64,7 +64,7 @@ describe('administrador', () => {
   it('Apariencia permite elegir tema y tamaño de letra', async () => {
     await seedRenderData();
     mockSection = 'appearance';
-    ui(<SettingsSection />);
+    await ui(<SettingsSection />);
     expect(screen.getByText(strings.settings.mode)).toBeTruthy();
     expect(screen.getByText(strings.settings.textSize)).toBeTruthy();
     expect(screen.getByText(strings.settings.sizes.max)).toBeTruthy();
@@ -73,7 +73,7 @@ describe('administrador', () => {
   it('Cuenta tiene "Cerrar sesión" visible', async () => {
     await seedRenderData();
     mockSection = 'account';
-    ui(<SettingsSection />);
+    await ui(<SettingsSection />);
     expect(screen.getByRole('button', { name: strings.settings.signOut })).toBeTruthy();
   });
 });
@@ -81,12 +81,12 @@ describe('administrador', () => {
 describe('adulto mayor', () => {
   it('"Opciones" está visible y abre su pantalla con Cerrar sesión y Entrar como administrador', async () => {
     const elder = await seedRenderData();
-    ui(<ElderScreen elderId={elder.id} />);
-    fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
+    await ui(<ElderScreen elderId={elder.id} />);
+    await fireEvent.press(screen.getByRole('button', { name: strings.adminAccess.button }));
     expect(mockPush).toHaveBeenCalledWith('/elder/options');
-    screen.unmount();
+    await screen.unmount();
     useSession.setState({ user: { id: 'elder-acc', email: 'e@correo.test', name: 'Rosa', createdAt: '', role: 'elder', ownerId: 'render-user', elderId: elder.id } });
-    ui(<ElderOptions />);
+    await ui(<ElderOptions />);
     expect(screen.getByRole('button', { name: strings.adminAccess.signOut })).toBeTruthy();
     expect(screen.getByRole('button', { name: strings.adminAccess.enterAdmin })).toBeTruthy();
     expect(screen.getByRole('button', { name: strings.elderOptions.permissions })).toBeTruthy();
@@ -96,9 +96,9 @@ describe('adulto mayor', () => {
 
 describe('botones visibles', () => {
   // "ghost" era transparente con un borde gris claro: en el iPhone no parecía un botón (error 2).
-  it.each(['light', 'dark'] as const)('el botón secundario tiene fondo propio y texto legible (%s)', (name) => {
+  it.each(['light', 'dark'] as const)('el botón secundario tiene fondo propio y texto legible (%s)', async (name) => {
     const t = themes[name];
-    const { getByRole } = render(<Button label="Editar" variant="ghost" />, { wrapper: RenderProviders });
+    const { getByRole } = await render(<Button label="Editar" variant="ghost" />, { wrapper: RenderProviders });
     const style = StyleSheet.flatten(getByRole('button', { name: 'Editar' }).props.style);
     expect(style.backgroundColor).toBeTruthy();
     expect(style.backgroundColor).not.toBe('transparent');

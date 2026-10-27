@@ -179,7 +179,7 @@ export default function Buddy() {
             onScroll={onScroll}
             onLayout={(e) => setListH(e.nativeEvent.layout.height)}
             scrollEventThrottle={64}
-            ListHeaderComponent={hidden ? <Button label={B.olderMessages(hidden)} size="sm" variant="ghost" onPress={() => setShowAll(true)} style={s.older} /> : null}
+            ListHeaderComponent={hidden ? <Button label={B.olderMessages(hidden)} size="sm" variant="ghost" onPress={() => setShowAll(true)} style={s.older} /> : undefined}
             ListEmptyComponent={
               <View style={s.emptyWrap}>
                 {/* Saludo corto y seis acciones rápidas; el menú completo sigue en "+". */}

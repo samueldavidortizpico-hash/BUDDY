@@ -103,8 +103,8 @@ describe('Entregar a [nombre]', () => {
     'elder/index': ElderHome,
   };
 
-  it('tiene flecha atrás y tres opciones claras', () => {
-    renderRouter(routes, { initialUrl: '/handoff' });
+  it('tiene flecha atrás y tres opciones claras', async () => {
+    await renderRouter(routes, { initialUrl: '/handoff' });
     expect(screen.getByRole('button', { name: strings.common.back })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Vista de Rosa' })).toBeTruthy();
     expect(screen.getByRole('button', { name: strings.handoff.testAction('Rosa') })).toBeTruthy();
@@ -112,9 +112,9 @@ describe('Entregar a [nombre]', () => {
   });
 
   it('la vista previa en vivo se actualiza al instante cuando el administrador agrega algo', async () => {
-    renderRouter(routes, { initialUrl: '/preview' });
+    await renderRouter(routes, { initialUrl: '/preview' });
     expect(screen.queryByText(/Mensaje de prueba/)).toBeNull();
-    act(() => {
+    await act(() => {
       const d = new Date();
       const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
       routineActions.addReminder('Mensaje de prueba', hhmm, [], elderId, toISODate(d));
@@ -123,12 +123,12 @@ describe('Entregar a [nombre]', () => {
   });
 
   it('"Probar como" abre la pantalla real con "Modo prueba" y se sale sin PIN', async () => {
-    const r = renderRouter(routes, { initialUrl: '/handoff' });
-    fireEvent.press(screen.getByRole('button', { name: strings.handoff.testAction('Rosa') }));
+    const r = await renderRouter(routes, { initialUrl: '/handoff' });
+    await fireEvent.press(screen.getByRole('button', { name: strings.handoff.testAction('Rosa') }));
     await waitFor(() => expect(r.getPathname()).toBe('/elder'));
     expect(screen.getByText(strings.handoff.testBanner)).toBeTruthy();
     expect(handoffActions.hasPin()).toBe(false);
-    fireEvent.press(screen.getByRole('button', { name: strings.handoff.testExit }));
+    await fireEvent.press(screen.getByRole('button', { name: strings.handoff.testExit }));
     await waitFor(() => expect(r.getPathname()).toBe('/handoff'));
     expect(db.draftHandoff()).toBeNull();
   });
@@ -140,8 +140,8 @@ describe('Entregar a [nombre]', () => {
     expect(db.draftHandoff()).toMatchObject({ mode: 'locked' });
   });
 
-  it('sin nada programado muestra el estado vacío del paciente, sin datos inventados', () => {
-    renderRouter(routes, { initialUrl: '/preview' });
+  it('sin nada programado muestra el estado vacío del paciente, sin datos inventados', async () => {
+    await renderRouter(routes, { initialUrl: '/preview' });
     expect(screen.getByText(strings.elder.done)).toBeTruthy();
   });
 });

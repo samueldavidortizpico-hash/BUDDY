@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react-native';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { Button, IconButton } from '@/components/button';
@@ -12,20 +12,20 @@ jest.mock('react-native-safe-area-context', () => jest.requireActual('react-nati
 
 beforeEach(async () => { await seedRenderData(); });
 
-it('reserves a shrinkable text box rather than relying on web flex defaults', () => {
-  const ui = render(<AppText>Compartiendo ubicación con tu familiar</AppText>, { wrapper: RenderProviders });
-  const style = StyleSheet.flatten(ui.UNSAFE_getByType(Text).props.style);
+it('reserves a shrinkable text box rather than relying on web flex defaults', async () => {
+  const ui = await render(<AppText>Compartiendo ubicación con tu familiar</AppText>, { wrapper: RenderProviders });
+  const style = StyleSheet.flatten(ui.getByText('Compartiendo ubicación con tu familiar').props.style);
   expect(style).toMatchObject({ minWidth: 0, flexShrink: 1 });
 });
 
-it('keeps icon labels inside their pill at large text sizes', () => {
-  const ui = render(<IconButton icon="pencil" label="Editar" />, { wrapper: RenderProviders });
+it('keeps icon labels inside their pill at large text sizes', async () => {
+  const ui = await render(<IconButton icon="pencil" label="Editar" />, { wrapper: RenderProviders });
   const style = StyleSheet.flatten(ui.getByText('Editar').props.style);
   expect(style).toMatchObject({ minWidth: 0, flexShrink: 1, textAlign: 'center' });
 });
 
-it('uses compact horizontal padding for secondary actions', () => {
-  const ui = render(<Button label="Editar" size="sm" icon="pencil" />, { wrapper: RenderProviders });
+it('uses compact horizontal padding for secondary actions', async () => {
+  const ui = await render(<Button label="Editar" size="sm" icon="pencil" />, { wrapper: RenderProviders });
   const button = ui.getByRole('button', { name: 'Editar' });
   const style = StyleSheet.flatten(button.props.style);
   expect(style.paddingHorizontal).toBeLessThanOrEqual(12);
@@ -34,17 +34,17 @@ it('uses compact horizontal padding for secondary actions', () => {
   expect(style.minHeight + button.props.hitSlop.top + button.props.hitSlop.bottom).toBeGreaterThanOrEqual(48);
 });
 
-it('V4: standard buttons are at least 56 tall and the elder ones 72', () => {
-  const ui = render(<><Button label="Guardar" /><Button label="Ya lo tomé" size="elder" /></>, { wrapper: RenderProviders });
+it('V4: standard buttons are at least 56 tall and the elder ones 72', async () => {
+  const ui = await render(<><Button label="Guardar" /><Button label="Ya lo tomé" size="elder" /></>, { wrapper: RenderProviders });
   expect(StyleSheet.flatten(ui.getByRole('button', { name: 'Guardar' }).props.style).minHeight).toBeGreaterThanOrEqual(56);
   expect(StyleSheet.flatten(ui.getByRole('button', { name: 'Ya lo tomé' }).props.style).minHeight).toBeGreaterThanOrEqual(72);
 });
 
 // Structural RN renderer tests, NOT a Yoga layout or a physical-device screenshot.
 describe.each(Object.keys(textScales) as (keyof typeof textScales)[])('app font %s', (textScale) => {
-  it.each([1, 1.3, 2])('keeps the label scalable and centered with system multiplier %s', (fontScale) => {
+  it.each([1, 1.3, 2])('keeps the label scalable and centered with system multiplier %s', async (fontScale) => {
     useAppearanceStore.setState({ textScale });
-    const ui = render(<Button label="Marcar como tomado" size="elder" />, { wrapper: RenderProviders });
+    const ui = await render(<Button label="Marcar como tomado" size="elder" />, { wrapper: RenderProviders });
     const label = ui.getByText('Marcar como tomado');
     const style = StyleSheet.flatten(label.props.style);
     expect(label.props.allowFontScaling).toBe(true);
@@ -64,8 +64,8 @@ describe.each([360, 375, 390])('row at width %s', (width) => {
   });
 });
 
-it('renders a shrinkable message and an action that cannot steal its text width', () => {
-  const ui = render(<InlineBanner action={<Button label="Dejar de compartir" />}><AppText>Compartiendo ubicación</AppText></InlineBanner>, { wrapper: RenderProviders });
+it('renders a shrinkable message and an action that cannot steal its text width', async () => {
+  const ui = await render(<InlineBanner action={<Button label="Dejar de compartir" />}><AppText>Compartiendo ubicación</AppText></InlineBanner>, { wrapper: RenderProviders });
   expect(ui.getByText('Compartiendo ubicación')).toBeTruthy();
   expect(ui.getByRole('button', { name: 'Dejar de compartir' })).toBeTruthy();
 });

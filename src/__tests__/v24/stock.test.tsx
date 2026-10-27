@@ -110,7 +110,7 @@ it('un medicamento agregado por el chat avisa a los 3 días por defecto', () => 
   expect(db.list('medications', testUser.id, elderId)[0].refillAlertDays).toBe(3);
 });
 
-it('al agregar un medicamento con pocas unidades se avisa de una vez, y el adulto mayor ve una tarjeta sencilla y honesta', () => {
+it('al agregar un medicamento con pocas unidades se avisa de una vez, y el adulto mayor ve una tarjeta sencilla y honesta', async () => {
   medicationActions.add(
     {
       name: '[PRUEBA] Losartán', activeIngredient: '', strength: '50 mg', form: 'tablet', doseAmount: 1, doseUnit: 'unit',
@@ -119,7 +119,7 @@ it('al agregar un medicamento con pocas unidades se avisa de una vez, y el adult
     },
     elderId,
   );
-  render(<RenderProviders><ElderScreen elderId={elderId} /></RenderProviders>);
+  await render(<RenderProviders><ElderScreen elderId={elderId} /></RenderProviders>);
   expect(screen.getAllByText(/Se están acabando tus pastillas/).length).toBeGreaterThan(0);
   expect(screen.queryByText(/Ya le avisé/)).toBeNull();
   expect(toISODate(new Date())).toBe('2026-10-12');

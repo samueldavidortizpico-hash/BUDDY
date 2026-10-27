@@ -40,32 +40,32 @@ const wait = async (ms = 1500) => act(async () => { jest.advanceTimersByTime(ms)
 const list = <K extends Parameters<typeof db.list>[0]>(coll: K) => db.list(coll, testUser.id, elderId);
 const card = () => screen.getByTestId('draft-pinned');
 const tap = async (name: string | RegExp, scope = card()) => {
-  fireEvent.press(within(scope).getByRole('button', { name }));
+  await fireEvent.press(within(scope).getByRole('button', { name }));
   await wait();
 };
 async function say(text: string) {
-  fireEvent.changeText(screen.getByLabelText(B.placeholder), text);
-  fireEvent.press(screen.getByRole('button', { name: B.send }));
+  await fireEvent.changeText(screen.getByLabelText(B.placeholder), text);
+  await fireEvent.press(screen.getByRole('button', { name: B.send }));
   await wait();
 }
-const chat = () => render(<RenderProviders><Buddy /></RenderProviders>);
+const chat = async () => await render(<RenderProviders><Buddy /></RenderProviders>);
 const userBubbles = () => db.list('messages', testUser.id, elderId).filter((m) => m.from === 'user').length;
 
 it('V4: el chat vacío saluda y muestra 6 acciones rápidas; "+" abre el menú completo', async () => {
-  chat();
+  await chat();
   expect(screen.getByText(B.hello('Rosa'))).toBeTruthy();
   expect(screen.getByText(B.assistantOf('Rosa'))).toBeTruthy();
   for (const label of [B.menu.medication, B.menu.water, B.quick.mood, B.menu.appointment, B.menu.contact, B.quick.day]) expect(screen.getByRole('button', { name: label })).toBeTruthy();
   // "Preguntarle cómo se siente" deja la frase en el compositor para ajustar la hora antes de enviarla.
-  fireEvent.press(screen.getByRole('button', { name: B.quick.mood }));
+  await fireEvent.press(screen.getByRole('button', { name: B.quick.mood }));
   expect(screen.getByLabelText(B.placeholder).props.value).toBe(B.quick.moodText('Rosa'));
-  fireEvent.press(screen.getByRole('button', { name: B.openMenu }));
+  await fireEvent.press(screen.getByRole('button', { name: B.openMenu }));
   await wait();
   for (const label of Object.values(B.menu)) expect(screen.getAllByRole('button', { name: label }).length).toBeGreaterThan(0);
 });
 
 it('agrega un medicamento solo con respuestas predeterminadas, sin burbujas por cada respuesta', async () => {
-  chat();
+  await chat();
   await say('agrega losartán');
   expect(mockPush).not.toHaveBeenCalled();
   // V2.4 Hito 2: primero la presentación del registro del INVIMA, elegida con un toque.
@@ -80,7 +80,7 @@ it('agrega un medicamento solo con respuestas predeterminadas, sin burbujas por 
   // Completo: la tarjeta deja de preguntar y muestra el resumen con la confirmación activa.
   const confirm = within(card()).getByRole('button', { name: B.confirmAdd });
   expect(confirm.props.accessibilityState?.disabled).toBeFalsy();
-  fireEvent.press(confirm);
+  await fireEvent.press(confirm);
   await wait();
   expect(list('medications')[0]).toMatchObject({ name: 'Losartán Potásico', strength: '50 mg', doseAmount: 1, schedule: { kind: 'times', times: ['08:00'] } });
   expect(list('medications')[0].verifiedSource).toMatchObject({ source: expect.stringContaining('INVIMA') });
@@ -88,13 +88,13 @@ it('agrega un medicamento solo con respuestas predeterminadas, sin burbujas por 
   expect(screen.queryByTestId('draft-pinned')).toBeNull();
   const done = screen.getByTestId('task-done');
   expect(within(done).getByRole('button', { name: B.see })).toBeTruthy();
-  fireEvent.press(within(done).getByRole('button', { name: strings.common.undo }));
+  await fireEvent.press(within(done).getByRole('button', { name: strings.common.undo }));
   await wait();
   expect(list('medications')).toHaveLength(0);
 });
 
 it('Atrás vuelve a preguntar el dato anterior y Omitir salta un dato opcional', async () => {
-  chat();
+  await chat();
   await say('agrega metformina');
   await tap('No está en la lista');
   await tap('½ tableta');
@@ -106,31 +106,31 @@ it('Atrás vuelve a preguntar el dato anterior y Omitir salta un dato opcional',
   await tap(`${B.addDetail}: Concentración`);
   expect(within(card()).getByText(/¿Qué concentración tiene Metformina\?/)).toBeTruthy();
   await tap(B.skip);
-  fireEvent.press(within(card()).getByRole('button', { name: B.confirmAdd }));
+  await fireEvent.press(within(card()).getByRole('button', { name: B.confirmAdd }));
   await wait();
   expect(list('medications')[0]).toMatchObject({ name: 'Metformina', doseAmount: 1.5, strength: '' });
 });
 
 it('agua desde el menú con el contador +/−', async () => {
-  chat();
-  fireEvent.press(screen.getByRole('button', { name: B.menu.water }));
+  await chat();
+  await fireEvent.press(screen.getByRole('button', { name: B.menu.water }));
   await wait();
   expect(within(card()).getByText('8')).toBeTruthy();
   await tap(B.more);
   await tap(B.useValue('9'));
-  fireEvent.press(within(card()).getByRole('button', { name: B.confirmAdd }));
+  await fireEvent.press(within(card()).getByRole('button', { name: B.confirmAdd }));
   await wait();
   expect(list('waterPlans')[0]).toMatchObject({ glasses: 9 });
 });
 
 it('cita médica desde el menú, solo con botones', async () => {
-  chat();
-  fireEvent.press(screen.getByRole('button', { name: B.menu.appointment }));
+  await chat();
+  await fireEvent.press(screen.getByRole('button', { name: B.menu.appointment }));
   await wait();
   await tap('Médico general');
   await tap('Mañana');
   await tap('10:00 a. m.');
-  fireEvent.press(within(card()).getByRole('button', { name: B.confirmAdd }));
+  await fireEvent.press(within(card()).getByRole('button', { name: B.confirmAdd }));
   await wait();
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -138,7 +138,7 @@ it('cita médica desde el menú, solo con botones', async () => {
 });
 
 it('si no entiende, muestra el menú de acciones en lugar de solo "no entendí"', async () => {
-  chat();
+  await chat();
   await say('hola');
   await say('asdf qwer');
   expect(screen.getAllByRole('button', { name: B.menu.medication }).length).toBeGreaterThan(0);
@@ -148,17 +148,17 @@ it('si no entiende, muestra el menú de acciones en lugar de solo "no entendí"'
 
 // V4 Fase 2: antes escribía "hola" 8 veces por la interfaz (16 burbujas animadas). Tardaba 2,1 s sola y pasaba de 5 s
 // con la suite en paralelo (Q-01, docs/AUDITORIA_V4.md). El plegado solo depende de cuántos mensajes hay: se siembran.
-it('pliega los mensajes anteriores', () => {
+it('pliega los mensajes anteriores', async () => {
   for (let i = 0; i < 12; i++) {
     db.insert('messages', { from: i % 2 ? 'buddy' : 'user', text: `[PRUEBA] mensaje ${i}`, proposal: null, proposalState: null, quickReplies: [], imageUri: null }, { userId: testUser.id, elderId });
   }
-  chat();
-  fireEvent.press(screen.getByRole('button', { name: B.olderMessages(2) }));
+  await chat();
+  await fireEvent.press(screen.getByRole('button', { name: B.olderMessages(2) }));
   expect(screen.getByText('[PRUEBA] mensaje 0')).toBeTruthy();
 });
 
 it('quita la indicación redundante del nombre y conserva la hora de cada mensaje', async () => {
-  chat();
+  await chat();
   await fireEvent.press(screen.getByRole('button', { name: B.menu.medication }));
   await wait();
   expect(screen.getByText('¿Cómo se llama el medicamento?')).toBeTruthy();
@@ -168,7 +168,7 @@ it('quita la indicación redundante del nombre y conserva la hora de cada mensaj
 });
 
 it('crea, pausa, cambia y consulta automatizaciones desde BUDDY', async () => {
-  chat();
+  await chat();
   await say('pregúntale todos los días a las 8 de la noche cómo se siente');
   const rows = list('reminders').filter((r) => r.automation);
   expect(rows).toHaveLength(1);
@@ -186,7 +186,7 @@ it('crea, pausa, cambia y consulta automatizaciones desde BUDDY', async () => {
 });
 
 it('combina un medicamento y una pregunta sin mezclar sus horas', async () => {
-  chat();
+  await chat();
   await say('agrégale losartán a las 6 y pregúntale cómo se siente a las 8');
   expect(list('reminders').find((r) => r.automation?.kind === 'mood')?.time).toBe('08:00');
   expect(card()).toBeTruthy();
@@ -195,7 +195,7 @@ it('combina un medicamento y una pregunta sin mezclar sus horas', async () => {
 });
 
 it('crea un aviso por toma no confirmada a la hora real del medicamento', async () => {
-  chat();
+  await chat();
   const med = db.insert('medications', {
     name: 'Losartán', activeIngredient: '', strength: '', form: 'tablet', doseAmount: 1, doseUnit: 'unit',
     schedule: { kind: 'times', times: ['08:00'], days: [] }, startDate: toISODate(new Date()), endDate: null,

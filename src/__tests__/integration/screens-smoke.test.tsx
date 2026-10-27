@@ -39,10 +39,10 @@ beforeEach(async () => {
 });
 
 it('makes the older adult screen easy to find from the caregiver summary', async () => {
-  const screen = render(<RenderProviders><Summary /></RenderProviders>);
+  const screen = await render(<RenderProviders><Summary /></RenderProviders>);
   // V4: la tarjeta de la persona ("Rosa ›", "Ver su pantalla") abre su pantalla en solo lectura.
   const preview = screen.getByRole('button', { name: `Rosa. ${strings.summary.home.seeScreen}` });
-  fireEvent.press(preview);
+  await fireEvent.press(preview);
   expect(mockPush).toHaveBeenCalledWith('/preview');
 });
 
@@ -55,26 +55,26 @@ const cases = [
 ] as const;
 
 describe.each(['light', 'dark', 'hcLight', 'hcDark'] as const)('render in %s theme', (theme) => {
-  it.each(cases)('%s mounts and rerenders with production providers', (_name, Screen, signedOut) => {
+  it.each(cases)('%s mounts and rerenders with production providers', async (_name, Screen, signedOut) => {
     useAppearanceStore.setState({ mode: theme.endsWith('Dark') || theme === 'dark' ? 'dark' : 'light', highContrast: theme.startsWith('hc') });
     if (signedOut) useSession.setState({ status: 'signedOut', user: null });
     mockParams = { mode: 'manual' };
     const ui = () => <RenderProviders><Screen /></RenderProviders>;
-    const screen = render(ui());
+    const screen = await render(ui());
     expect(screen.toJSON()).not.toBeNull();
-    screen.rerender(ui());
+    await screen.rerender(ui());
     expect(screen.toJSON()).not.toBeNull();
   });
 });
 
-it.each(['water', 'meals', 'activities', 'contacts', 'checkin', 'appointments', 'reminders'])('routine section %s renders', (section) => {
+it.each(['water', 'meals', 'activities', 'contacts', 'checkin', 'appointments', 'reminders'])('routine section %s renders', async (section) => {
   mockParams = { section };
-  const screen = render(<RoutineSection />, { wrapper: RenderProviders });
+  const screen = await render(<RoutineSection />, { wrapper: RenderProviders });
   expect(screen.toJSON()).not.toBeNull();
 });
 
-it.each(['appearance', 'elder', 'account', 'alerts', 'people', 'devices', 'legal', 'advanced', 'about'])('settings section %s renders', (section) => {
+it.each(['appearance', 'elder', 'account', 'alerts', 'people', 'devices', 'legal', 'advanced', 'about'])('settings section %s renders', async (section) => {
   mockParams = { section };
-  const screen = render(<SettingsSection />, { wrapper: RenderProviders });
+  const screen = await render(<SettingsSection />, { wrapper: RenderProviders });
   expect(screen.toJSON()).not.toBeNull();
 });

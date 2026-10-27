@@ -1,5 +1,5 @@
 /** Controles de formulario: Field, Checkbox, Chip, ChipList (texto libre + sugerencias), Segmented, Stepper. */
-import { useEffect, useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
@@ -23,7 +23,7 @@ export interface FieldProps extends Omit<TextInputProps, 'style'> {
   secure?: boolean;
   optional?: boolean;
   keyboardType?: KeyboardTypeOptions;
-  inputRef?: Ref<TextInput>;
+  inputRef?: Ref<ComponentRef<typeof TextInput>>;
   right?: ReactNode;
   style?: StyleProp<ViewStyle>;
 }

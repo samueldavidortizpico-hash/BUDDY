@@ -33,7 +33,7 @@ beforeEach(async () => {
 });
 afterEach(() => jest.useRealTimers());
 
-const ui = () => render(<RenderProviders><BuddyLauncher /></RenderProviders>);
+const ui = async () => await render(<RenderProviders><BuddyLauncher /></RenderProviders>);
 function lowStockMed(name: string) {
   return db.insert(
     'medications',
@@ -67,9 +67,9 @@ describe('geometría del robot arrastrable', () => {
 describe('burbujas de novedades', () => {
   // V3.0 (decisión 113): si el estado del Inicio ya dice "Atención" o "Acción necesaria", ese es el mensaje y el robot no
   // lo repite en burbujas que tapan los datos de hoy; solo muestra el contador.
-  it('con el estado en Atención (existencias bajas) no repite el aviso en burbujas, solo el contador', () => {
+  it('con el estado en Atención (existencias bajas) no repite el aviso en burbujas, solo el contador', async () => {
     for (const n of ['A', 'B']) lowStockMed(`[PRUEBA] ${n}`);
-    ui();
+    await ui();
     expect(screen.queryAllByTestId('launcher-bubble')).toHaveLength(0);
     expect(screen.getByLabelText(/^BUDDY, \d+ novedades$/)).toBeTruthy();
   });
@@ -82,13 +82,13 @@ describe('burbujas de novedades', () => {
     for (let i = 0; i < n; i++) db.insert('appointments', { title: `[PRUEBA] Cita ${i}`, date: toISODate(tomorrow), time: '10:00', place: '', city: '', reference: '', phone: '', notes: '', questions: [] }, { userId: testUser.id, elderId });
   }
 
-  it('con el día en orden: se quedan hasta descartarlas (no 6 s), máximo 3 con "+N", cada una con acción', () => {
+  it('con el día en orden: se quedan hasta descartarlas (no 6 s), máximo 3 con "+N", cada una con acción', async () => {
     calmDay(4);
-    ui();
-    act(() => { jest.advanceTimersByTime(20_000); });
+    await ui();
+    await act(() => { jest.advanceTimersByTime(20_000); });
     // Por defecto solo la más importante (no tapa la pantalla) y "+4"; al desplegar, 3 apiladas y "+2".
     expect(screen.getAllByTestId('launcher-bubble')).toHaveLength(1);
-    fireEvent.press(screen.getByRole('button', { name: F.moreBubbles(4) })); // 4 citas + sugerencia de actividad
+    await fireEvent.press(screen.getByRole('button', { name: F.moreBubbles(4) })); // 4 citas + sugerencia de actividad
     const bubbles = screen.getAllByTestId('launcher-bubble');
     expect(bubbles).toHaveLength(3);
     expect(screen.getByText(`+2 · ${F.fewer}`)).toBeTruthy();
@@ -102,17 +102,17 @@ describe('burbujas de novedades', () => {
     expect(db.get('medications', m.id)!.unitsOnHand).toBe(34);
   });
 
-  it('descartar una burbuja la quita sin volver a aparecer', () => {
+  it('descartar una burbuja la quita sin volver a aparecer', async () => {
     calmDay(1);
-    ui();
+    await ui();
     const before = screen.getAllByTestId('launcher-bubble');
-    fireEvent.press(within(before[0]).getByRole('button', { name: F.dismissBubble }));
+    await fireEvent.press(within(before[0]).getByRole('button', { name: F.dismissBubble }));
     const after = screen.queryAllByTestId('launcher-bubble');
     expect(after.every((x) => x !== before[0])).toBe(true);
   });
 
   it('"Ocultar el robot por hoy" lo quita de todas las pestañas', async () => {
-    ui();
+    await ui();
     expect(screen.getByTestId('launcher-robot')).toBeTruthy();
     await act(async () => useLauncherStore.getState().hideToday());
     expect(useLauncherStore.getState().hiddenOn).toBe(toISODate(new Date()));

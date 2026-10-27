@@ -16,7 +16,7 @@ describe('historiales visuales de Salud', () => {
   beforeEach(async () => { elderId = (await seedRenderData()).id; });
   afterEach(() => { jest.useRealTimers(); });
 
-  it('muestra vasos programados como registrados, omitidos o pendientes usando marcas de tiempo reales', () => {
+  it('muestra vasos programados como registrados, omitidos o pendientes usando marcas de tiempo reales', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(2026, 9, 23, 13, 0));
     const now = new Date();
@@ -25,7 +25,7 @@ describe('historiales visuales de Salud', () => {
     db.insert('waterPlans', { glasses: 3, times: ['08:00', '12:00', '23:59'] }, { userId: testUser.id, elderId });
     db.insert('water', { date, at: at(8) }, { userId: testUser.id, elderId });
     const elder = db.get('elders', elderId)!;
-    render(<RenderProviders><WaterToday elder={elder} /></RenderProviders>);
+    await render(<RenderProviders><WaterToday elder={elder} /></RenderProviders>);
     expect(screen.getByText('Vasos de agua hoy')).toBeTruthy();
     expect(screen.getByLabelText('Vaso 1, 08:00, registrado')).toBeTruthy();
     expect(screen.getByLabelText('Vaso 2, 12:00, sin registro')).toBeTruthy();
@@ -33,8 +33,8 @@ describe('historiales visuales de Salud', () => {
     expect(screen.getByText('1 de 3')).toBeTruthy();
   });
 
-  it('mantiene Salud mental y Sueño como métricas visibles, sin inventar valores cuando no hay respuestas', () => {
-    render(<RenderProviders><Health /></RenderProviders>);
+  it('mantiene Salud mental y Sueño como métricas visibles, sin inventar valores cuando no hay respuestas', async () => {
+    await render(<RenderProviders><Health /></RenderProviders>);
     expect(screen.getByRole('button', { name: strings.health.mood })).toBeTruthy();
     expect(screen.getByRole('button', { name: strings.health.sleep })).toBeTruthy();
     expect(screen.getAllByText(strings.health.noData).length).toBeGreaterThanOrEqual(2);

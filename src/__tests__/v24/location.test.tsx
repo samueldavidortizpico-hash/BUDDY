@@ -31,7 +31,7 @@ beforeEach(async () => {
   elderId = (await seedRenderData()).id;
 });
 const fixes = () => db.list('locations', testUser.id, elderId);
-const ui = (node: React.ReactNode) => render(<RenderProviders>{node}</RenderProviders>);
+const ui = async (node: React.ReactNode) => await render(<RenderProviders>{node}</RenderProviders>);
 
 describe('estado de la ubicación (puro)', () => {
   const fix = (at: string) => ({ id: at, lat: 4.6, lng: -74.08, accuracy: 20, at, ownerUserId: 'u', elderId: 'e', createdBy: 'u', createdAt: at, updatedAt: at, deletedAt: null, syncStatus: 'pending' as const });
@@ -80,39 +80,39 @@ describe('consentimiento (matriz can)', () => {
 
 describe('pantallas', () => {
   it('flujo completo: solicitar → el adulto mayor acepta → el mapa aparece → revoca', async () => {
-    const c = ui(<LocationScreen />);
+    const c = await ui(<LocationScreen />);
     expect(screen.getByText(L.askShare('Rosa'))).toBeTruthy();
     expect(screen.queryByTestId('map')).toBeNull(); // nunca un mapa sin ubicación real
-    fireEvent.press(screen.getByRole('button', { name: L.request }));
+    await fireEvent.press(screen.getByRole('button', { name: L.request }));
     expect(screen.getByText(L.requested('Rosa'))).toBeTruthy();
-    c.unmount();
+    await c.unmount();
 
-    const e = ui(<ElderScreen elderId={elderId} />);
+    const e = await ui(<ElderScreen elderId={elderId} />);
     expect(screen.queryByText(L.elderAsk('Laura'))).toBeNull();
     expect(screen.queryByRole('button', { name: L.stop })).toBeNull();
-    e.unmount();
-    const permissionRoute = ui(<ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} />);
+    await e.unmount();
+    const permissionRoute = await ui(<ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} />);
     expect(screen.getByText(L.elderAsk('Laura'))).toBeTruthy();
     await act(async () => {
-      fireEvent.press(screen.getByRole('button', { name: L.accept }));
+      await fireEvent.press(screen.getByRole('button', { name: L.accept }));
     });
     expect(fixes()).toHaveLength(1);
-    permissionRoute.rerender(<RenderProviders><ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} /></RenderProviders>);
+    await permissionRoute.rerender(<RenderProviders><ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} /></RenderProviders>);
     expect(screen.getByText(L.sharing('Laura'))).toBeTruthy();
-    permissionRoute.unmount();
+    await permissionRoute.unmount();
 
-    const c2 = ui(<LocationScreen />);
+    const c2 = await ui(<LocationScreen />);
     expect(screen.getByTestId('map')).toBeTruthy();
     expect(screen.getByText(/Última ubicación:/)).toBeTruthy();
     expect(screen.getByText(L.accuracy(25))).toBeTruthy();
     expect(screen.getByText(/Mapa: Apple Maps/)).toBeTruthy();
-    c2.unmount();
+    await c2.unmount();
 
-    const stop = ui(<ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} />);
+    const stop = await ui(<ElderLocation elder={db.get('elders', elderId)!} caregiver="Laura" preview={false} />);
     const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, actions) => (actions as { onPress?: () => void }[] | undefined)?.slice(-1)[0]?.onPress?.());
-    fireEvent.press(screen.getByRole('button', { name: L.stop }));
+    await fireEvent.press(screen.getByRole('button', { name: L.stop }));
     alert.mockRestore();
-    stop.unmount();
+    await stop.unmount();
     expect(fixes()).toHaveLength(0);
     expect(db.get('elders', elderId)!.locationConsent).toBe('revoked');
   });

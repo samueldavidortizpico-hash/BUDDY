@@ -21,62 +21,62 @@ beforeEach(async () => {
   elderId = (await seedRenderData()).id;
 });
 
-it('renders ElderHome with no seen draft and keeps dose synchronization idempotent', () => {
+it('renders ElderHome with no seen draft and keeps dose synchronization idempotent', async () => {
   seedMedication(elderId);
   db.setHandoff({ userId: testUser.id, elderId, failedPins: 0, lockedUntil: null });
   const sync = jest.spyOn(doseActions, 'sync');
   try {
-    const screen = render(<ElderHome />, { wrapper: RenderProviders });
+    const screen = await render(<ElderHome />, { wrapper: RenderProviders });
     expect(screen.getByText(/Rosa/)).toBeTruthy();
-    screen.rerender(<ElderHome />);
+    await screen.rerender(<ElderHome />);
     expect(sync).toHaveBeenCalledTimes(1);
     expect(db.list('doses', testUser.id, elderId)).toHaveLength(1);
   } finally { sync.mockRestore(); }
 });
 
-it('preview cannot confirm medication but the elder screen retains the legitimate action', () => {
+it('preview cannot confirm medication but the elder screen retains the legitimate action', async () => {
   const medication = seedMedication(elderId);
   doseActions.sync(elderId, new Date());
   const before = useDb.getState();
-  const preview = render(<ElderScreen elderId={elderId} preview />, { wrapper: RenderProviders });
+  const preview = await render(<ElderScreen elderId={elderId} preview />, { wrapper: RenderProviders });
   const confirm = preview.getByRole('button', { name: strings.elder.taken });
   expect(confirm).toBeDisabled();
-  fireEvent.press(confirm);
+  await fireEvent.press(confirm);
   expect(useDb.getState()).toBe(before);
-  preview.unmount();
-  const elder = render(<ElderScreen elderId={elderId} />, { wrapper: RenderProviders });
-  fireEvent.press(elder.getByRole('button', { name: strings.elder.taken }));
+  await preview.unmount();
+  const elder = await render(<ElderScreen elderId={elderId} />, { wrapper: RenderProviders });
+  await fireEvent.press(elder.getByRole('button', { name: strings.elder.taken }));
   expect(db.list('doses', testUser.id, elderId)[0].status).toBe('taken');
   expect(db.get('medications', medication.id)?.unitsOnHand).toBe(29);
 });
 
-it('renders caregiver preview without changing the patient, including attempted actions', () => {
+it('renders caregiver preview without changing the patient, including attempted actions', async () => {
   const before = useDb.getState();
-  const screen = render(<Preview />, { wrapper: RenderProviders });
+  const screen = await render(<Preview />, { wrapper: RenderProviders });
   expect(screen.getByText('Vista de Rosa')).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: strings.elder.help }));
+  await fireEvent.press(screen.getByRole('button', { name: strings.elder.help }));
   expect(useDb.getState()).toBe(before);
 });
 
-it('renders theme changes and nested ThemeOverride without an update loop', () => {
-  const screen = render(<ThemeOverride name="hcLight" textScale="large"><ElderScreen elderId={elderId} preview /></ThemeOverride>, { wrapper: RenderProviders });
-  act(() => { useAppearanceStore.getState().set({ mode: 'dark' }); });
-  screen.rerender(<ThemeOverride name="hcDark" textScale="normal"><ElderScreen elderId={elderId} preview /></ThemeOverride>);
+it('renders theme changes and nested ThemeOverride without an update loop', async () => {
+  const screen = await render(<ThemeOverride name="hcLight" textScale="large"><ElderScreen elderId={elderId} preview /></ThemeOverride>, { wrapper: RenderProviders });
+  await act(() => { useAppearanceStore.getState().set({ mode: 'dark' }); });
+  await screen.rerender(<ThemeOverride name="hcDark" textScale="normal"><ElderScreen elderId={elderId} preview /></ThemeOverride>);
   expect(screen.getByText(/Rosa/)).toBeTruthy();
 });
 
-it('keeps collection references stable across unrelated changes and updates on actual data changes', () => {
+it('keeps collection references stable across unrelated changes and updates on actual data changes', async () => {
   const references: unknown[] = [];
   function Probe() {
     const records = useRecords('water', { elderId });
     references.push(records);
     return null;
   }
-  const screen = render(<Probe />);
+  const screen = await render(<Probe />);
   const first = references[references.length - 1];
-  act(() => db.setDraft(testUser.id, 'unrelated', true));
-  screen.rerender(<Probe />);
+  await act(() => db.setDraft(testUser.id, 'unrelated', true));
+  await screen.rerender(<Probe />);
   expect(references[references.length - 1]).toBe(first);
-  act(() => db.insert('water', { date: '2026-10-11', at: '2026-10-11T12:00:00Z' }, { userId: testUser.id, elderId }));
+  await act(() => db.insert('water', { date: '2026-10-11', at: '2026-10-11T12:00:00Z' }, { userId: testUser.id, elderId }));
   expect(references[references.length - 1]).not.toBe(first);
 });

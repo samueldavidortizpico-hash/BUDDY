@@ -16,13 +16,15 @@ it('provides four tabs and a central BUDDY action that opens the full-screen rou
   const props = {
     state: { index: 0, routes: names.map((name) => ({ key: name, name })) },
     descriptors: Object.fromEntries(names.map((name, i) => [name, { options: { title: titles[i] } }])),
-    navigation: { emit: () => ({ defaultPrevented: false }), navigate },
+    // Expo Router 58: la barra recibe `emitter` y `navigateToTab(routeKey)` en lugar de `navigation`.
+    emitter: { emit: () => ({ defaultPrevented: false }) },
+    navigateToTab: navigate,
   } as unknown as BottomTabBarProps;
-  const ui = render(<BottomTabBar {...props} icons={{}} caregiver />, { wrapper: RenderProviders });
+  const ui = await render(<BottomTabBar {...props} icons={{}} caregiver />, { wrapper: RenderProviders });
   expect(ui.getAllByRole('tab')).toHaveLength(4);
-  fireEvent.press(ui.getByRole('button', { name: /BUDDY/ }));
+  await fireEvent.press(ui.getByRole('button', { name: /BUDDY/ }));
   expect(mockPush).toHaveBeenCalledWith('/buddy');
   expect(navigate).not.toHaveBeenCalled();
-  fireEvent.press(ui.getByRole('tab', { name: 'Ubicación' }));
-  await waitFor(() => expect(navigate).toHaveBeenCalledWith('location', undefined));
+  await fireEvent.press(ui.getByRole('tab', { name: 'Ubicación' }));
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('location'));
 });

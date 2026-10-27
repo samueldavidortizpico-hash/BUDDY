@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ToastProvider } from '@/components/feedback';
 import { db, useDb } from '@/infrastructure/local/db';
@@ -22,7 +23,8 @@ export async function seedRenderData() {
 }
 
 export function RenderProviders({ children }: { children: ReactNode }) {
-  return <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>;
+  // Igual que src/app/_layout.tsx: RNGH 3 exige un GestureHandlerRootView sobre todo GestureDetector.
+  return <GestureHandlerRootView style={{ flex: 1 }}><ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider></GestureHandlerRootView>;
 }
 
 export function seedMedication(elderId: string) {

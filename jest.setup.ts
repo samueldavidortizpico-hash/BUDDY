@@ -1,3 +1,8 @@
+// react-native-gesture-handler 3.x (SDK 58): mockea su módulo nativo para Jest (setup oficial de RNGH) y usa el mock de
+// Worklets, cuyo getUIRuntimeHolder no lanza (la versión web lanza dentro de un setImmediate y tumba la suite).
+require('react-native-gesture-handler/jestSetup');
+jest.mock('react-native-worklets', () => require('react-native-worklets/lib/module/mock'));
+
 // Reanimated necesita módulos nativos: se usa su mock oficial, que no incluye useReducedMotion.
 // Se completa el propio módulo del mock porque expo-router/testing-library también lo reutiliza.
 const reanimatedMock = require('react-native-reanimated/mock');

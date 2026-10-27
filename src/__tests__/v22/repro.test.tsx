@@ -39,26 +39,26 @@ beforeEach(async () => {
   elderId = (await seedRenderData()).id;
 });
 
-const ui = (node: React.ReactNode) => render(<RenderProviders>{node}</RenderProviders>);
+const ui = async (node: React.ReactNode) => await render(<RenderProviders>{node}</RenderProviders>);
 const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return toISODate(d); };
 
-it('P2: lo que agrega BUDDY aparece en Rutina marcado "Nuevo"', () => {
+it('P2: lo que agrega BUDDY aparece en Rutina marcado "Nuevo"', async () => {
   execute({ type: 'add_medication', name: 'Losartán', strength: null, doseAmount: 1, doseUnit: 'unit', form: 'tablet', times: ['18:00'], days: [], everyHours: null, from: null, unitsPerPackage: null, instructions: '' });
-  ui(<Routine />);
+  await ui(<Routine />);
   expect(screen.getByText('Losartán')).toBeTruthy();
   expect(screen.getByText('Nuevo')).toBeTruthy();
 });
 
-it('P3: 14 días de ánimo bajo generan una recomendación con escalada para el administrador', () => {
+it('P3: 14 días de ánimo bajo generan una recomendación con escalada para el administrador', async () => {
   for (let i = 0; i < 14; i++) db.insert('checkins', { date: daysAgo(i), mood: 'bad', sleep: 'good', unwell: false }, { userId: testUser.id, elderId });
   // V3.0: las recomendaciones viven en Novedades (campana del Inicio); el Inicio muestra el estado de un segundo.
-  ui(<Alerts />);
+  await ui(<Alerts />);
   expect(screen.getByText(/consulta con un médico o un profesional de salud mental/)).toBeTruthy();
 });
 
-it('P4: la entrada pregunta si eres administrador o adulto mayor', () => {
+it('P4: la entrada pregunta si eres administrador o adulto mayor', async () => {
   useSession.setState({ status: 'signedOut', user: null });
-  ui(<Welcome />);
+  await ui(<Welcome />);
   expect(screen.getByText('Soy adulto mayor')).toBeTruthy();
 });
 
@@ -70,41 +70,43 @@ it('P5: cada cambio queda en un registro de cambios para reflejarlo en el otro c
 // P6 (V4): la ubicación dejó de ser una tarjeta del Inicio y tiene su propia pestaña; lo cubre
 // src/__tests__/integration/navigation-v31.test.tsx ("Ubicación" en la barra inferior).
 
-it('P8: una cita tiene dirección', () => {
+it('P8: una cita tiene dirección', async () => {
   mockParams = { section: 'appointments' };
-  ui(<RoutineSection />);
+  await ui(<RoutineSection />);
   expect(screen.getByText('Dirección')).toBeTruthy();
 });
 
-it('P9: en el login el robot forma parte del contenido que se desplaza (no una capa global)', () => {
+it('P9: en el login el robot forma parte del contenido que se desplaza (no una capa global)', async () => {
   useSession.setState({ status: 'signedOut', user: null });
-  ui(<SignIn />);
+  await ui(<SignIn />);
   expect(screen.getByTestId('auth-robot')).toBeTruthy();
 });
 
 // V4: la entrega del teléfono pasó a la Vista de [nombre] (Inicio > tarjeta de la persona), con flecha atrás y banner.
-it('P10/P11: la Vista de [nombre] tiene flecha atrás, banner y "Cambiar a la cuenta de [nombre]"', () => {
-  ui(<Preview />);
+it('P10/P11: la Vista de [nombre] tiene flecha atrás, banner y "Cambiar a la cuenta de [nombre]"', async () => {
+  await ui(<Preview />);
   expect(screen.getByRole('button', { name: strings.common.back })).toBeTruthy();
   expect(screen.getByText('Estás viendo la pantalla de Rosa')).toBeTruthy();
-  fireEvent.press(screen.getByRole('button', { name: 'Cambiar a la cuenta de Rosa' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'Cambiar a la cuenta de Rosa' }));
   expect(mockPush).toHaveBeenCalledWith('/account-switch');
 });
 
-it('P12: el onboarding tiene 6 diapositivas que explican qué es BUDDY', () => {
-  ui(<Onboarding />);
-  expect(screen.getByText(/de 6/)).toBeTruthy();
+it('P12: el onboarding tiene 4 presentaciones que explican qué es BUDDY', async () => {
+  await ui(<Onboarding />);
+  expect(screen.getByText('1 de 4')).toBeTruthy();
+  expect(screen.getByText('Tu compañero diario')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Siguiente' })).toBeTruthy();
 });
 
-it('P13: el robot lanzador (en todas las pestañas salvo el chat) muestra las novedades sin leer', () => {
+it('P13: el robot lanzador (en todas las pestañas salvo el chat) muestra las novedades sin leer', async () => {
   db.insert('alerts', { kind: 'help_requested', title: 'Pidió ayuda', detail: 'Tocó "Pedir ayuda".', refId: 'h1', status: 'pending', snoozedUntil: null }, { userId: testUser.id, elderId });
-  ui(<BuddyLauncher />);
+  await ui(<BuddyLauncher />);
   // Pidió ayuda + sugerencia de actividad (no tiene ninguna): 2 novedades.
   expect(screen.getByLabelText('BUDDY, 2 novedades')).toBeTruthy();
   expect(screen.getByText('2')).toBeTruthy();
 });
 
-it('P14: con todo en orden, Novedades muestra tarjetas útiles (V3.0: fuera del Inicio)', () => {
-  ui(<Alerts />);
+it('P14: con todo en orden, Novedades muestra tarjetas útiles (V3.0: fuera del Inicio)', async () => {
+  await ui(<Alerts />);
   expect(screen.getAllByTestId('reco-card').length).toBeGreaterThan(0);
 });

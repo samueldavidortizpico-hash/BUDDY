@@ -6,7 +6,6 @@
  * - el acceso del adulto mayor: contraseña temporal aceptable mostrada una vez, cambio de correo y revocación.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { ScrollView } from 'react-native';
 
 import Buddy from '@/app/(caregiver)/buddy';
 import SettingsSection from '@/app/(caregiver)/settings/[section]';
@@ -40,8 +39,8 @@ beforeEach(async () => {
 
 describe('1.1 chat de BUDDY como pantalla completa', () => {
   // La ruta vive en src/app/(caregiver)/buddy.tsx (stack, sin pestañas); scripts/check-headers.ts la trata como no raíz.
-  it('tiene "Volver", compositor y botón enviar de 48, sin barra de pestañas', () => {
-    render(<Buddy />, { wrapper: RenderProviders });
+  it('tiene "Volver", compositor y botón enviar de 48, sin barra de pestañas', async () => {
+    await render(<Buddy />, { wrapper: RenderProviders });
     expect(screen.getByRole('button', { name: strings.common.back })).toBeTruthy();
     expect(screen.getByLabelText(strings.buddy.placeholder)).toBeTruthy();
     const send = screen.getByRole('button', { name: strings.buddy.send });
@@ -53,20 +52,20 @@ describe('1.1 chat de BUDDY como pantalla completa', () => {
 });
 
 describe('1.2 Ajustes: cada opción es una ruta completa', () => {
-  it.each(SECTIONS)('%s: "Volver", desplazable, empieza arriba y sin hojas abiertas', (section) => {
+  it.each(SECTIONS)('%s: "Volver", desplazable, empieza arriba y sin hojas abiertas', async (section) => {
     mockParams = { section };
-    render(<SettingsSection />, { wrapper: RenderProviders });
+    await render(<SettingsSection />, { wrapper: RenderProviders });
     expect(screen.getByRole('button', { name: strings.common.back })).toBeTruthy();
-    const scroll = screen.UNSAFE_getAllByType(ScrollView)[0];
+    const scroll = screen.container.queryAll((node) => node.type === 'RCTScrollView')[0];
     expect(scroll.props.contentOffset?.y ?? 0).toBe(0);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('"Acceso" en Mis personas abre la ruta del acceso (no una hoja)', () => {
+  it('"Acceso" en Mis personas abre la ruta del acceso (no una hoja)', async () => {
     db.update('elders', elderId, { setupDone: true });
     mockParams = { section: 'people' };
-    render(<SettingsSection />, { wrapper: RenderProviders });
-    fireEvent.press(screen.getByRole('button', { name: strings.setup.access.manage }));
+    await render(<SettingsSection />, { wrapper: RenderProviders });
+    await fireEvent.press(screen.getByRole('button', { name: strings.setup.access.manage }));
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/settings/access/[elderId]', params: { elderId } });
   });
 });
@@ -102,14 +101,14 @@ describe('1.2 acceso del adulto mayor', () => {
     const email = unique('rosa');
     await sessionActions.createElderAccess({ elderId, name: 'Rosa', email, password: 'Rosa2026!' });
     mockParams = { elderId };
-    render(<ElderAccess />, { wrapper: RenderProviders });
+    await render(<ElderAccess />, { wrapper: RenderProviders });
     expect(await screen.findByText(email)).toBeTruthy();
     expect(screen.getByRole('button', { name: strings.setup.access.copyEmail })).toBeTruthy();
-    fireEvent.press(screen.getByRole('button', { name: strings.setup.access.reset }));
-    fireEvent.press(screen.getAllByRole('button', { name: strings.setup.access.reset }).at(-1)!);
+    await fireEvent.press(screen.getByRole('button', { name: strings.setup.access.reset }));
+    await fireEvent.press(screen.getAllByRole('button', { name: strings.setup.access.reset }).at(-1)!);
     const temp = await screen.findByText(/^[A-Za-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4}$/);
     const pw = temp.props.children as string;
-    fireEvent.press(screen.getByRole('button', { name: strings.setup.access.tempDone }));
+    await fireEvent.press(screen.getByRole('button', { name: strings.setup.access.tempDone }));
     expect(screen.queryByText(pw)).toBeNull();
     await sessionActions.signOut();
     await expect(sessionActions.signIn({ email, password: 'Rosa2026!', role: 'elder' })).rejects.toMatchObject({ code: 'invalid_credentials' });

@@ -51,19 +51,19 @@ afterEach(() => jest.useRealTimers());
 const wait = async (ms = 1500) => act(async () => { jest.advanceTimersByTime(ms); });
 const card = () => screen.getByTestId('draft-pinned');
 const tap = async (name: string | RegExp) => {
-  fireEvent.press(within(card()).getByRole('button', { name }));
+  await fireEvent.press(within(card()).getByRole('button', { name }));
   await wait();
 };
 async function say(text: string) {
-  fireEvent.changeText(screen.getByLabelText(B.placeholder), text);
-  fireEvent.press(screen.getByRole('button', { name: B.send }));
+  await fireEvent.changeText(screen.getByLabelText(B.placeholder), text);
+  await fireEvent.press(screen.getByRole('button', { name: B.send }));
   await wait();
 }
-const chat = () => render(<RenderProviders><Buddy /></RenderProviders>);
+const chat = async () => await render(<RenderProviders><Buddy /></RenderProviders>);
 
 it('"agrega dolex": presentaciones del registro, prellenado con fuente e información de MedlinePlus', async () => {
   nlmOnline();
-  chat();
+  await chat();
   await say('agrega dolex');
   expect(screen.getByText(K.matchesIntro('Dolex'))).toBeTruthy();
   expect(within(card()).getByText(/¿Cuál es la presentación de Dolex\?/)).toBeTruthy();
@@ -82,7 +82,7 @@ it('"agrega dolex": presentaciones del registro, prellenado con fuente e informa
   expect(within(card()).getByText(/¿Cuánto toma de Dolex Avanzado cada vez\?/)).toBeTruthy();
   await tap('1 tableta');
   await tap('8:00 p. m.');
-  fireEvent.press(within(card()).getByRole('button', { name: B.confirmAdd }));
+  await fireEvent.press(within(card()).getByRole('button', { name: B.confirmAdd }));
   await wait();
   const [med] = db.list('medications', testUser.id, elderId);
   expect(med).toMatchObject({ name: 'Dolex Avanzado', strength: '500 mg', activeIngredient: 'Acetaminofen', atc: 'N02BE01', doseAmount: 1 });
@@ -90,7 +90,7 @@ it('"agrega dolex": presentaciones del registro, prellenado con fuente e informa
 });
 
 it('sin conexión: lo del registro sigue visible y dice que no pudo consultar, sin inventar', async () => {
-  chat();
+  await chat();
   await say('agrega dolex');
   await tap(/^Dolex Avanzado · 500 mg/);
   await wait(100);
@@ -101,7 +101,7 @@ it('sin conexión: lo del registro sigue visible y dice que no pudo consultar, s
 });
 
 it('un nombre mal escrito NO se corrige solo: sugiere y el cuidador elige', async () => {
-  chat();
+  await chat();
   await say('agrega dolx');
   expect(draftActions.get()?.actions[0]).toMatchObject({ name: 'Dolx' });
   expect(within(card()).getByText(/No encontré "Dolx" en el registro del INVIMA\. ¿Quisiste decir…\?/)).toBeTruthy();
@@ -110,14 +110,14 @@ it('un nombre mal escrito NO se corrige solo: sugiere y el cuidador elige', asyn
 });
 
 it('un medicamento que no está en el registro se dice con honestidad y se registra a mano', async () => {
-  chat();
+  await chat();
   await say('agrega zqxvita');
   expect(screen.getByText(K.notInRegistry('Zqxvita'))).toBeTruthy();
   expect(within(card()).getByText(/¿Cuánto toma de Zqxvita cada vez\?/)).toBeTruthy();
 });
 
 it('"¿para qué sirve el losartán?" responde con la tarjeta verificada del registro', async () => {
-  chat();
+  await chat();
   await say('¿para qué sirve el losartán?');
   expect(within(screen.getByTestId('med-info')).getByText(/Según el registro del INVIMA, Losartán Potásico contiene losartán potásico/i)).toBeTruthy();
 });

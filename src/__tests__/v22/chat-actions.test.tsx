@@ -44,19 +44,19 @@ const wait = async (ms = 1500) => act(async () => { jest.advanceTimersByTime(ms)
 const list = <K extends Parameters<typeof db.list>[0]>(coll: K) => db.list(coll, testUser.id, elderId);
 
 async function say(text: string) {
-  fireEvent.changeText(screen.getByLabelText(B.placeholder), text);
-  fireEvent.press(screen.getByRole('button', { name: B.send }));
+  await fireEvent.changeText(screen.getByLabelText(B.placeholder), text);
+  await fireEvent.press(screen.getByRole('button', { name: B.send }));
   await wait();
 }
 
 async function confirmFromPinned() {
   const pinned = screen.getByTestId('draft-pinned');
-  fireEvent.press(within(pinned).getByRole('button', { name: B.confirmAdd }));
+  await fireEvent.press(within(pinned).getByRole('button', { name: B.confirmAdd }));
   await wait();
 }
 
-function chat() {
-  return render(<RenderProviders><Buddy /></RenderProviders>);
+async function chat() {
+  return await render(<RenderProviders><Buddy /></RenderProviders>);
 }
 
 function seedLosartan(extra: Partial<Parameters<typeof db.insert<'medications'>>[1]> = {}) {
@@ -69,7 +69,7 @@ function seedLosartan(extra: Partial<Parameters<typeof db.insert<'medications'>>
 
 describe('medicamentos', () => {
   it('agrega, se ve en Rutina como "Nuevo" y en la pantalla del paciente', async () => {
-    const c = chat();
+    const c = await chat();
     await say('Ponle losartán a las 6 de la tarde');
     await say('No está en la lista'); // V2.4: paso Presentación (registro del INVIMA) → registrar a mano
     expect(screen.getByText(/¿Cuánto toma de Losartán cada vez\?/)).toBeTruthy();
@@ -80,24 +80,24 @@ describe('medicamentos', () => {
     expect(screen.queryByText(/p\. m\.\./)).toBeNull(); // sin doble punto
     expect(within(screen.getByTestId('task-done')).getByRole('button', { name: B.see })).toBeTruthy();
     expect(screen.queryByTestId('draft-pinned')).toBeNull();
-    c.unmount();
+    await c.unmount();
 
-    const r = render(<RenderProviders><Routine /></RenderProviders>);
+    const r = await render(<RenderProviders><Routine /></RenderProviders>);
     expect(r.getByText('Losartán')).toBeTruthy();
     expect(r.getByText(strings.routine.isNew)).toBeTruthy();
-    r.unmount();
+    await r.unmount();
 
-    render(<RenderProviders><ElderScreen elderId={elderId} preview /></RenderProviders>);
+    await render(<RenderProviders><ElderScreen elderId={elderId} preview /></RenderProviders>);
     expect(screen.getAllByText(/Losartán/).length).toBeGreaterThan(0);
   });
 
   it('el borrador sobrevive a salir del chat (cambiar de pestaña) y se retoma donde iba', async () => {
-    const c = chat();
+    const c = await chat();
     await say('Agrega atorvastatina');
     await say('No está en la lista'); // V2.4: paso Presentación (registro del INVIMA) → registrar a mano
-    c.unmount();
+    await c.unmount();
     expect(draftActions.get()?.actions[0]).toMatchObject({ type: 'add_medication', name: 'Atorvastatina' });
-    chat();
+    await chat();
     expect(within(screen.getByTestId('draft-pinned')).getAllByText(/Atorvastatina/).length).toBeGreaterThan(0);
     // BUDDY pregunta la dosis primero: si se responde con una hora, no la toma como dosis y vuelve a preguntar.
     await say('8:00 p. m.');
@@ -112,7 +112,7 @@ describe('medicamentos', () => {
   });
 
   it('el botón confirmar no se activa hasta tener lo obligatorio, y Deshacer revierte', async () => {
-    chat();
+    await chat();
     await say('quiero agregar un medicamento');
     expect(screen.getByText('¿Cómo se llama el medicamento?')).toBeTruthy();
     const pinned = screen.getByTestId('draft-pinned');
@@ -125,14 +125,14 @@ describe('medicamentos', () => {
     expect(within(screen.getByTestId('draft-pinned')).getByRole('button', { name: B.confirmAdd }).props.accessibilityState?.disabled).toBeFalsy();
     await confirmFromPinned();
     expect(list('medications')).toHaveLength(1);
-    fireEvent.press(within(screen.getByTestId('task-done')).getByRole('button', { name: strings.common.undo }));
+    await fireEvent.press(within(screen.getByTestId('task-done')).getByRole('button', { name: strings.common.undo }));
     await wait();
     expect(list('medications')).toHaveLength(0);
   });
 
   it('cambiar la hora (edición) y quitar (eliminación)', async () => {
     const med = seedLosartan();
-    chat();
+    await chat();
     await say('cambia el losartán a las 7');
     await confirmFromPinned();
     expect(db.get('medications', med.id)?.schedule).toMatchObject({ times: ['07:00'] });
@@ -143,7 +143,7 @@ describe('medicamentos', () => {
 
   it('existencias: registra una compra y se ve en la rutina', async () => {
     const med = seedLosartan();
-    chat();
+    await chat();
     await say('compré 30 pastillas de losartán');
     await confirmFromPinned();
     expect(db.get('medications', med.id)?.unitsOnHand).toBe(40);
@@ -153,56 +153,56 @@ describe('medicamentos', () => {
 
 describe('rutina', () => {
   it('agua: pregunta cuántos vasos y se ve en Rutina > Agua', async () => {
-    const c = chat();
+    const c = await chat();
     await say('ponle agua');
     expect(screen.getByText('¿Cuántos vasos de agua al día?')).toBeTruthy();
     await say('8');
     await confirmFromPinned();
     expect(list('waterPlans')[0]?.glasses).toBe(8);
-    c.unmount();
+    await c.unmount();
     mockParams = { seg: 'water' };
-    render(<RenderProviders><Routine /></RenderProviders>);
+    await render(<RenderProviders><Routine /></RenderProviders>);
     expect(screen.getByText(strings.routine.glasses(8))).toBeTruthy();
     expect(screen.getByText(strings.routine.isNew)).toBeTruthy();
   });
 
   it('comidas: se ven en Rutina > Comidas', async () => {
-    const c = chat();
+    const c = await chat();
     await say('ponle el desayuno a las 7');
     await confirmFromPinned();
     expect(list('meals')).toMatchObject([{ kind: 'breakfast', time: '07:00' }]);
-    c.unmount();
+    await c.unmount();
     mockParams = { seg: 'meals' };
-    render(<RenderProviders><Routine /></RenderProviders>);
+    await render(<RenderProviders><Routine /></RenderProviders>);
     expect(screen.getByText('Desayuno')).toBeTruthy();
   });
 
   it('actividades y metas: pregunta la hora y se ven en Rutina > Metas', async () => {
-    const c = chat();
+    const c = await chat();
     await say('que camine todos los días');
     expect(screen.getByText('¿A qué hora?')).toBeTruthy();
     await say('5:00 p. m.');
     await confirmFromPinned();
     expect(list('activities')).toMatchObject([{ kind: 'walk', time: '17:00' }]);
-    c.unmount();
+    await c.unmount();
     mockParams = { seg: 'activities' };
-    render(<RenderProviders><Routine /></RenderProviders>);
+    await render(<RenderProviders><Routine /></RenderProviders>);
     expect(screen.getByText('Caminar')).toBeTruthy();
   });
 
   it('contacto de emergencia: se ve en Rutina > Más', async () => {
-    const c = chat();
+    const c = await chat();
     await say('Configúrale de emergencia a Juan, su hijo, 300 123 4567');
     await confirmFromPinned();
     expect(list('contacts')).toMatchObject([{ name: 'Juan', phone: '3001234567', primary: true }]);
-    c.unmount();
+    await c.unmount();
     mockParams = { seg: 'more' };
-    render(<RenderProviders><Routine /></RenderProviders>);
+    await render(<RenderProviders><Routine /></RenderProviders>);
     expect(screen.getByText(/Juan/)).toBeTruthy();
   });
 
   it('hora del chequeo: pregunta la hora y queda en el perfil', async () => {
-    chat();
+    await chat();
     await say('ponle el chequeo diario');
     await say('10:00 a. m.');
     await confirmFromPinned();
@@ -210,12 +210,12 @@ describe('rutina', () => {
   });
 
   it('cita con dirección: pregunta lo que falta y se ve en Citas', async () => {
-    const c = chat();
+    const c = await chat();
     await say('ponle una cita mañana con el cardiólogo');
     expect(screen.getByText('¿A qué hora es la cita?')).toBeTruthy();
     await say('10:00 a. m.');
     // La dirección es opcional: se agrega desde "Agregar detalle".
-    fireEvent.press(within(screen.getByTestId('draft-pinned')).getByRole('button', { name: `${B.addDetail}: Dirección` }));
+    await fireEvent.press(within(screen.getByTestId('draft-pinned')).getByRole('button', { name: `${B.addDetail}: Dirección` }));
     await wait();
     await say('Calle 10 # 5-20, Bogotá, frente al parque');
     await confirmFromPinned();
@@ -223,14 +223,14 @@ describe('rutina', () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     expect(ap).toMatchObject({ title: 'Cita de cardiología', date: toISODate(tomorrow), time: '10:00', place: 'Calle 10 # 5-20, Bogotá, frente al parque' });
-    c.unmount();
+    await c.unmount();
     mockParams = { section: 'appointments' };
-    render(<RenderProviders><RoutineSection /></RenderProviders>);
+    await render(<RenderProviders><RoutineSection /></RenderProviders>);
     expect(screen.getByText(/Cita de cardiología/)).toBeTruthy();
   });
 
   it('recordatorio para el adulto mayor: pregunta la hora', async () => {
-    chat();
+    await chat();
     await say('recuérdale llamar a Juan el domingo');
     await say('11:00 a. m.');
     await confirmFromPinned();
@@ -238,20 +238,20 @@ describe('rutina', () => {
   });
 
   it('mensaje para el adulto mayor: lo ve hoy en su pantalla', async () => {
-    const c = chat();
+    const c = await chat();
     await say('mándale un mensaje: te quiero mucho');
     await confirmFromPinned();
     const [r] = list('reminders');
     expect(r).toMatchObject({ title: 'Mensaje de Laura: Te quiero mucho', date: toISODate(new Date()) });
-    c.unmount();
-    render(<RenderProviders><ElderScreen elderId={elderId} preview /></RenderProviders>);
+    await c.unmount();
+    await render(<RenderProviders><ElderScreen elderId={elderId} preview /></RenderProviders>);
     expect(screen.getByText('Mensaje de Laura: Te quiero mucho')).toBeTruthy();
   });
 });
 
 describe('reglas de seguridad del chat', () => {
   it('nunca propone una dosis: si falta, la pregunta y repite la del cuidador', async () => {
-    chat();
+    await chat();
     await say('Ponle losartán a las 8');
     await say('No está en la lista'); // V2.4: paso Presentación (registro del INVIMA) → registrar a mano
     expect(draftActions.get()?.actions[0]).toMatchObject({ doseAmount: null });
@@ -260,7 +260,7 @@ describe('reglas de seguridad del chat', () => {
   });
 
   it('ante una urgencia recomienda el 123 y el contacto principal, sin crear borradores', async () => {
-    chat();
+    await chat();
     await say('se cayó y no responde');
     expect(screen.getByText(B.emergency)).toBeTruthy();
     expect(screen.queryByTestId('draft-pinned')).toBeNull();
