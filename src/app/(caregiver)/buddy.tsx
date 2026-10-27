@@ -10,6 +10,7 @@ import { Button } from '@/components/button';
 import { BottomSheet } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
 import { IconTile } from '@/components/icon-tile';
+import { ListRow } from '@/components/list-row';
 import { LockedPreview } from '@/components/plus-lock';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenHeader } from '@/components/screen-header';
@@ -25,19 +26,19 @@ import { SUGGESTIONS, conversation, type RoutineSegment } from '@/state/assistan
 import { routineActions } from '@/state/actions';
 import { useHasFeature } from '@/state/entitlements';
 import { useActiveElder, useRecords } from '@/state/data';
-import { radius, spacing, touch, type, type Tone } from '@/theme';
+import { radius, spacing, touch, type, type Domain } from '@/theme';
 import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
 import { formatClock } from '@/utils/dates';
 
 const B = strings.buddy;
 /** Acciones rápidas del chat vacío (V4). "mood" deja la frase escrita para que el administrador ajuste la hora. */
-const QUICK: { key: MenuKey | 'mood'; icon: IconName; tone: Tone }[] = [
-  { key: 'medication', icon: 'meds', tone: 'coral' },
-  { key: 'water', icon: 'drop', tone: 'sky' },
-  { key: 'mood', icon: 'smile', tone: 'lavender' },
-  { key: 'appointment', icon: 'calendar', tone: 'yellow' },
-  { key: 'contact', icon: 'phone', tone: 'mint' },
-  { key: 'day', icon: 'heart', tone: 'petrol' },
+const QUICK: { key: MenuKey | 'mood'; icon: IconName; domain: Domain | 'petrol' }[] = [
+  { key: 'medication', icon: 'meds', domain: 'medication' },
+  { key: 'water', icon: 'drop', domain: 'water' },
+  { key: 'mood', icon: 'smile', domain: 'mood' },
+  { key: 'appointment', icon: 'calendar', domain: 'followUp' },
+  { key: 'contact', icon: 'phone', domain: 'contact' },
+  { key: 'day', icon: 'heart', domain: 'petrol' },
 ];
 /** Mensajes visibles antes de "Ver mensajes anteriores". */
 const VISIBLE = 10;
@@ -207,18 +208,18 @@ export default function Buddy() {
             scrollEventThrottle={64}
             ListHeaderComponent={hidden ? <Button label={B.olderMessages(hidden)} size="sm" variant="ghost" onPress={() => setShowAll(true)} style={s.older} /> : undefined}
             ListEmptyComponent={
-              <View style={s.emptyWrap}>
-                {/* Saludo corto y seis acciones rápidas; el menú completo sigue en "+". */}
-                <AppText variant="h2" align="center">{B.hello(elder.firstName)}</AppText>
+              <View style={[s.emptyWrap, s.welcome]}>
+                {/* Saludo corto y seis acciones rápidas en una tarjeta neutra (el color vive en cada icono); el menú
+                    completo sigue en "+". */}
+                <AppText variant="h2">{B.hello(elder.firstName)}</AppText>
                 <View style={s.chips}>
-                  {QUICK.map((q) => (
-                    <Button
+                  {QUICK.map((q, i) => (
+                    <ListRow
                       key={q.key}
-                      label={q.key === 'mood' ? B.quick.mood : q.key === 'day' ? B.quick.day : B.menu[q.key]}
                       icon={q.icon}
-                      size="sm"
-                      variant="tonal"
-                      tone={q.tone}
+                      domain={q.domain}
+                      divider={i > 0}
+                      title={q.key === 'mood' ? B.quick.mood : q.key === 'day' ? B.quick.day : B.menu[q.key]}
                       onPress={() => (q.key === 'mood' ? setText(B.quick.moodText(elder.firstName)) : pickMenu(q.key as MenuKey))}
                     />
                   ))}
@@ -424,7 +425,8 @@ const useStyles = makeStyles((t) =>
     previewChat: { gap: spacing.sm, padding: spacing.md },
     previewMine: { alignSelf: 'flex-end' },
     emptyWrap: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.xs },
+    welcome: { alignItems: 'stretch' },
+    chips: { alignSelf: 'stretch', borderRadius: radius.card, backgroundColor: t.c.surface, overflow: 'hidden', ...t.hairline, ...t.shadow.soft },
     msgRow: { width: '100%', gap: spacing.xs, alignItems: 'flex-start' },
     mineRow: { alignItems: 'flex-end' },
     messageLine: { width: '100%', flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },

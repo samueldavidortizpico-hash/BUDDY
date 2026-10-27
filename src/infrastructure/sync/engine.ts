@@ -58,7 +58,7 @@ export function createSyncEngine(opts: { enabled?: boolean; transport?: SyncTran
   return {
     enabled,
     async run(input: { pending: ChangeEntry[]; records: Record<string, SyncMeta>; since: string; apply: (coll: CollectionName, record: SyncMeta) => void }): Promise<SyncOutcome> {
-      if (!enabled || !opts.transport) return { status: 'disabled', reason: 'El reflejo entre celulares se activa al conectar el servidor (Fase 2).' };
+      if (!enabled || !opts.transport) return { status: 'disabled', reason: 'El reflejo entre celulares se activa al conectar el servidor.' };
       try {
         const res = await opts.transport.push(input.pending, input.records);
         const incoming = await opts.transport.pull(input.since);

@@ -65,13 +65,13 @@ export default function MedicationDetail() {
   const history = doses.filter((d) => d.date < today && d.status !== 'pending').sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time)).slice(0, 6);
   const schedule = med.schedule.kind === 'times' ? scheduleTimes(med.schedule).map(formatClock).join(' · ') : `Cada ${med.schedule.everyHours} h desde ${formatClock(med.schedule.from)}`;
   const runOut = est.runOutDate ? parseISODate(est.runOutDate) : null;
+  const low = est.level === 'low' || est.level === 'out';
 
   return (
     <ScreenContainer
       header={
         <ScreenHeader
-          title={med.name}
-          subtitle={med.paused ? M.paused : M.forms[med.form]}
+          title={M.detail}
           fallback="/routine"
           right={<Button label={strings.common.edit} size="sm" variant="secondary" icon="pencil" onPress={() => router.push({ pathname: '/medication/new', params: { id: med.id } })} />}
         />
@@ -83,8 +83,10 @@ export default function MedicationDetail() {
           {med.photoUri ? <Image source={{ uri: med.photoUri }} style={s.photo} contentFit="cover" accessibilityLabel={M.photo} /> : null}
           <View style={s.dataHead}>
             {big ? null : <IconTile icon="meds" domain="medication" size={56} />}
+            {/* El nombre es el héroe aquí y no en el encabezado, donde se partía junto a "Editar". */}
             <View style={s.flex}>
-              <AppText variant="h3">{doseText(med)}</AppText>
+              <AppText variant="h2">{med.name}</AppText>
+              <AppText variant="secondaryStrong" color={med.paused ? t.status.attention.text : t.c.muted}>{`${med.paused ? M.paused : M.forms[med.form]} · ${doseText(med)}`}</AppText>
               {med.strength ? <AppText variant="secondary" color={t.c.muted}>{`${M.strength}: ${med.strength}`}</AppText> : null}
             </View>
           </View>
@@ -94,7 +96,7 @@ export default function MedicationDetail() {
           {med.purpose ? <Fact icon="heart" label={M.purpose} value={med.purpose} /> : null}
         </Card>
 
-        {/* Hoy: una fila por toma; "Marcar como tomado" baja debajo cuando no cabe. */}
+        {/* Hoy: una fila por toma; "Ya lo tomó" baja debajo cuando no cabe. */}
         <View style={s.block}>
           <AppText variant="h2">{M.today}</AppText>
           {ambiguous ? (
@@ -122,14 +124,18 @@ export default function MedicationDetail() {
         </View>
 
         {/* Existencias: número grande, estimado y dos acciones apiladas a ancho completo. */}
-        <Card variant={est.level === 'low' || est.level === 'out' ? 'status' : 'white'} status="attention" style={s.block}>
-          <AppText variant="h3">{M.stock}</AppText>
+        {/* Tarjeta neutra: el ámbar de seguimiento queda en el icono y en el estimado cuando se está acabando. */}
+        <Card style={s.block}>
+          <View style={s.dataHead}>
+            {big ? null : <IconTile icon="box" domain="followUp" />}
+            <AppText variant="h3" style={s.flex}>{M.stock}</AppText>
+          </View>
           {est.level === 'none' ? (
             <AppText variant="secondary">{M.noStock}</AppText>
           ) : (
             <>
               <AppText variant="heroL" style={s.tabular}>{`${String(med.unitsOnHand).replace('.', ',')} ${stockUnit(med, med.unitsOnHand ?? 0)}`}</AppText>
-              <AppText variant="secondary">
+              <AppText variant={low ? 'secondaryStrong' : 'secondary'} color={low ? t.status.attention.text : t.c.muted}>
                 {est.level === 'out' ? M.outOfStock : est.daysLeft !== null && runOut ? M.estimate(est.daysLeft, `${runOut.getDate()}/${runOut.getMonth() + 1}`) : ''}
               </AppText>
             </>

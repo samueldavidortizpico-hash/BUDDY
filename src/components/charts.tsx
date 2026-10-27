@@ -127,7 +127,7 @@ function Bar({ ratio, color, height }: { ratio: number; color: string; height: n
     p.set(reduce ? ratio : withTiming(ratio, { duration: motion.countUp, easing: Easing.out(Easing.cubic) }));
   }, [ratio, reduce, p]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: height / 2 }, { scaleY: Math.max(0.001, p.value) }, { translateY: -height / 2 }] }));
-  return <Animated.View style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, height, borderRadius: 6, backgroundColor: color }, style]} />;
+  return <Animated.View style={[{ position: 'absolute', left: 0, right: 0, bottom: 0, height, borderRadius: 7, backgroundColor: color }, style]} />;
 }
 
 /** Cara ilustrada para ánimo y sueño: bien, regular, mal. */
@@ -151,5 +151,6 @@ const styles = StyleSheet.create({
   waterBody: { position: 'absolute', top: 22, left: 0, right: 0, bottom: -10 },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs },
   barCol: { flex: 1, alignItems: 'center', gap: 4 },
-  barTrack: { width: '100%', borderRadius: 6, overflow: 'hidden' },
+  // Barras delgadas sobre su riel: se leen como gráfica y no como bloques de color.
+  barTrack: { width: 14, borderRadius: 7, overflow: 'hidden' },
 });

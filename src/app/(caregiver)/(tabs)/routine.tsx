@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInRight, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
@@ -17,7 +17,7 @@ import { formatPhone } from '@/domain/validation';
 import { strings } from '@/i18n';
 import { useActiveElder, useRecords } from '@/state/data';
 import { useRecentAny } from '@/state/recent';
-import { radius, spacing, touch, type Domain } from '@/theme';
+import { motion, radius, spacing, touch, type Domain } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 import { formatClock } from '@/utils/dates';
 
@@ -147,11 +147,8 @@ export default function Routine() {
         ) : null}
       </View>
 
-      {/* "+ Agregar" con palabra: un "+" solo no dice qué hace. */}
-      <PressableScale haptic onPress={fab} accessibilityLabel={seg === 'meds' ? R.addMed : R.add} style={s.fab}>
-        <Icon name="plus" size={26} color={t.hc ? t.c.bg : '#FFFFFF'} strokeWidth={2.6} />
-        <AppText variant="button" color={t.hc ? t.c.bg : '#FFFFFF'}>{R.add}</AppText>
-      </PressableScale>
+      {/* "+ Agregar" con palabra: un "+" solo no dice qué hace. Secundario: no pesa más que la lista. */}
+      <Button label={seg === 'meds' ? R.addMed : R.add} icon="plus" variant="secondary" haptic="light" onPress={fab} style={s.add} />
 
       <BottomSheet visible={addSheet} onClose={() => setAddSheet(false)} title={R.addHow}>
         <Button label={R.manual} icon="pencil" variant="tonal" tone="coral" size="elder" onPress={() => { setAddSheet(false); router.push({ pathname: '/medication/new', params: { mode: 'manual' } }); }} />
@@ -169,13 +166,13 @@ function Row({ ids, domain, icon, title, detail, times = [], onPress }: { ids: s
   const recent = useRecentAny(ids);
   return (
     <RecentFrame recent={recent}>
-    <Pressable
+    <PressableScale
       onPress={onPress}
-      accessibilityRole="button"
+      scaleTo={motion.pressScaleCard}
+      dim={0.04}
       accessibilityLabel={`${title}. ${detail}${recent ? `. ${R.isNew}` : ''}`}
-      style={({ pressed }) => [s.rowItem, recent && { borderColor: t.hc ? t.c.text : t.c.mintStrong, borderWidth: 2 }, pressed && { opacity: 0.85 }]}
+      style={[s.rowItem, recent && { borderColor: t.hc ? t.c.text : t.c.mintStrong, borderWidth: 2 }]}
     >
-      <View style={[s.bar, { backgroundColor: t.domains[domain].accent }]} />
       <IconTile icon={icon} domain={domain} />
       <View style={s.flex}>
         <AppText variant="bodyStrong">{title}</AppText>
@@ -199,8 +196,8 @@ function Row({ ids, domain, icon, title, detail, times = [], onPress }: { ids: s
           </AppText>
         </View>
       ) : null}
-      <Icon name="chevron" color={t.c.muted} />
-    </Pressable>
+      <Icon name="chevron" color={t.c.tertiary} size={20} />
+    </PressableScale>
     </RecentFrame>
   );
 }
@@ -225,27 +222,15 @@ const useStyles = makeStyles((t) =>
       gap: spacing.sm,
       minHeight: touch.timeRow + 16,
       paddingVertical: spacing.sm,
-      paddingRight: spacing.md,
-      borderRadius: radius.button,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.card,
       backgroundColor: t.c.surface,
       overflow: 'hidden',
       ...t.hairline,
+      ...t.shadow.soft,
     },
-    bar: { width: 5, alignSelf: 'stretch' },
     newBadge: { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.pill },
     // En el flujo, al final del contenido: con la barra flotante (V2.4) un botón absoluto quedaba sobre la barra.
-    fab: {
-      alignSelf: 'flex-end',
-      marginTop: spacing.lg,
-      minHeight: touch.orb,
-      flexDirection: 'row',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.lg,
-      borderRadius: touch.orb / 2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: t.hc ? t.c.text : t.c.primary,
-      ...t.shadow.glow.petrol,
-    },
+    add: { marginTop: spacing.lg },
   }),
 );

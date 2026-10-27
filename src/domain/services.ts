@@ -62,7 +62,7 @@ export interface MedicationAnalysisService {
   analyze(meds: Medication[], profile: { allergies: string[]; conditions: string[] }): Promise<InteractionWarning[] | Unavailable>;
 }
 
-const NOT_YET: Unavailable = { available: false, reason: 'Disponible cuando se conecte la base de datos farmacológica verificada (Fase 7).' };
+const NOT_YET: Unavailable = { available: false, reason: 'Disponible cuando se conecte la base de datos farmacológica verificada.' };
 
 export const medicationKnowledge: MedicationKnowledgeRepository = { findByName: async () => NOT_YET };
 export const medicationAnalysis: MedicationAnalysisService = { analyze: async () => NOT_YET };
