@@ -15,10 +15,13 @@ export interface AuthUser {
 
 /** Cuenta dueña de los datos: el administrador, también cuando entra el adulto mayor con su acceso. */
 export function dataOwnerId(user: AuthUser): string {
-  return user.role === 'elder' && user.ownerId ? user.ownerId : user.id;
+  return (user.role === 'elder' || user.role === 'nurse') && user.ownerId ? user.ownerId : user.id;
 }
 
 export const roleOf = (user: AuthUser | null | undefined): Role => user?.role ?? 'caregiver';
+
+/** Cuentas que crea el administrador: la del adulto mayor y la de su enfermera. */
+export type ManagedRole = 'elder' | 'nurse';
 
 export type AuthErrorCode =
   | 'invalid_credentials'
@@ -61,11 +64,12 @@ export interface AuthService {
    * Cuentas del adulto mayor creadas por su administrador. Local: en este teléfono. Supabase: exige una Edge Function con
    * la clave de servicio (docs/SUPABASE_PLAN.md); la app nunca crea usuarios para otra persona directamente.
    */
-  createManagedAccount(input: { ownerId: string; elderId: string; name: string; email: string; password: string }): Promise<AuthUser>;
-  resetManagedPassword(input: { ownerId: string; elderId: string; password: string }): Promise<void>;
-  revokeManagedAccount(input: { ownerId: string; elderId: string }): Promise<void>;
-  changeManagedEmail(input: { ownerId: string; elderId: string; email: string }): Promise<void>;
-  managedAccount(input: { ownerId: string; elderId: string }): Promise<{ email: string; revoked: boolean } | null>;
+  /** `role`: 'elder' (por defecto) o 'nurse' (V4.3, enfermera de esa persona). */
+  createManagedAccount(input: { ownerId: string; elderId: string; name: string; email: string; password: string; role?: ManagedRole }): Promise<AuthUser>;
+  resetManagedPassword(input: { ownerId: string; elderId: string; password: string; role?: ManagedRole }): Promise<void>;
+  revokeManagedAccount(input: { ownerId: string; elderId: string; role?: ManagedRole }): Promise<void>;
+  changeManagedEmail(input: { ownerId: string; elderId: string; email: string; role?: ManagedRole }): Promise<void>;
+  managedAccount(input: { ownerId: string; elderId: string; role?: ManagedRole }): Promise<{ email: string; revoked: boolean } | null>;
   /** Local today; remote implementation must verify ownership server-side before changing session. */
   switchToManaged?(elderId: string, password: string): Promise<AuthUser>;
   returnToOwner?(password: string, email?: string): Promise<AuthUser>;

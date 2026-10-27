@@ -2,6 +2,7 @@
  * Casos de uso que escriben datos. Las pantallas y el asistente de BUDDY usan estas funciones; nunca tocan el store.
  * Cada escritura registra autor (cuenta conectada) y persona (adulto mayor activo o indicado).
  */
+import { isLinkedRole } from '@/domain/permissions';
 import { spreadTimes } from '@/domain/time';
 import type { Activity, ActivityKind, Appointment, ClockTime, Contact, Elder, Meal, MealKind, Weekday } from '@/domain/types';
 import { ALERT_KINDS } from '@/domain/types';
@@ -16,7 +17,7 @@ export function actor(elderId: string | null): Actor {
 export function activeElderId(): string | null {
   // El adulto mayor con su propio acceso solo ve su perfil.
   const linked = useSession.getState().user?.elderId;
-  if (useSession.getState().user?.role === 'elder' && linked) return linked;
+  if (isLinkedRole(useSession.getState().user?.role) && linked) return linked;
   const userId = currentUserId();
   const account = db.list('accounts', userId)[0];
   const elders = db.list('elders', userId);

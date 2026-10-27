@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import * as Speech from 'expo-speech';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
@@ -14,14 +14,17 @@ import { Chip, Field, Segmented, Stepper, Toggle } from '@/components/forms';
 import { Icon } from '@/components/icon';
 import { IconTile } from '@/components/icon-tile';
 import { BuddyRobot } from '@/components/robot';
+import { PLAN_ORDER, PLANS, type PlanId } from '@/config/plans';
+import { NurseAccessCard } from '@/features/plans/nurse-access';
+import { PlanSettings } from '@/features/plans/plan-settings';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { AuthError } from '@/domain/auth';
 import { escalationOf } from '@/domain/schedule';
-import { createLocalEntitlementProvider } from '@/domain/entitlements';
 import { DEFAULT_SILENCE_HOURS } from '@/domain/verification';
 import { ALERT_KINDS, type ElderAppearance } from '@/domain/types';
 import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
+import { planActions, useEntitlementPlan } from '@/state/entitlements';
 import { feedActions } from '@/state/feed';
 import { isHiddenToday, useLauncherStore } from '@/state/launcher';
 import { notificationPermission, sendTestNotification } from '@/infrastructure/notifications';
@@ -51,8 +54,9 @@ export default function SettingsSection() {
     legal: S.sections.legal,
     advanced: S.sections.advanced,
     about: S.sections.about,
+    plan: S.sections.plan,
   };
-  const View_ = { account: Account, appearance: Appearance, elder: ElderScreenPrefs, alerts: MyAlerts, notifications: NotificationsSection, people: People, devices: Devices, legal: Legal, advanced: Advanced, about: About }[section as 'account'] ?? About;
+  const View_ = { account: Account, appearance: Appearance, elder: ElderScreenPrefs, alerts: MyAlerts, notifications: NotificationsSection, people: People, devices: Devices, legal: Legal, advanced: Advanced, about: About, plan: PlanSettings }[section as 'account'] ?? About;
   return (
     <ScreenContainer keyboard header={<ScreenHeader title={titles[section] ?? S.title} fallback="/settings" />}>
       <View_ />
@@ -367,6 +371,7 @@ function People() {
       ))}
       <Button label={S.addPerson} icon="plus" variant="tonal" tone="mint" onPress={() => router.push({ pathname: '/setup', params: { new: '1' } })} />
       {active?.setupDone ? <Button label={strings.invite.button} icon="users" variant="tonal" tone="mint" onPress={() => router.push('/settings/invite' as Href)} /> : null}
+      {active?.setupDone ? <NurseAccessCard elder={active} /> : null}
     </View>
   );
 }
@@ -445,22 +450,17 @@ function Advanced() {
   const s = useStyles();
   const account = useAccount();
   const userId = useSession((x) => x.user?.id);
-  const plusTest = useDb((x) => userId ? x.drafts[userId]?.buddyPlusTest === true : false);
-  const localEntitlements = useMemo(() => createLocalEntitlementProvider({
-    read: async (id) => db.draft<boolean>(id, 'buddyPlusTest') ? 'plus' : 'free',
-    write: async (id, plan) => db.setDraft(id, 'buddyPlusTest', plan === 'plus'),
-  }), []);
+  const plan = useEntitlementPlan();
   const [reset, setReset] = useState(false);
   if (!account || !userId) return null;
   return (
     <View style={s.stack}>
-      {__DEV__ ? (
-        <Row
-          label="BUDDY Plus de prueba"
-          hint="Solo cambia este dispositivo. No activa una compra ni cobra dinero."
-          value={plusTest}
-          onChange={(value) => { if (userId) void localEntitlements.setTestPlan?.(userId, value ? 'plus' : 'free'); }}
-        />
+      {FEATURES.devTools ? (
+        <View style={s.stack}>
+          <AppText variant="secondaryStrong">{strings.plus.testPlanLabel}</AppText>
+          <Segmented label={strings.plus.testPlanLabel} value={plan} onChange={(p: PlanId) => planActions.setTestPlan(p, userId)} options={PLAN_ORDER.map((p) => ({ key: p, label: PLANS[p].name }))} />
+          <AppText variant="caption" color={t.c.muted}>{strings.plus.testPlanHint}</AppText>
+        </View>
       ) : null}
       <Row
         label={S.demo}

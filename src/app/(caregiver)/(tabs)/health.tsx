@@ -16,8 +16,8 @@ import { WaterToday } from '@/features/health/water-today';
 import { strings } from '@/i18n';
 import { spacing, type Domain } from '@/theme';
 import { makeStyles, useBigText, useTheme } from '@/theme/provider';
-import { PlusLock } from '@/components/plus-lock';
-import { useIsPlus } from '@/state/entitlements';
+import { LockedPreview, PlusLock } from '@/components/plus-lock';
+import { useHasFeature } from '@/state/entitlements';
 
 const H = strings.health;
 /** Orden de Salud (V4). Comidas no está en el brief: se ve en su detalle desde Rutina. */
@@ -32,7 +32,9 @@ const CARDS: { key: MetricKey; title: string; icon: IconName; domain: Domain }[]
 export default function Health() {
   const router = useRouter();
   const t = useTheme();
-  const isPlus = useIsPlus();
+  const watch = useHasFeature('watch');
+  // V4.3: Hoy es gratis (chequeo diario con la pregunta de sueño); semanas, meses y tendencias son de Plus.
+  const history = useHasFeature('health_history');
   const s = useStyles();
   const [period, setPeriod] = useState<Period>('day');
   const data = useHealth(period);
@@ -56,6 +58,23 @@ export default function Health() {
       </View>
       <Segmented label={H.title} value={period} onChange={setPeriod} options={(['day', 'week', 'month'] as Period[]).map((p) => ({ key: p, label: H.periods[p] }))} />
       {/* V4: una tarjeta por fila, a todo el ancho y delgada: título, valor grande y minigráfico que no se corta. */}
+      {period !== 'day' && !history ? (
+        <View style={s.list}>
+          <LockedPreview feature="health_history" title={H.historyLockedTitle} body={H.historyLockedBody}>
+            <View style={s.previewList}>
+              {CARDS.slice(0, 3).map((m) => (
+                <Card key={m.key} style={s.card}>
+                  <View style={s.cardHead}>
+                    <IconTile icon={m.icon} domain={m.domain} />
+                    <AppText variant="h3" style={s.flex}>{m.title}</AppText>
+                  </View>
+                  <MetricBody metric={m.key} data={data} />
+                </Card>
+              ))}
+            </View>
+          </LockedPreview>
+        </View>
+      ) : (
       <View style={s.list}>
         {CARDS.map((m, i) => (
           <Appear key={m.key} index={i}>
@@ -75,16 +94,17 @@ export default function Health() {
             )}
           </Appear>
         ))}
-        <Card style={s.card} onPress={isPlus ? () => router.push('/health/watch') : undefined} accessibilityLabel={H.stepsWatch}>
+        <Card style={s.card} onPress={watch ? () => router.push('/health/watch') : undefined} accessibilityLabel={H.stepsWatch}>
           <View style={s.cardHead}>
             {big ? null : <IconTile icon="watch" domain="activity" />}
             <AppText variant="h3" style={s.flex}>{H.stepsWatch}</AppText>
-            {isPlus ? <Icon name="chevron" color={t.c.muted} /> : null}
+            {watch ? <Icon name="chevron" color={t.c.muted} /> : null}
           </View>
           <MetricBody metric="activity" data={data} />
-          {isPlus ? null : <PlusLock label={H.watchPlus} />}
+          {watch ? null : <PlusLock feature="watch" label={H.watchPlus} />}
         </Card>
       </View>
+      )}
       <AppText variant="caption" color={t.c.muted} align="center" style={s.note}>
         {H.disclaimer}
       </AppText>
@@ -97,6 +117,7 @@ const useStyles = makeStyles(() =>
     flex: { flex: 1, minWidth: 0 },
     head: { paddingTop: spacing.sm, marginBottom: spacing.lg },
     list: { gap: spacing.md, marginTop: spacing.lg },
+    previewList: { gap: spacing.md, padding: spacing.xs },
     card: { gap: spacing.sm, minHeight: 120 },
     cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     note: { marginTop: spacing.lg },

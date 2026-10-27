@@ -22,6 +22,7 @@ export function useValidHandoff(): Handoff | null {
 export function homeHrefFor(userId: string | null, hasElder: boolean, handoff: boolean, role: Role = 'caregiver'): Href {
   if (!userId) return '/';
   if (handoff || role === 'elder') return '/elder';
+  if (role === 'nurse') return '/nurse' as Href;
   return hasElder ? '/summary' : '/setup';
 }
 

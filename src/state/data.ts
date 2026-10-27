@@ -1,4 +1,5 @@
 /** Hooks de lectura: datos vivos de la cuenta conectada y de su adulto mayor activo. */
+import { isLinkedRole } from '@/domain/permissions';
 import { useMemo } from 'react';
 
 import type { AccountSettings, Elder } from '@/domain/types';
@@ -36,7 +37,7 @@ export function useElders(): Elder[] {
 export function useActiveElder(): Elder | null {
   const account = useAccount();
   const elders = useElders();
-  const linked = useSession((s) => (s.user?.role === 'elder' ? (s.user.elderId ?? null) : null));
+  const linked = useSession((s) => (isLinkedRole(s.user?.role) ? (s.user?.elderId ?? null) : null));
   if (linked) return elders.find((e) => e.id === linked) ?? null;
   return elders.find((e) => e.id === account?.activeElderId) ?? elders.find((e) => e.setupDone) ?? elders[0] ?? null;
 }

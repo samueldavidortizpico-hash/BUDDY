@@ -15,7 +15,7 @@ import { checkInvite, inviteLink as link, type Invite, type InviteRole } from '@
 import { useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { useActiveElder, useUserId } from '@/state/data';
-import { useIsPlus } from '@/state/entitlements';
+import { useHasFeature } from '@/state/entitlements';
 import { invites } from '@/state/invites';
 import { spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
@@ -35,7 +35,8 @@ export default function InviteScreen() {
   const elder = useActiveElder();
   const userId = useUserId() ?? '';
   const list = useDb((x) => x.drafts[userId]?.[invites.key] as Invite[] | undefined) ?? NONE;
-  const isPlus = useIsPlus();
+  // V4.3: varios familiares con roles es del plan Familiar (ver o administrar).
+  const family = useHasFeature('family_members');
   const [role, setRole] = useState<InviteRole>('viewer');
   const [created, setCreated] = useState<Invite | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
@@ -48,13 +49,13 @@ export default function InviteScreen() {
         <AppText variant="body" color={t.c.muted}>{I.body(elder.firstName)}</AppText>
         <Segmented label={I.roleLabel} value={role} onChange={setRole} options={[{ key: 'viewer', label: I.roles.viewer }, { key: 'admin', label: I.roles.admin }]} />
         <AppText variant="caption" color={t.c.muted}>{I.roleHint[role]}</AppText>
-        {role === 'admin' && !isPlus ? <PlusLock label="Agregar otro cuidador · Disponible en BUDDY Plus" /> : null}
+        {!family ? <PlusLock feature="family_members" label="Agregar otro familiar · Incluido en Familiar" /> : null}
         <Button
           label={I.create}
           icon="users"
           haptic
           onPress={async () => {
-            if (role === 'admin' && !isPlus) { router.push('/plus' as Href); return; }
+            if (!family) { router.push({ pathname: '/plus', params: { plan: 'family' } } as unknown as Href); return; }
             setCreated(await invites.create({ elderId: elder.id, role }));
           }}
         />

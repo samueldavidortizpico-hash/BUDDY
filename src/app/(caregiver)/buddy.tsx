@@ -10,6 +10,7 @@ import { Button } from '@/components/button';
 import { BottomSheet } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
 import { IconTile } from '@/components/icon-tile';
+import { LockedPreview } from '@/components/plus-lock';
 import { BuddyRobot } from '@/components/robot';
 import { ScreenHeader } from '@/components/screen-header';
 import type { MenuKey } from '@/domain/assistant/draft';
@@ -22,6 +23,7 @@ import { savePhoto } from '@/infrastructure/local/media';
 import { strings } from '@/i18n';
 import { SUGGESTIONS, conversation, type RoutineSegment } from '@/state/assistant';
 import { routineActions } from '@/state/actions';
+import { useHasFeature } from '@/state/entitlements';
 import { useActiveElder, useRecords } from '@/state/data';
 import { radius, spacing, touch, type, type Tone } from '@/theme';
 import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
@@ -55,6 +57,8 @@ export default function Buddy() {
   const insets = useSafeAreaInsets();
   const reduce = useReducedMotion();
   const elder = useActiveElder();
+  // V4.3: el chat de BUDDY es del plan Plus; en Gratis se ve una vista previa con candado.
+  const hasChat = useHasFeature('chat');
   const records = useRecords('messages');
   const messages = useMemo(() => [...records].sort((a, b) => a.createdAt.localeCompare(b.createdAt)), [records]);
   const contacts = useRecords('contacts');
@@ -109,6 +113,27 @@ export default function Buddy() {
           <IconTile icon="chat" domain="activity" size={72} />
           <AppText variant="h2" align="center">{strings.summary.emptyTitle}</AppText>
           <Button label={strings.summary.steps.register} onPress={() => router.push('/setup')} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!hasChat) {
+    return (
+      <View style={[s.root, { paddingTop: insets.top }]}>
+        <View style={s.header}>
+          <ScreenHeader title={strings.brand.name} subtitle={B.assistantOf(elder.firstName)} fallback="/summary" leading={<BuddyRobot size={40} />} />
+        </View>
+        <View style={s.lockedWrap}>
+          <LockedPreview feature="chat" title={B.lockedTitle} body={B.lockedBody}>
+            <View style={s.previewChat}>
+              {B.previewMessages.map((m, i) => (
+                <View key={i} style={[s.bubble, i % 2 === 0 ? s.mine : s.theirs, i % 2 === 0 ? s.previewMine : null]}>
+                  <AppText variant="secondary" color={i % 2 === 0 ? t.c.onPrimary : t.c.text}>{m}</AppText>
+                </View>
+              ))}
+            </View>
+          </LockedPreview>
         </View>
       </View>
     );
@@ -395,6 +420,9 @@ const useStyles = makeStyles((t) =>
     headerBtn: { width: touch.min, height: touch.min, alignItems: 'center', justifyContent: 'center' },
     list: { padding: spacing.screen, paddingBottom: spacing.md, flexGrow: 1, gap: spacing.sm },
     older: { alignSelf: 'center' },
+    lockedWrap: { flex: 1, padding: spacing.lg, justifyContent: 'center' },
+    previewChat: { gap: spacing.sm, padding: spacing.md },
+    previewMine: { alignSelf: 'flex-end' },
     emptyWrap: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg },
     chips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.xs },
     msgRow: { width: '100%', gap: spacing.xs, alignItems: 'flex-start' },

@@ -77,7 +77,7 @@ describe('invitación familiar', () => {
   });
 
   it('la pantalla crea la invitación con el permiso elegido y la muestra para compartir', async () => {
-    db.setDraft(testUser.id, 'buddyPlusTest', true);
+    db.setDraft(testUser.id, 'buddyPlan', 'family');
     await render(<InviteScreen />, { wrapper: RenderProviders });
     await fireEvent.press(screen.getByRole('tab', { name: strings.invite.roles.admin }));
     await fireEvent.press(screen.getByRole('button', { name: strings.invite.create }));
@@ -87,10 +87,11 @@ describe('invitación familiar', () => {
     expect(invites.list(elderId)[0]).toMatchObject({ role: 'admin', status: 'pending' });
   });
 
-  it('Gratis no puede invitar otro cuidador; abre la oferta Plus sin crear código', async () => {
+  it('sin el plan Familiar no se invita a otro familiar; abre los planes sin crear código', async () => {
+    db.setDraft(testUser.id, 'buddyPlan', 'free');
     await render(<InviteScreen />, { wrapper: RenderProviders });
     await fireEvent.press(screen.getByRole('tab', { name: strings.invite.roles.admin }));
-    expect(screen.getByText('Agregar otro cuidador · Disponible en BUDDY Plus')).toBeTruthy();
+    expect(screen.getByText('Agregar otro familiar · Incluido en Familiar')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: strings.invite.create }));
     await waitFor(() => expect(invites.list(elderId)).toHaveLength(0));
   });

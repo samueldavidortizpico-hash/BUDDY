@@ -12,7 +12,8 @@
  */
 import * as Crypto from 'expo-crypto';
 
-import { AuthError, roleOf, type AuthService, type AuthUser } from '@/domain/auth';
+import { AuthError, roleOf, type AuthService, type AuthUser, type ManagedRole } from '@/domain/auth';
+import { isLinkedRole } from '@/domain/permissions';
 import { isAcceptablePassword, isValidEmail, normalizeEmail } from '@/domain/validation';
 import { strings } from '@/i18n';
 
@@ -83,7 +84,7 @@ const publicUser = ({ id, email, name, createdAt, role, ownerId, elderId }: Auth
   elderId: elderId ?? null,
 });
 
-const managedKey = (elderId: string) => `buddy.managed.${elderId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+const managedKey = (elderId: string, role: ManagedRole = 'elder') => `buddy.managed.${elderId.replace(/[^a-zA-Z0-9_-]/g, '')}${role === 'nurse' ? '.nurse' : ''}`;
 const ownerKey = (id: string) => `buddy.owner.${id.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
 async function newStored(input: { name: string; email: string; password: string } & Partial<AuthUser>): Promise<StoredAccount> {
@@ -155,7 +156,7 @@ export function createLocalAuthProvider(): AuthService {
     async returnToOwner(password, email) {
       const session = await this.getSession();
       if (!session) throw new AuthError('invalid_credentials', e.invalid);
-      const id = roleOf(session) === 'elder' ? session.ownerId : session.id;
+      const id = isLinkedRole(roleOf(session)) ? session.ownerId : session.id;
       if (!id) throw new AuthError('forbidden', e.forbidden);
       const ownerEmail = email || await secureStorage.get(ownerKey(id));
       if (!ownerEmail) throw new AuthError('invalid_credentials', 'Escribe también el correo del administrador.');
@@ -196,7 +197,7 @@ export function createLocalAuthProvider(): AuthService {
 
     async signIn({ email, password, role }) {
       const acc = await verify(email, password);
-      if (role && roleOf(acc) !== role) throw new AuthError('wrong_role', roleOf(acc) === 'elder' ? e.wrongRoleElder : e.wrongRoleAdmin);
+      if (role && roleOf(acc) !== role) throw new AuthError('wrong_role', roleOf(acc) === 'elder' ? e.wrongRoleElder : roleOf(acc) === 'nurse' ? e.wrongRoleNurse : e.wrongRoleAdmin);
       if (acc.revoked) throw new AuthError('revoked', e.revoked);
       await setSession(acc);
       return publicUser(acc);
@@ -239,40 +240,40 @@ export function createLocalAuthProvider(): AuthService {
       await setSession(null);
     },
 
-    async createManagedAccount({ ownerId, elderId, name, email, password }) {
+    async createManagedAccount({ ownerId, elderId, name, email, password, role = 'elder' }) {
       await requireOwner(ownerId);
-      if (await secureStorage.get(managedKey(elderId))) throw new AuthError('email_taken', e.taken);
-      const acc = await newStored({ name, email, password, role: 'elder', ownerId, elderId });
+      if (await secureStorage.get(managedKey(elderId, role))) throw new AuthError('email_taken', e.taken);
+      const acc = await newStored({ name, email, password, role, ownerId, elderId });
       await writeAccount(acc);
-      await secureStorage.set(managedKey(elderId), acc.email);
+      await secureStorage.set(managedKey(elderId, role), acc.email);
       return publicUser(acc);
     },
 
-    async resetManagedPassword({ ownerId, elderId, password }) {
-      const acc = await managed(ownerId, elderId);
+    async resetManagedPassword({ ownerId, elderId, password, role }) {
+      const acc = await managed(ownerId, elderId, role);
       if (!isAcceptablePassword(password)) throw new AuthError('weak_password', e.weak);
       const salt = await newSalt();
       await writeAccount({ ...acc, salt, hash: await hashSecret(password, salt), iterations: ITERATIONS, revoked: false, failedAttempts: 0, lockedUntil: null });
     },
 
-    async revokeManagedAccount({ ownerId, elderId }) {
-      const acc = await managed(ownerId, elderId);
+    async revokeManagedAccount({ ownerId, elderId, role }) {
+      const acc = await managed(ownerId, elderId, role);
       await writeAccount({ ...acc, revoked: true });
     },
 
     /** El hash y la sal no cambian: la cuenta se mueve a la clave del correo nuevo y se borra la del anterior. */
-    async changeManagedEmail({ ownerId, elderId, email }) {
-      const acc = await managed(ownerId, elderId);
+    async changeManagedEmail({ ownerId, elderId, email, role }) {
+      const acc = await managed(ownerId, elderId, role);
       if (!isValidEmail(email)) throw new AuthError('invalid_email', e.email);
       if (normalizeEmail(email) === acc.email) return;
       if (await readAccount(email)) throw new AuthError('email_taken', e.taken);
       await writeAccount({ ...acc, email: normalizeEmail(email) });
       await secureStorage.remove(await accountKey(acc.email));
-      await secureStorage.set(managedKey(elderId), normalizeEmail(email));
+      await secureStorage.set(managedKey(elderId, role), normalizeEmail(email));
     },
 
-    async managedAccount({ ownerId, elderId }) {
-      const email = await secureStorage.get(managedKey(elderId));
+    async managedAccount({ ownerId, elderId, role }) {
+      const email = await secureStorage.get(managedKey(elderId, role));
       const acc = email ? await readAccount(email) : null;
       return acc && acc.ownerId === ownerId ? { email: acc.email, revoked: !!acc.revoked } : null;
     },
@@ -285,9 +286,9 @@ export function createLocalAuthProvider(): AuthService {
     if (!session || roleOf(session) !== 'caregiver' || session.id !== ownerId) throw new AuthError('forbidden', e.forbidden);
   }
 
-  async function managed(ownerId: string, elderId: string): Promise<StoredAccount> {
+  async function managed(ownerId: string, elderId: string, role: ManagedRole = 'elder'): Promise<StoredAccount> {
     await requireOwner(ownerId);
-    const email = await secureStorage.get(managedKey(elderId));
+    const email = await secureStorage.get(managedKey(elderId, role));
     const acc = email ? await readAccount(email) : null;
     if (!acc || acc.ownerId !== ownerId) throw new AuthError('invalid_credentials', e.invalid);
     return acc;

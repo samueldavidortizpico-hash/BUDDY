@@ -212,3 +212,14 @@ Si el inventario registrado era menor que la dosis, la compensación devuelve el
 | V4-10 | En preguntas programadas, cada parte separada por " y " toma su propia hora, y la mañana o la tarde se deduce del contexto ("cada noche", "al despertar", "si ya cenó"). | Antes "a las 8 de la noche … y a las 7 de la mañana" dejaba ambas a las 7:00 a. m. |
 | V4-11 | La base local cifrada (AES-GCM) queda encendida solo en desarrollo hasta probarla en dispositivo; `app.json` no se cambió (`allowBackup`). | Menor riesgo; ver `docs/ALMACENAMIENTO_SEGURO.md`. |
 | V4-12 | No se usó el torneo de conceptos de `impeccable` ni sus imágenes: el brief fija paleta y composición pantalla por pantalla. | La skill lo reserva para mundos visuales nuevos. |
+
+## V4.3 Fase 5 (BUDDY Plus: planes, enfermera y familia)
+
+| # | Decisión | Por qué |
+|---|---|---|
+| V43-1 | Planes Gratis, Plus ($7.000), Salud ($11.000) y Familiar ($13.000) al mes, en **un solo archivo** (`src/config/plans.ts`) con beneficios, comparación, plan recomendado (Familiar) e identificadores de producto. Los precios anuales quedan en `null`: la pantalla dice "Precio anual por definir" y no calcula ahorros inventados. | Decisión comercial pendiente del dueño; sin precios tachados ni contadores falsos. |
+| V43-2 | Nunca se bloquea una función de seguridad: medicamentos, recordatorios, aviso escalonado, existencias, chequeo diario con sueño, pedir ayuda y alertas son siempre gratis. Las funciones de pago muestran una vista previa difuminada con candado, el plan que la incluye y "Ver planes". | Promesa del producto: el aviso temprano no depende de pagar. |
+| V43-3 | El adulto mayor y la enfermera ven las funciones del plan de **su administrador** (dueño de los datos). El plan de prueba local (borrador `buddyPlan`, solo desarrollo) manda sobre RevenueCat; sin claves, todo queda en Gratis y la pantalla lo dice. Renovación de prueba: 30 días desde la activación. | Sin cobros reales hasta configurar tiendas y RevenueCat (`docs/PAGOS.md`). |
+| V43-4 | Rol `nurse` (plan Salud): confirma tomas que administra (quedan firmadas como enfermera), responde el chequeo diario, lleva existencias, pide ayuda y llama a contactos. No crea ni cambia medicamentos, horarios ni accesos, no usa el chat y no decide sobre la ubicación. El administrador crea su acceso con consentimiento obligatorio. | Mínimo privilegio; la ubicación es decisión del adulto mayor. |
+| V43-5 | "La enfermera recibe los avisos en su celular" requiere servidor: hoy las notificaciones son locales y la enfermera ve los avisos pendientes al abrir BUDDY. | No prometer entrega a otro celular sin backend (como V3.1 Hito 5). |
+| V43-6 | Plan Familiar: integrantes con su rol, turnos por día de la semana y notas compartidas (máx. 500 caracteres) guardados en este teléfono; compartirlos entre celulares llega con el servidor, como las invitaciones. | Lógica pura probada (`src/domain/family.ts`) lista para sincronizar. |

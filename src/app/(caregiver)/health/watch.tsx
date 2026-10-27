@@ -9,7 +9,7 @@ import { Card } from '@/components/card';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { healthConnectProvider, healthKitProvider } from '@/domain/services';
-import { useIsPlus } from '@/state/entitlements';
+import { useHasFeature } from '@/state/entitlements';
 import { strings } from '@/i18n';
 import { spacing } from '@/theme';
 import { useTheme } from '@/theme/provider';
@@ -20,7 +20,7 @@ const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDat
 export default function Watch() {
   const t = useTheme();
   const router = useRouter();
-  const entitled = useIsPlus();
+  const entitled = useHasFeature('watch');
   const [today, setToday] = useState<number | null>(null);
   const [week, setWeek] = useState<number | null>(null);
   const [message, setMessage] = useState('Conecta Apple Salud o Health Connect para consultar tus pasos.');
@@ -56,7 +56,7 @@ export default function Watch() {
           <Card variant="tint" tone="lavender" style={s.stack}>
             <AppText variant="h3">Disponible en BUDDY Plus</AppText>
             <AppText variant="secondary">Apple Salud y Health Connect requieren permisos del adulto mayor y una suscripción activa.</AppText>
-            <Button label="Conocer BUDDY Plus" icon="lock" size="md" onPress={() => router.push('/plus' as Href)} />
+            <Button label="Ver planes" icon="lock" size="md" onPress={() => router.push({ pathname: '/plus', params: { plan: 'plus' } } as unknown as Href)} />
           </Card>
         ) : null}
         {entitled ? <Card style={s.stack}>

@@ -18,6 +18,8 @@ export async function seedRenderData() {
   useAppearanceStore.setState({ ...DEFAULT_APPEARANCE, introSeen: true });
   useSession.setState({ status: 'signedIn', user: testUser });
   ensureAccount(testUser);
+  // V4.3: las pruebas de pantallas parten del plan Familiar (todo incluido); las de Gratis lo fijan a mano.
+  db.setDraft(testUser.id, 'buddyPlan', 'family');
   const elder = elderActions.create({ firstName: 'Rosa', lastName: '', gender: 'female', birthDate: null, age: 80, weightKg: null, heightCm: null, relation: 'mother', relationOther: '' });
   elderActions.update(elder.id, { setupDone: true });
   return db.get('elders', elder.id)!;

@@ -122,6 +122,12 @@ export const sessionActions = {
   revokeElderAccess: (elderId: string) => getAuthService().revokeManagedAccount({ ownerId: currentUserId(), elderId }),
   changeElderEmail: (elderId: string, email: string) => getAuthService().changeManagedEmail({ ownerId: currentUserId(), elderId, email }),
   elderAccess: (elderId: string) => getAuthService().managedAccount({ ownerId: currentUserId(), elderId }),
+  /** V4.3: acceso de la enfermera de esa persona (plan Salud). */
+  createNurseAccess: (input: { elderId: string; name: string; email: string; password: string }) =>
+    getAuthService().createManagedAccount({ ownerId: currentUserId(), ...input, role: 'nurse' }),
+  revokeNurseAccess: (elderId: string) => getAuthService().revokeManagedAccount({ ownerId: currentUserId(), elderId, role: 'nurse' }),
+  resetNurseAccess: (elderId: string, password: string) => getAuthService().resetManagedPassword({ ownerId: currentUserId(), elderId, password, role: 'nurse' }),
+  nurseAccess: (elderId: string) => getAuthService().managedAccount({ ownerId: currentUserId(), elderId, role: 'nurse' }),
   /** Verifica la contraseña, elimina la cuenta y borra TODOS sus datos locales. */
   deleteAccount: async (password: string) => {
     const user = useSession.getState().user;

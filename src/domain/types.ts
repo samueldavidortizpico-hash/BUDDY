@@ -26,7 +26,8 @@ export interface SyncMeta {
   version?: number;
 }
 
-export type Role = 'caregiver' | 'elder';
+/** V4.3: `nurse` = enfermera o cuidadora invitada por el administrador (plan Salud). */
+export type Role = 'caregiver' | 'elder' | 'nurse';
 
 /** 0 = domingo … 6 = sábado. Lista vacía = todos los días. */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;

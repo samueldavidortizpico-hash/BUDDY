@@ -31,6 +31,7 @@ export default function Settings() {
     [
       { key: 'account', icon: 'user', domain: 'petrol', label: S.sections.account },
       { key: 'people', icon: 'users', domain: 'contact', label: S.sections.people },
+      { key: 'family', icon: 'heart', domain: 'contact', label: S.sections.family, href: '/family' as Href },
     ],
     [
       { key: 'appearance', icon: 'contrast', domain: 'mood', label: S.sections.appearance },
@@ -39,7 +40,7 @@ export default function Settings() {
       { key: 'notifications', icon: 'clock', domain: 'water', label: S.sections.notifications },
     ],
     [
-      { key: 'plan', icon: 'sparkle', domain: 'medication', label: S.sections.plan, href: '/plus' as Href },
+      { key: 'plan', icon: 'sparkle', domain: 'mood', label: S.sections.plan },
       { key: 'legal', icon: 'shield', domain: 'slate', label: S.sections.legal },
       { key: 'devices', icon: 'watch', domain: 'slate', label: S.sections.devices },
       { key: 'advanced', icon: 'settings', domain: 'slate', label: S.sections.advanced },
