@@ -20,7 +20,11 @@ export interface Palette {
   surface2: string;
   text: string;
   muted: string;
+  /** Texto terciario: solo detalles no esenciales (2,9:1 en claro). */
+  tertiary: string;
   border: string;
+  /** Turquesa de marca (acento). */
+  accent: string;
   primary: string;
   primaryEnd: string;
   onPrimary: string;
@@ -99,8 +103,9 @@ export interface Theme {
   domains: Record<Domain, DomainStyle>;
   tiles: Record<Domain | 'petrol' | 'slate', Tile>;
   status: Record<StatusKind, StatusStyle>;
-  gradients: { primary: Gradient; coral: Gradient; welcome: Gradient; screen: Gradient };
-  shadow: { soft: ViewStyle; elevated: ViewStyle; hero: ViewStyle; glow: Record<Tone, ViewStyle> };
+  gradients: { primary: Gradient; coral: Gradient; welcome: Gradient; screen: Gradient; plus: Gradient };
+  /** Elevación V4.3: `soft` = nivel 1 (tarjetas), `elevated` = nivel 2 (flotantes), `sheet` = nivel 3 (hojas y modales). */
+  shadow: { soft: ViewStyle; elevated: ViewStyle; hero: ViewStyle; sheet: ViewStyle; glow: Record<Tone, ViewStyle> };
   borderWidth: number;
   /** Borde de 1 px (2 px en alto contraste) para que las superficies no dependan de la sombra (Android). */
   hairline: ViewStyle;
@@ -108,41 +113,44 @@ export interface Theme {
 
 // ── Claro / oscuro ───────────────────────────────────────────
 
+// V4.3: 60 % fondos neutros, 30 % superficies y texto, 10 % color de marca o de dominio. El color identifica el dato.
 const LIGHT: Palette = {
-  bg: '#F8FAF8',
+  bg: '#F4F7F6',
   surface: '#FFFFFF',
-  surface2: '#EEF3F3',
-  text: '#0D3946',
-  muted: '#56657A', // #64748B no llega a 4.5:1 sobre lavanda pálida
-  border: 'rgba(23, 74, 89, 0.08)',
+  surface2: '#EDF3F2',
+  text: '#102A33',
+  muted: '#5B6B73',
+  tertiary: '#8A99A0',
+  border: '#DCE6E4',
+  accent: '#1FA9A0',
   primary: '#174A59',
-  primaryEnd: '#0D5E6D',
+  primaryEnd: '#0D3946',
   onPrimary: '#FFFFFF',
   coralCta: '#F7A08F',
   coralCtaEnd: '#FF776B',
-  onCoral: '#0D3946', // el blanco sobre coral solo llega a 2.4:1
+  onCoral: '#102A33', // el blanco sobre coral solo llega a 2.4:1
   mint: '#5ED9B5',
-  mintStrong: '#21AD8B',
+  mintStrong: '#1F9A7E',
   mintDeep: '#178C6F',
-  mintPale: '#E9FAF4',
-  coral: '#F28C7A',
-  coralPale: '#FFF0EC',
-  lavender: '#8B7CF6',
-  lavenderPale: '#F0EDFF',
-  yellow: '#F4C95D',
-  yellowPale: '#FFF5D7',
-  sky: '#63B3FF',
-  skyPale: '#EAF5FF',
-  success: '#33C27F',
-  successPale: '#E7F8F1',
-  danger: '#E86C6C',
-  dangerPale: '#FFEDED',
-  night: '#28245F',
-  nightSoft: '#6257C7',
-  nightText: '#C9C3FF',
-  scrim: 'rgba(13, 57, 70, 0.45)',
-  glass: 'rgba(255, 255, 255, 0.86)',
-  focus: '#174A59',
+  mintPale: '#E5F7F1',
+  coral: '#E8735F',
+  coralPale: '#FDEDE9',
+  lavender: '#7B6CF0',
+  lavenderPale: '#EFEDFE',
+  yellow: '#C98A12',
+  yellowPale: '#FDF4DD',
+  sky: '#3D9BEF',
+  skyPale: '#E8F3FD',
+  success: '#2E9E64',
+  successPale: '#E6F5ED',
+  danger: '#D64545',
+  dangerPale: '#FCEAEC',
+  night: '#5B63D6',
+  nightSoft: '#ECEEFC',
+  nightText: '#5860D0',
+  scrim: 'rgba(16, 42, 51, 0.45)',
+  glass: 'rgba(255, 255, 255, 0.9)',
+  focus: '#1FA9A0',
   shadowInk: '23, 74, 89',
 };
 
@@ -154,7 +162,9 @@ const DARK: Palette = {
   surface2: '#1B2B3A',
   text: '#F3F6F8',
   muted: '#A7B4C2',
+  tertiary: '#7D8B98',
   border: 'rgba(255, 255, 255, 0.08)',
+  accent: '#2BC4B4',
   primary: '#2BC4B4',
   primaryEnd: '#22B3A6',
   onPrimary: '#062A2A', // el blanco sobre turquesa no llega a 4,5:1; petróleo casi negro da 7:1
@@ -187,14 +197,14 @@ const DARK: Palette = {
 };
 
 const INK_LIGHT: Ink = {
-  mint: '#127A62',
-  coral: '#B9433D',
-  lavender: '#5B4BD0',
-  sky: '#1F6FAE',
-  yellow: '#7A5A0C',
-  success: '#0F7A55',
-  danger: '#C2413F',
-  info: '#24778E',
+  mint: '#1A7D65',
+  coral: '#A95445',
+  lavender: '#695CCC',
+  sky: '#2D71AE',
+  yellow: '#95660D',
+  success: '#1F7A4D',
+  danger: '#B83B3B',
+  info: '#177B75',
 };
 
 const INK_DARK: Ink = {
@@ -214,7 +224,8 @@ function softTheme(name: 'light' | 'dark'): Theme {
   const ink = dark ? INK_DARK : INK_LIGHT;
   const p = <T,>(l: T, d: T) => (dark ? d : l);
   const sh = (y: number, blur: number, a: number) => `0px ${y}px ${blur}px rgba(${c.shadowInk}, ${a})`;
-  const glow = (rgb: string): ViewStyle => ({ boxShadow: `0px 10px 20px rgba(${rgb}, 0.28)` });
+  // Brillos de color como sombra: fuera (el brillo no es una affordance); quedan como nivel 1 neutro.
+  const glow = (_rgb: string): ViewStyle => (dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(4, 12, 0.06)}` });
   return {
     name,
     dark,
@@ -235,90 +246,92 @@ function softTheme(name: 'light' | 'dark'): Theme {
     },
     domains: {
       water: {
-        gradient: p(['#BDE3FF', '#5BB2FF', '#1F6FC4'], ['#13304F', '#1D4D7C']),
-        accent: p('#1F6FC4', '#7CC2FF'),
-        text: p('#0B3A66', '#FFFFFF'),
-        muted: p('#174E80', '#D6EBFF'),
+        gradient: p(['#E8F3FD', '#E8F3FD'], ['#22384B', '#22384B']),
+        accent: p('#3D9BEF', '#7CC2FF'),
+        text: p('#102A33', '#F3F6F8'),
+        muted: p('#2D71AE', '#B9DBFA'),
         tone: 'sky',
       },
       medication: {
-        gradient: p(['#FFF3EE', '#FFD9CF', '#F28C7A'], ['#36262A', '#55322F']),
-        accent: p('#F28C7A', '#FF9C8A'),
-        text: p('#4A1E16', '#FFF3EE'),
-        muted: p('#7A3326', '#FFD3C9'),
+        gradient: p(['#FDEDE9', '#FDEDE9'], ['#382B2D', '#382B2D']),
+        accent: p('#E8735F', '#FF9C8A'),
+        text: p('#102A33', '#F3F6F8'),
+        muted: p('#A95445', '#FFC9BE'),
         tone: 'coral',
       },
       mood: {
-        gradient: p(['#F0EDFF', '#DCD6FF'], ['#24264F', '#3A3682']),
-        accent: p('#8B7CF6', '#A99DFF'),
-        text: p('#2A2366', '#F4F2FF'),
-        muted: p('#4B3FB0', '#D9D3FF'),
+        gradient: p(['#EFEDFE', '#EFEDFE'], ['#28324B', '#28324B']),
+        accent: p('#7B6CF0', '#A99DFF'),
+        text: p('#102A33', '#F3F6F8'),
+        muted: p('#695CCC', '#D3CCFF'),
         tone: 'lavender',
       },
       sleep: {
-        gradient: p(['#28245F', '#6257C7'], ['#171A42', '#2E3486']),
-        accent: '#C9C3FF',
-        text: '#FFFFFF',
-        muted: '#DCD8FF',
+        gradient: p(['#ECEEFC', '#ECEEFC'], ['#24314B', '#24314B']),
+        accent: p('#5B63D6', '#8C93FF'),
+        text: p('#102A33', '#F3F6F8'),
+        muted: p('#5860D0', '#C9CCFF'),
         tone: 'lavender',
       },
       activity: {
-        gradient: p(['#E9FAF4', '#BDF0DF'], ['#112E30', '#17474A']),
-        accent: p('#21AD8B', '#5ED9B5'),
-        text: p('#0D3946', '#F2F8F7'),
-        muted: p('#155E4E', '#C4F2E3'),
+        gradient: p(['#E5F7F1', '#E5F7F1'], ['#1E3B41', '#1E3B41']),
+        accent: p('#23A989', '#5ED9B5'),
+        text: p('#102A33', '#F3F6F8'),
+        muted: p('#1A7D65', '#B4EEDC'),
         tone: 'mint',
       },
       food: {
-        gradient: p(['#FFF8E6', '#FFE7B3'], ['#2F2A1D', '#4A3D20']),
-        accent: p('#E0A82E', '#F6D27A'),
-        text: p('#5A3E06', '#FFF5D7'),
-        muted: p('#7A5A0C', '#F2E2B0'),
+        gradient: p(['#FDF4DD', '#FDF4DD'], ['#37332B', '#37332B']),
+        accent: p('#C98A12', '#F6D27A'),
+        text: p('#102A33', '#F3F6F8'),
+        muted: p('#95660D', '#F2E2B0'),
         tone: 'yellow',
       },
       contact: {
-        gradient: p(['#F0EDFF', '#E4DFFF'], ['#24264F', '#33316F']),
-        accent: p('#8B7CF6', '#A99DFF'),
-        text: p('#2A2366', '#F4F2FF'),
-        muted: p('#4B3FB0', '#D9D3FF'),
-        tone: 'lavender',
+        gradient: p(['#E3F5F3', '#E3F5F3'], ['#163841', '#163841']),
+        accent: p('#1FA9A0', '#2BC4B4'),
+        text: p('#102A33', '#F3F6F8'),
+        muted: p('#177B75', '#A8E6DE'),
+        tone: 'mint',
       },
       followUp: {
-        gradient: p(['#FFF5D7', '#FFEDB8'], ['#2F2A1D', '#40371C']),
-        accent: p('#F4C95D', '#F6D27A'),
-        text: p('#7A5A0C', '#F6D27A'),
-        muted: p('#7A5A0C', '#E8CF8F'),
+        gradient: p(['#FDF4DD', '#FDF4DD'], ['#37332B', '#37332B']),
+        accent: p('#C98A12', '#F6D27A'),
+        text: p('#102A33', '#F3F6F8'),
+        muted: p('#95660D', '#F2E2B0'),
         tone: 'yellow',
       },
     },
     tiles: {
-      water: { bg: '#1E7FD6', fg: '#FFFFFF' },
-      medication: { bg: '#E2513B', fg: '#FFFFFF' },
-      mood: { bg: '#6E56F0', fg: '#FFFFFF' },
-      sleep: { bg: '#4338CA', fg: '#FFFFFF' },
-      activity: { bg: '#0B9670', fg: '#FFFFFF' },
-      food: { bg: '#F5A524', fg: '#3D2A00' },
-      contact: { bg: '#8B4FE0', fg: '#FFFFFF' },
-      followUp: { bg: '#F5A524', fg: '#3D2A00' },
-      petrol: { bg: c.primary, fg: c.onPrimary },
-      slate: { bg: p('#E4ECEB', '#2A3B4C'), fg: p('#2D4A55', '#E3EAF0') },
+      water: { bg: p('#E8F3FD', '#22384B'), fg: p('#3990DE', '#7CC2FF') },
+      medication: { bg: p('#FDEDE9', '#382B2D'), fg: p('#D56A57', '#FF9C8A') },
+      mood: { bg: p('#EFEDFE', '#28324B'), fg: p('#7B6CF0', '#A99DFF') },
+      sleep: { bg: p('#ECEEFC', '#24314B'), fg: p('#5B63D6', '#8C93FF') },
+      activity: { bg: p('#E5F7F1', '#1E3B41'), fg: p('#219D7F', '#5ED9B5') },
+      food: { bg: p('#FDF4DD', '#37332B'), fg: p('#BD8211', '#F6D27A') },
+      contact: { bg: p('#E3F5F3', '#163841'), fg: p('#1D9B93', '#2BC4B4') },
+      followUp: { bg: p('#FDF4DD', '#37332B'), fg: p('#BD8211', '#F6D27A') },
+      petrol: { bg: p('#E6EEF0', '#1B2B3A'), fg: p('#174A59', '#F3F6F8') },
+      slate: { bg: p('#EDF3F2', '#1B2B3A'), fg: p('#5B6B73', '#A7B4C2') },
     },
     status: {
-      ok: { bg: p('#DCF7EC', '#1C3D3E'), border: p('#9FE6CB', '#265E51'), accent: p('#0B9670', '#4AD395'), text: p('#0B3D31', '#F3F6F8'), muted: p('#1F5E4D', '#B7E9CF') },
-      attention: { bg: p('#FFF1CF', '#3B321C'), border: p('#F8D57E', '#6E5A27'), accent: p('#B07800', '#F6D27A'), text: p('#4A3500', '#FFF4D6'), muted: p('#6B4E00', '#EEDCA8') },
-      action: { bg: p('#FFE3DC', '#40262B'), border: p('#F9B3A4', '#6E3B42'), accent: p('#C93D28', '#FF9C8A'), text: p('#5C1A0F', '#FFECE7'), muted: p('#7E2A1C', '#FFC9BD') },
-      none: { bg: p('#EEF3F3', '#1B2B3A'), border: p('#D3E0E0', '#2A3B4C'), accent: p('#56657A', '#A7B4C2'), text: p('#0D3946', '#F3F6F8'), muted: p('#4A5A6B', '#A7B4C2') },
+      ok: { bg: p('#E6F5ED', '#1B3A3C'), border: p('#BFE6D0', '#255A4F'), accent: p('#2E9E64', '#4AD395'), text: p('#102A33', '#F3F6F8'), muted: p('#1F5E40', '#B7E9CF') },
+      attention: { bg: p('#FDF4DD', '#3B321C'), border: p('#F1DDA6', '#6E5A27'), accent: p('#C98A12', '#F6D27A'), text: p('#102A33', '#FFF4D6'), muted: p('#6B4E0A', '#EEDCA8') },
+      action: { bg: p('#FDEDE9', '#40262B'), border: p('#F5C9BF', '#6E3B42'), accent: p('#D64545', '#FF9C8A'), text: p('#102A33', '#FFECE7'), muted: p('#8A3A2C', '#FFC9BD') },
+      none: { bg: p('#EDF3F2', '#1B2B3A'), border: p('#DCE6E4', '#2A3B4C'), accent: p('#5B6B73', '#A7B4C2'), text: p('#102A33', '#F3F6F8'), muted: p('#5B6B73', '#A7B4C2') },
     },
     gradients: {
-      primary: [c.primary, c.primaryEnd],
+      primary: p(['#14837D', '#174A59'], ['#2BC4B4', '#22B3A6']),
       coral: [c.coralCta, c.coralCtaEnd],
-      welcome: p(['#FBFDFB', '#E9FAF4'], ['#0B1622', '#0F1D2B']),
-      screen: p(['#FBFCFA', '#F8FAF8'], ['#0D1926', '#0B1622']),
+      welcome: p(['#F6F9F8', '#E9F6F2'], ['#0B1622', '#0F1D2B']),
+      screen: p(['#F6F9F8', '#F4F7F6'], ['#0D1926', '#0B1622']),
+      plus: p(['#0D3946', '#155E68', '#1FA9A0'], ['#0B2233', '#123D4A', '#1B8C86']),
     },
     shadow: {
-      soft: { boxShadow: `${sh(2, 6, dark ? 0.3 : 0.06)}, ${sh(10, 28, dark ? 0.35 : 0.1)}` },
-      elevated: { boxShadow: `${sh(2, 6, dark ? 0.3 : 0.06)}, ${sh(14, 34, dark ? 0.4 : 0.12)}` },
-      hero: { boxShadow: sh(18, 40, dark ? 0.45 : 0.18) },
+      soft: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(4, 12, 0.06)}` },
+      elevated: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(8, 24, 0.1)}` },
+      hero: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(8, 24, 0.1)}` },
+      sheet: dark ? { boxShadow: sh(16, 40, 0.5) } : { boxShadow: `${sh(2, 6, 0.05)}, ${sh(16, 40, 0.14)}` },
       glow: {
         mint: glow('33, 173, 139'),
         coral: glow('242, 140, 122'),
@@ -326,7 +339,7 @@ function softTheme(name: 'light' | 'dark'): Theme {
         sky: glow('31, 111, 196'),
         yellow: glow('244, 201, 93'),
         red: glow('232, 108, 108'),
-        petrol: { boxShadow: dark ? '0px 10px 20px rgba(43, 196, 180, 0.22)' : '0px 10px 20px rgba(23, 74, 89, 0.28)' },
+        petrol: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(4, 12, 0.06)}` },
         slate: {},
       },
     },
@@ -349,7 +362,9 @@ function hcTheme(name: 'hcLight' | 'hcDark'): Theme {
     surface2: bg,
     text: fg,
     muted: fg,
+    tertiary: fg,
     border: fg,
+    accent: fg,
     primary: fg,
     primaryEnd: fg,
     onPrimary: bg,
@@ -414,11 +429,12 @@ function hcTheme(name: 'hcLight' | 'hcDark'): Theme {
     },
     tiles: Object.fromEntries((['water', 'medication', 'mood', 'sleep', 'activity', 'food', 'contact', 'followUp', 'petrol', 'slate'] as const).map((k) => [k, { bg, fg }])) as Theme['tiles'],
     status: Object.fromEntries((['ok', 'attention', 'action', 'none'] as const).map((k) => [k, { bg, border: fg, accent: k === 'action' ? red : k === 'ok' ? green : fg, text: fg, muted: fg }])) as Theme['status'],
-    gradients: { primary: flat(fg), coral: flat(fg), welcome: flat(bg), screen: flat(bg) },
+    gradients: { primary: flat(fg), coral: flat(fg), welcome: flat(bg), screen: flat(bg), plus: flat(bg) },
     shadow: {
       soft: none,
       elevated: none,
       hero: none,
+      sheet: none,
       glow: { mint: none, coral: none, lavender: none, sky: none, yellow: none, red: none, petrol: none, slate: none },
     },
   };
@@ -434,19 +450,21 @@ export const themes: Record<ThemeName, Theme> = {
 // ── Tokens independientes del tema ───────────────────────────
 
 /** Base de 4 pt. `screen` = margen lateral; `section` = separación entre secciones. */
-export const spacing = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 20, xl: 24, xxl: 32, xxxl: 40, screen: 20, section: 24 } as const;
+export const spacing = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 20, xl: 24, xxl: 32, xxxl: 40, screen: 20, section: 28 } as const;
 
+/** V4.3: tarjeta 20, destacada 28, botón y campo 16, compacto 12, chip redondo, hoja 28 arriba. */
 export const radius = {
   sm: 12,
   icon: 16,
   iconLg: 20,
   md: 16,
-  input: 18,
-  button: 18,
-  tile: 14,
-  card: 24,
-  cardLg: 24,
-  hero: 32,
+  input: 16,
+  button: 16,
+  compact: 12,
+  tile: 12,
+  card: 20,
+  cardLg: 28,
+  hero: 28,
   modal: 28,
   pill: 999,
 } as const;
@@ -472,22 +490,22 @@ export const fonts = {
 export const type = {
   heroXL: { fontFamily: fonts.extrabold, fontSize: 56, lineHeight: 60, letterSpacing: -1.5, fontVariant: ['tabular-nums'] },
   heroL: { fontFamily: fonts.extrabold, fontSize: 40, lineHeight: 44, letterSpacing: -1, fontVariant: ['tabular-nums'] },
-  display: { fontFamily: fonts.extrabold, fontSize: 32, lineHeight: 38, letterSpacing: -0.8 },
-  h1: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34, letterSpacing: -0.6 },
-  h2: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.3 },
-  h3: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.2 },
-  body: { fontFamily: fonts.medium, fontSize: 18, lineHeight: 26 },
-  bodyStrong: { fontFamily: fonts.bold, fontSize: 18, lineHeight: 26 },
-  secondary: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 22 },
-  secondaryStrong: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 22 },
-  caption: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20 },
-  captionStrong: { fontFamily: fonts.extrabold, fontSize: 14, lineHeight: 20 },
+  display: { fontFamily: fonts.extrabold, fontSize: 32, lineHeight: 38, letterSpacing: -0.5 },
+  h1: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34, letterSpacing: -0.4 },
+  h2: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, letterSpacing: -0.2 },
+  h3: { fontFamily: fonts.bold, fontSize: 18, lineHeight: 24 },
+  body: { fontFamily: fonts.medium, fontSize: 17, lineHeight: 24 },
+  bodyStrong: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 24 },
+  secondary: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 22 },
+  secondaryStrong: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 22 },
+  caption: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
+  captionStrong: { fontFamily: fonts.extrabold, fontSize: 13, lineHeight: 18 },
   eyebrow: { fontFamily: fonts.extrabold, fontSize: 12, lineHeight: 16, letterSpacing: 1.4, textTransform: 'uppercase' },
   meta: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16 },
   /** Etiquetas de la barra inferior (V4: 13, siempre visibles). */
   tab: { fontFamily: fonts.bold, fontSize: 13, lineHeight: 16 },
   number: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 32, fontVariant: ['tabular-nums'] },
-  button: { fontFamily: fonts.extrabold, fontSize: 18, lineHeight: 24 },
+  button: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 22 },
 } as const satisfies Record<string, TextStyle>;
 
 export type TypeVariant = keyof typeof type;
@@ -505,13 +523,23 @@ export type TextScale = keyof typeof textScales;
  */
 export const motion = {
   pressScale: 0.97,
-  spring: { damping: 16, stiffness: 260, mass: 0.6 },
+  /** Tarjetas y filas. */
+  pressScaleCard: 0.98,
+  /** Resorte del toque (amortiguación 15, rigidez 300) y de lo que el usuario arrastra. */
+  spring: { damping: 15, stiffness: 300, mass: 1 },
   springSoft: { damping: 11, stiffness: 140, mass: 1 },
-  stagger: 60,
+  /** Entradas escalonadas: 40 ms entre elementos, máximo 6. */
+  stagger: 40,
+  staggerMax: 6,
   enter: 320,
   feedback: 160,
   change: 280,
-  countUp: 700,
+  /** Pantallas 280, hojas 320, pestañas 180; con "reducir movimiento", solo fundidos de 150 ms. */
+  screen: 280,
+  sheet: 320,
+  tab: 180,
+  reduced: 150,
+  countUp: 600,
 } as const;
 
 // ── Compatibilidad con pantallas aún no migradas a useTheme() ──
