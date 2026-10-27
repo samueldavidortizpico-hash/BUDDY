@@ -1,12 +1,13 @@
 /** Controles de formulario: Field, Checkbox, Chip, ChipList (texto libre + sugerencias), Segmented, Stepper. */
 import { useEffect, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 
 import { strings } from '@/i18n';
 import { motion, radius, spacing, touch, type, type Tone } from '@/theme';
 import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
-import { tapHaptic } from '@/utils/haptics';
+import { tapHaptic, warningHaptic } from '@/utils/haptics';
 
 import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
@@ -25,27 +26,46 @@ export interface FieldProps extends Omit<TextInputProps, 'style'> {
   keyboardType?: KeyboardTypeOptions;
   inputRef?: Ref<ComponentRef<typeof TextInput>>;
   right?: ReactNode;
+  /** Formato válido: check verde a la derecha. */
+  valid?: boolean;
+  /** Botón "Limpiar" mientras hay texto y el campo tiene el foco. */
+  onClear?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
-export function Field({ label, error, hint, icon, secure, optional, inputRef, right, style, multiline, onFocus, onBlur, ...input }: FieldProps) {
+/**
+ * Campo (V4.3): etiqueta arriba, caja de 56 sobre superficie 2 con radio 16. Foco: borde turquesa de 2 px y halo suave.
+ * Error: borde de peligro, icono y mensaje, con un temblor horizontal de 300 ms y vibración de advertencia. Formato
+ * válido: check verde. Contraseña: mostrar u ocultar. Solo transform en el temblor.
+ */
+export function Field({ label, error, hint, icon, secure, optional, inputRef, right, valid, onClear, style, multiline, onFocus, onBlur, ...input }: FieldProps) {
   const t = useTheme();
   const s = useStyles();
   const scale = useTextScaleFactor();
+  const reduce = useReducedMotion();
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
-  const borderColor = error ? t.ink.danger : focused ? t.c.focus : t.hc ? t.c.text : t.c.border;
+  const shake = useSharedValue(0);
+  useEffect(() => {
+    if (!error) return;
+    warningHaptic();
+    if (reduce) return;
+    shake.set(withSequence(withTiming(-8, { duration: 50 }), withTiming(8, { duration: 60 }), withTiming(-6, { duration: 60 }), withTiming(5, { duration: 60 }), withTiming(0, { duration: 70 })));
+  }, [error, reduce, shake]);
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
+  const borderColor = error ? t.ink.danger : focused ? t.c.focus : t.hc ? t.c.text : 'transparent';
+  const halo = focused && !error && !t.hc ? { boxShadow: `0px 0px 0px 4px ${t.dark ? 'rgba(43, 196, 180, 0.18)' : 'rgba(31, 169, 160, 0.15)'}` } : null;
   return (
     <View style={[s.field, style]}>
       <View style={s.labelRow}>
-        <AppText variant="secondaryStrong">{label}</AppText>
+        <AppText variant="secondary" style={s.label}>{label}</AppText>
         {optional ? (
           <AppText variant="caption" color={t.c.muted}>
             {strings.common.optional}
           </AppText>
         ) : null}
       </View>
-      <View style={[s.inputBox, { borderColor, borderWidth: focused || error || t.hc ? 2 : 1 }, multiline && s.multiBox]}>
+      <Animated.View style={[s.inputBox, { borderColor, borderWidth: focused || error || t.hc ? 2 : 1 }, halo, multiline && s.multiBox, shakeStyle]}>
         {icon ? <Icon name={icon} color={t.c.muted} /> : null}
         <TextInput
           ref={inputRef}
@@ -55,8 +75,9 @@ export function Field({ label, error, hint, icon, secure, optional, inputRef, ri
           accessibilityLabel={label}
           accessibilityHint={error ?? hint}
           aria-invalid={!!error}
-          placeholderTextColor={t.dark ? '#7F99A0' : '#7A8797'}
-          selectionColor={t.c.mintStrong}
+          placeholderTextColor={t.c.muted}
+          selectionColor={t.c.accent}
+          cursorColor={t.c.accent}
           allowFontScaling
           maxFontSizeMultiplier={2 / scale}
           onFocus={(e) => {
@@ -80,12 +101,22 @@ export function Field({ label, error, hint, icon, secure, optional, inputRef, ri
             <Icon name={hidden ? 'eye' : 'eyeOff'} color={t.c.muted} />
           </Pressable>
         ) : null}
+        {onClear && focused && !secure && input.value ? (
+          <Pressable onPress={onClear} accessibilityRole="button" accessibilityLabel={strings.common.clear} hitSlop={8} style={s.eye}>
+            <Icon name="close" color={t.c.muted} size={20} />
+          </Pressable>
+        ) : null}
+        {valid && !error ? (
+          <View style={s.valid} accessibilityLabel={strings.common.valid}>
+            <Icon name="check" color={t.hc ? t.c.text : t.ink.success} size={20} strokeWidth={2.4} />
+          </View>
+        ) : null}
         {right}
-      </View>
+      </Animated.View>
       {error ? (
         <View style={s.errorRow} accessibilityLiveRegion="polite">
-          <Icon name="warning" size={18} color={t.ink.danger} />
-          <AppText variant="caption" color={t.ink.danger} style={s.flex}>
+          <Icon name="warning" size={16} color={t.ink.danger} />
+          <AppText variant="caption" color={t.ink.danger} style={[s.flex, s.errorText]}>
             {error}
           </AppText>
         </View>
@@ -100,9 +131,18 @@ export function Field({ label, error, hint, icon, secure, optional, inputRef, ri
 
 // ── Checkbox ─────────────────────────────────────────────────
 
-export function Checkbox({ checked, onChange, label, error }: { checked: boolean; onChange: (v: boolean) => void; label: string; error?: string | null }) {
+export function Checkbox({ checked, onChange, label, error, children }: { checked: boolean; onChange: (v: boolean) => void; label: string; error?: string | null; children?: ReactNode }) {
   const t = useTheme();
   const s = useStyles();
+  const reduce = useReducedMotion();
+  const on = useSharedValue(checked ? 1 : 0);
+  useEffect(() => {
+    on.set(reduce ? (checked ? 1 : 0) : withTiming(checked ? 1 : 0, { duration: 220 }));
+  }, [checked, reduce, on]);
+  const fill = useAnimatedStyle(() => ({ opacity: on.value, transform: [{ scale: 0.7 + 0.3 * on.value }] }));
+  // El check "se dibuja" de izquierda a derecha: una cortina del color de relleno se desliza y lo descubre (solo transform).
+  const cover = useAnimatedStyle(() => ({ transform: [{ translateX: on.value * 22 }] }));
+  const accent = t.hc ? t.c.text : t.dark ? t.c.accent : '#14837D';
   return (
     <View style={s.field}>
       <Pressable
@@ -115,12 +155,22 @@ export function Checkbox({ checked, onChange, label, error }: { checked: boolean
         accessibilityLabel={label}
         style={s.checkRow}
       >
-        <View style={[s.box, checked && { backgroundColor: t.hc ? t.c.text : t.c.mintStrong, borderColor: t.hc ? t.c.text : t.c.mintStrong }, error && { borderColor: t.ink.danger }]}>
-          {checked ? <Icon name="check" size={18} color={t.hc ? t.c.bg : '#FFFFFF'} strokeWidth={3} /> : null}
+        <View style={[s.box, checked && { borderColor: accent }, error && { borderColor: t.ink.danger }]}>
+          <Animated.View style={[StyleSheet.absoluteFill, s.boxFill, { backgroundColor: accent }, fill]} />
+          {checked ? (
+            <View style={s.checkMark}>
+              <Svg width={18} height={18} viewBox="0 0 24 24">
+                <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={t.hc ? t.c.bg : t.dark ? '#062A2A' : '#FFFFFF'} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+              <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: accent }, cover]} />
+            </View>
+          ) : null}
         </View>
-        <AppText variant="secondary" style={s.flex}>
-          {label}
-        </AppText>
+        {children ?? (
+          <AppText variant="secondary" style={s.flex}>
+            {label}
+          </AppText>
+        )}
       </Pressable>
       {error ? (
         <AppText variant="caption" color={t.ink.danger}>
@@ -128,6 +178,36 @@ export function Checkbox({ checked, onChange, label, error }: { checked: boolean
         </AppText>
       ) : null}
     </View>
+  );
+}
+
+// ── Toggle ───────────────────────────────────────────────────
+
+/** Interruptor (V4.3): el botón se desliza con resorte y el color de la pista se funde (solo transform y opacidad). */
+export function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label: string }) {
+  const s = useStyles();
+  const reduce = useReducedMotion();
+  const on = useSharedValue(value ? 1 : 0);
+  useEffect(() => {
+    on.set(reduce ? (value ? 1 : 0) : withSpring(value ? 1 : 0, motion.spring));
+  }, [value, reduce, on]);
+  const track = useAnimatedStyle(() => ({ opacity: on.value }));
+  const knob = useAnimatedStyle(() => ({ transform: [{ translateX: on.value * 20 }] }));
+  return (
+    <Pressable
+      onPress={() => {
+        tapHaptic();
+        onChange(!value);
+      }}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      accessibilityLabel={label}
+      hitSlop={8}
+      style={s.toggle}
+    >
+      <Animated.View style={[StyleSheet.absoluteFill, s.toggleOn, track]} />
+      <Animated.View style={[s.knob, knob]} />
+    </Pressable>
   );
 }
 
@@ -389,7 +469,7 @@ const useStyles = makeStyles((t) =>
       gap: spacing.sm,
       paddingHorizontal: spacing.md,
       borderRadius: radius.input,
-      backgroundColor: t.c.surface,
+      backgroundColor: t.hc ? t.c.bg : t.c.surface2,
     },
     multiBox: { alignItems: 'flex-start', paddingVertical: spacing.sm },
     // minWidth 0: en web un TextInput no se encoge por debajo de su ancho propio y con texto grande empujaba el ojo de
@@ -400,14 +480,23 @@ const useStyles = makeStyles((t) =>
     errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xxs },
     checkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: touch.min },
     box: {
-      width: 28,
-      height: 28,
+      width: 26,
+      height: 26,
       borderRadius: 8,
       borderWidth: 2,
-      borderColor: t.hc ? t.c.text : t.dark ? '#7F99A0' : '#8A9AA8',
+      borderColor: t.hc ? t.c.text : t.dark ? '#5B6B7A' : '#9AABB0',
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
     },
+    boxFill: { borderRadius: 6 },
+    checkMark: { width: 18, height: 18, overflow: 'hidden' },
+    toggle: { width: 52, height: 32, borderRadius: 16, padding: 3, backgroundColor: t.hc ? t.c.bg : t.dark ? '#2A3B4C' : '#D3DEDC', overflow: 'hidden', ...(t.hc ? t.hairline : {}) },
+    toggleOn: { borderRadius: 16, backgroundColor: t.hc ? t.c.text : t.dark ? t.c.accent : '#14837D' },
+    knob: { width: 26, height: 26, borderRadius: 13, backgroundColor: t.hc ? t.c.bg : '#FFFFFF', ...(t.hc ? t.hairline : { boxShadow: '0px 1px 3px rgba(16, 42, 51, 0.25)' }) },
+    valid: { width: 32, alignItems: 'center', justifyContent: 'center' },
+    label: { fontFamily: 'Manrope_600SemiBold' },
+    errorText: { fontSize: 14, lineHeight: 20 },
     wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     chip: {
       minHeight: touch.chip,

@@ -30,6 +30,7 @@ const SCREENS = {
 const names = picked.length ? picked : Object.keys(SCREENS).filter((n) => n !== 'galeria' && n !== 'plan');
 const THEMES = set === 'completo'
   ? [['claro', { mode: 'light', highContrast: false }], ['oscuro', { mode: 'dark', highContrast: false }], ['contraste', { mode: 'light', highContrast: true }]]
+  : set === 'temas' ? [['claro', { mode: 'light', highContrast: false }], ['oscuro', { mode: 'dark', highContrast: false }], ['contraste', { mode: 'light', highContrast: true }]]
   : [['claro', { mode: 'light', highContrast: false }], ['oscuro', { mode: 'dark', highContrast: false }]];
 const WIDTHS = set === 'completo' ? [390, 375, 360] : [390];
 const SCALES = set === 'completo' ? ['normal', 'max'] : ['normal'];
@@ -50,7 +51,8 @@ try {
     for (const [themeName, appearance] of THEMES) {
       for (const w of WIDTHS) {
         for (const scale of SCALES) {
-          const page = await browser.newPage({ viewport: { width: w, height: w === 390 ? 844 : w === 375 ? 812 : 780 }, deviceScaleFactor: 2 });
+          const tall = name === 'galeria' ? 4400 : 0; // la galería se desplaza dentro de su contenedor: ventana alta
+          const page = await browser.newPage({ viewport: { width: w, height: tall || (w === 390 ? 844 : w === 375 ? 812 : 780) }, deviceScaleFactor: 2 });
           await seed(page, base, stateFor(screen), { ...appearance, textScale: scale, barGestures: true, introSeen: true });
           if (screen.signedOut) await page.evaluate(() => localStorage.removeItem('buddy.session'));
           await page.goto(`${base}${screen.path}`);

@@ -3,14 +3,14 @@ import Constants from 'expo-constants';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
 import { FEATURES } from '@/config/features';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
 import { ConfirmDialog, useToast } from '@/components/feedback';
-import { Chip, Field, Segmented, Stepper } from '@/components/forms';
+import { Chip, Field, Segmented, Stepper, Toggle } from '@/components/forms';
 import { Icon } from '@/components/icon';
 import { IconTile } from '@/components/icon-tile';
 import { BuddyRobot } from '@/components/robot';
@@ -69,13 +69,7 @@ function Row({ label, hint, value, onChange }: { label: string; hint?: string; v
         <AppText variant="secondaryStrong">{label}</AppText>
         {hint ? <AppText variant="caption" color={t.c.muted}>{hint}</AppText> : null}
       </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        accessibilityLabel={label}
-        trackColor={{ true: t.hc ? t.c.text : t.c.mintStrong, false: t.dark ? '#3A5C66' : '#C9D6D3' }}
-        thumbColor="#FFFFFF"
-      />
+      <Toggle value={value} onChange={onChange} label={label} />
     </View>
   );
 }

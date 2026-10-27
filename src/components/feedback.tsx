@@ -6,9 +6,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { AccessibilityInfo, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
-  FadeInUp,
+  FadeIn,
   FadeOutUp,
   SlideInDown,
+  SlideInUp,
   ZoomIn,
   useAnimatedStyle,
   useReducedMotion,
@@ -38,6 +39,7 @@ export function useToast() {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const t = useTheme();
   const s = useStyles();
   const [toast, setToast] = useState<(ToastInput & { id: number }) | null>(null);
@@ -65,7 +67,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {toast ? (
         <Animated.View
           key={toast.id}
-          entering={FadeInUp.duration(220)}
+          entering={reduce ? FadeIn.duration(150) : SlideInUp.springify().damping(18).stiffness(240)}
           exiting={FadeOutUp.duration(180)}
           pointerEvents={toast.action ? 'box-none' : 'none'}
           accessibilityLiveRegion="polite"
@@ -101,6 +103,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function BottomSheet({ visible, onClose, title, children }: { visible: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const insets = useSafeAreaInsets();
+  const reduce = useReducedMotion();
   const t = useTheme();
   const s = useStyles();
   return (
@@ -109,7 +112,7 @@ export function BottomSheet({ visible, onClose, title, children }: { visible: bo
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={strings.common.close}>
           <View style={s.scrim} />
         </Pressable>
-        <Animated.View entering={SlideInDown.duration(280)} accessibilityViewIsModal style={[s.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
+        <Animated.View entering={reduce ? FadeIn.duration(150) : SlideInDown.springify().damping(22).stiffness(220)} accessibilityViewIsModal style={[s.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
           <View style={s.handle} />
           <View style={s.sheetHead}>
             <AppText variant="h2" style={s.flex} accessibilityRole="header">
@@ -222,7 +225,7 @@ const useStyles = makeStyles((t) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
-      backgroundColor: t.hc ? t.c.text : '#174A59',
+      backgroundColor: t.hc ? t.c.text : t.dark ? '#22364A' : '#0D3946',
       borderRadius: radius.md,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
@@ -250,13 +253,14 @@ const useStyles = makeStyles((t) =>
       maxHeight: '88%',
       borderWidth: t.hc ? 2 : 0,
       borderColor: t.c.border,
+      ...t.shadow.sheet,
     },
     sheetBody: { gap: spacing.sm, paddingBottom: spacing.xs },
-    handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: t.hc ? t.c.text : t.c.surface2 },
+    handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: t.hc ? t.c.text : t.dark ? '#33475A' : '#C9D6D4' },
     sheetHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     close: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.surface, ...t.hairline },
     dialogRoot: { flex: 1, justifyContent: 'center', padding: spacing.xl },
-    dialog: { backgroundColor: t.c.bg, borderRadius: radius.card, padding: spacing.xl, gap: spacing.sm, ...t.shadow.hero, ...t.hairline },
+    dialog: { backgroundColor: t.c.surface, borderRadius: radius.modal, padding: spacing.xl, gap: spacing.sm, ...t.shadow.sheet, ...t.hairline },
     dialogActions: { gap: spacing.sm, marginTop: spacing.sm },
     success: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl },
     burst: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },

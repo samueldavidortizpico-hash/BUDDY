@@ -10,6 +10,7 @@ import Animated, {
   withDelay,
   withRepeat,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -20,7 +21,7 @@ import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
 import { PressableScale } from './pressable-scale';
 
-export type ButtonVariant = 'mint' | 'primary' | 'coral' | 'secondary' | 'danger' | 'ghost' | 'tonal' | 'white' | 'text';
+export type ButtonVariant = 'mint' | 'primary' | 'coral' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'tonal' | 'white' | 'text';
 
 interface VariantStyle {
   gradient?: readonly [string, string, ...string[]];
@@ -29,40 +30,46 @@ interface VariantStyle {
   borderWidth?: number;
   text: string;
   shadow?: ViewStyle;
+  /** Oscurecido al presionar (8 % en los llenos). */
+  dim: number;
 }
 
 function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyle {
   const hcBorder = { border: t.c.text, borderWidth: 2 };
+  const brand = t.dark ? t.c.accent : t.c.primary;
   switch (variant) {
     case 'primary':
-      // V4: petróleo sólido con texto blanco (≥ 9:1); el degradado se veía apagado y no aportaba.
-      return { bg: t.c.primary, text: t.c.onPrimary, shadow: t.shadow.glow.petrol, ...(t.hc ? hcBorder : {}) };
+      // V4.3: degradado principal turquesa → petróleo a 135° con texto blanco (≥ 4,5:1 en ambos extremos).
+      return { gradient: t.gradients.primary, text: t.c.onPrimary, shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'mint':
       // V4.2: turquesa de la primera apertura con texto BLANCO. Blanco sobre #14A3A6 da 3,1:1 y la etiqueta va a 20 px
       // en negrita (letra grande WCAG, mínimo 3:1); el turquesa de la referencia (#26B5BB) solo daba 2,4:1.
-      return { gradient: ['#0C939B', '#14A3A6'], text: '#FFFFFF', shadow: t.shadow.glow.mint, ...(t.hc ? hcBorder : {}) };
+      return { gradient: ['#0C939B', '#14A3A6'], text: '#FFFFFF', shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'coral':
-      return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: t.shadow.glow.coral, ...(t.hc ? hcBorder : {}) };
+      return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'secondary':
-      return { bg: t.c.mintPale, border: t.hc ? t.c.text : t.tones.mint.soft, borderWidth: t.borderWidth, text: t.c.text };
+      // Superficie 2 con texto de marca, sin borde.
+      return { bg: t.c.surface2, text: t.hc ? t.c.text : t.dark ? t.c.text : t.c.primary, dim: 0.05, ...(t.hc ? hcBorder : {}) };
+    case 'outline':
+      return { bg: 'transparent', border: t.hc ? t.c.text : brand, borderWidth: t.hc ? 2 : 1.5, text: t.hc ? t.c.text : brand, dim: 0.04 };
     case 'danger':
-      return { bg: t.c.dangerPale, border: t.hc ? t.c.danger : t.tones.red.soft, borderWidth: t.borderWidth, text: t.ink.danger };
+      return { bg: t.c.dangerPale, text: t.ink.danger, dim: 0.05, ...(t.hc ? { border: t.c.danger, borderWidth: 2 } : {}) };
     case 'ghost':
       // Superficie propia y borde ≥ 3:1: transparente no parecía un botón en el iPhone (V4, error 2).
-      return { bg: t.c.surface, border: t.hc ? t.c.text : t.dark ? '#6F9099' : '#7E979E', borderWidth: t.hc ? 2 : 1.5, text: t.c.text, shadow: t.shadow.soft };
+      return { bg: t.c.surface, border: t.hc ? t.c.text : t.dark ? '#5B6B7A' : '#9AABB0', borderWidth: t.hc ? 2 : 1.5, text: t.c.text, dim: 0.04 };
     case 'white':
-      return t.hc ? { bg: t.c.bg, ...hcBorder, text: t.c.text } : { bg: '#FFFFFF', text: '#0B3A66', shadow: t.shadow.glow.sky };
+      return t.hc ? { bg: t.c.bg, ...hcBorder, text: t.c.text, dim: 0.05 } : { bg: '#FFFFFF', text: '#0D3946', shadow: t.shadow.soft, dim: 0.05 };
     case 'tonal':
-      return { bg: t.tones[tone].bg, border: t.hc ? t.tones[tone].fg : t.tones[tone].soft, borderWidth: t.borderWidth, text: t.tones[tone].fg };
+      return { bg: t.tones[tone].bg, text: t.tones[tone].fg, dim: 0.05, ...(t.hc ? { border: t.tones[tone].fg, borderWidth: 2 } : {}) };
     case 'text':
       // Acción terciaria: sin caja, texto en el color de acción; conserva el área táctil de 48.
-      return { bg: 'transparent', text: t.hc ? t.c.text : t.ink.info };
+      return { bg: 'transparent', text: t.hc ? t.c.text : t.ink.info, dim: 0 };
   }
 }
 
 const HEIGHTS = { elder: touch.elder, lg: touch.primary, md: touch.secondary, sm: touch.compact } as const;
-/** El compacto mide 44 a la vista; su área táctil llega a 48. */
-const COMPACT_SLOP = { top: 2, bottom: 2, left: 0, right: 0 };
+/** El compacto mide 40 a la vista; su área táctil llega a 48. */
+const COMPACT_SLOP = { top: 4, bottom: 4, left: 0, right: 0 };
 
 export interface ButtonProps {
   label: string;
@@ -72,15 +79,19 @@ export interface ButtonProps {
   tone?: Tone;
   icon?: IconName;
   trailing?: IconName;
-  /** Alturas MÍNIMAS: elder = 72 (adulto mayor); lg y md = 56; sm = 44 (compacto: Editar y acciones secundarias). */
+  /** Alturas MÍNIMAS: elder = 72 (adulto mayor); lg y md = 56; sm = 40 (compacto, radio 12: Editar y similares). */
   size?: keyof typeof HEIGHTS;
   textColor?: string;
   disabled?: boolean;
+  /** Spinner en lugar del texto, sin cambiar el ancho. */
   loading?: boolean;
-  haptic?: boolean;
+  /** Check breve (la pantalla navega ~600 ms después). */
+  success?: boolean;
+  /** Vibración: `true` selección, `'light'` acción principal (por defecto en `primary`). */
+  haptic?: boolean | 'light';
   /** Icono arriba y texto debajo (pares de acciones lado a lado). */
   stacked?: boolean;
-  /** Brillo que recorre el botón cada 5 s (solo la acción protagonista de la bienvenida). */
+  /** Brillo que recorre el botón cada 5 s (solo la acción protagonista). */
   shine?: boolean;
   accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
@@ -99,7 +110,8 @@ export function Button({
   textColor,
   disabled = false,
   loading = false,
-  haptic = false,
+  success = false,
+  haptic,
   stacked = false,
   shine = false,
   accessibilityHint,
@@ -110,19 +122,22 @@ export function Button({
   const s = useStyles();
   const base = variantStyle(t, variant, tone);
   const v = textColor && !t.hc ? { ...base, text: textColor } : base;
+  const busy = loading || success;
+  const compact = size === 'sm';
   return (
     <PressableScale
       testID={testID}
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ busy: loading, disabled: disabled || loading }}
-      disabled={disabled || loading}
-      haptic={haptic}
+      disabled={disabled || busy}
+      haptic={haptic ?? (variant === 'primary' || variant === 'mint' ? 'light' : false)}
+      dim={v.dim}
       onPress={onPress}
-      hitSlop={size === 'sm' ? COMPACT_SLOP : undefined}
+      hitSlop={compact ? COMPACT_SLOP : undefined}
       style={[
         s.base,
-        size === 'sm' && s.compact,
+        compact && s.compact,
         { minHeight: HEIGHTS[size], backgroundColor: v.bg },
         v.border ? { borderColor: v.border, borderWidth: v.borderWidth } : null,
         !disabled ? v.shadow : null,
@@ -133,23 +148,43 @@ export function Button({
     >
       {v.gradient ? <LinearGradient colors={v.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.fill} /> : null}
       {shine && !disabled && !t.hc ? <Shine /> : null}
+      {/* El contenido queda en su sitio (invisible) mientras carga o confirma: el botón nunca cambia de ancho. */}
+      <View style={[s.content, stacked && s.stackedContent, busy && s.hidden]}>
+        {icon ? <Icon name={icon} color={v.text} size={size === 'elder' ? 26 : compact ? 18 : 20} /> : null}
+        <AppText
+          variant={stacked || compact ? 'secondaryStrong' : size === 'elder' || variant === 'mint' ? 'h3' : 'button'}
+          color={v.text}
+          align="center"
+          style={s.grow}
+        >
+          {label}
+        </AppText>
+        {trailing ? <Icon name={trailing} color={v.text} size={20} /> : null}
+      </View>
       {loading ? (
-        <ActivityIndicator color={v.text} />
-      ) : (
-        <>
-          {icon ? <Icon name={icon} color={v.text} size={size === 'elder' ? 26 : size === 'sm' ? 20 : 22} /> : null}
-          <AppText
-            variant={stacked || size === 'sm' ? 'secondaryStrong' : size === 'elder' || variant === 'mint' ? 'h3' : 'button'}
-            color={v.text}
-            align="center"
-            style={s.grow}
-          >
-            {label}
-          </AppText>
-          {trailing ? <Icon name={trailing} color={v.text} size={20} /> : null}
-        </>
-      )}
+        <View style={s.center} pointerEvents="none">
+          <ActivityIndicator color={v.text} size="small" />
+        </View>
+      ) : success ? (
+        <SuccessCheck color={v.text} />
+      ) : null}
     </PressableScale>
+  );
+}
+
+/** Check que aparece con un pequeño resorte al confirmar. */
+function SuccessCheck({ color }: { color: string }) {
+  const s = useStyles();
+  const reduce = useReducedMotion();
+  const v = useSharedValue(reduce ? 1 : 0);
+  useEffect(() => {
+    if (!reduce) v.set(withSpring(1, { damping: 12, stiffness: 260 }));
+  }, [reduce, v]);
+  const style = useAnimatedStyle(() => ({ opacity: v.value, transform: [{ scale: 0.5 + 0.5 * v.value }] }));
+  return (
+    <Animated.View style={[s.center, style]} pointerEvents="none" accessibilityElementsHidden>
+      <Icon name="check" color={color} size={24} strokeWidth={2.6} />
+    </Animated.View>
   );
 }
 
@@ -249,18 +284,21 @@ const useStyles = makeStyles((t) =>
       borderRadius: radius.button,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.xs,
-      flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: spacing.sm,
+      overflow: 'hidden',
     },
+    content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, maxWidth: '100%' },
+    stackedContent: { flexDirection: 'column', gap: 2 },
+    hidden: { opacity: 0 },
+    center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
     fill: { ...StyleSheet.absoluteFill, borderRadius: radius.button },
     shineClip: { ...StyleSheet.absoluteFill, borderRadius: radius.button, overflow: 'hidden' },
     shine: { position: 'absolute', top: 0, bottom: 0, left: '35%', width: '28%' },
     grow: { flexShrink: 1, minWidth: 0, textAlign: 'center' },
-    compact: { paddingHorizontal: spacing.sm, gap: spacing.xs, alignSelf: 'flex-start' },
-    stacked: { flexDirection: 'column', gap: 2, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
-    disabled: { opacity: 0.45 },
+    compact: { paddingHorizontal: spacing.sm, borderRadius: radius.compact, alignSelf: 'flex-start' },
+    stacked: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
+    disabled: { opacity: 0.4 },
     circle: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center' },
     pill: { minHeight: touch.min, maxWidth: '100%', flexShrink: 0, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
     badge: {

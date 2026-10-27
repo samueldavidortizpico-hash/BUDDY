@@ -10,6 +10,8 @@
  * - `watch`: reloj y datos de salud del reloj (Futuro).
  * - `encryptedStorage` (V4 Fase 3): base local cifrada con AES-GCM y la clave en el SecureStore. Encendida solo en
  *   desarrollo hasta probarla en dispositivo (docs/ALMACENAMIENTO_SEGURO.md); apagada en producción y en Jest.
+ * - `devTools` (V4.3): galería de componentes y selector de plan de prueba. Solo en desarrollo, o al exportar para las
+ *   capturas con EXPO_PUBLIC_DEV_TOOLS=1. Nunca en una compilación de tienda.
  * Zonas seguras e IA conversacional real no tienen código todavía.
  */
 export const FEATURES = {
@@ -17,4 +19,5 @@ export const FEATURES = {
   foodAnalysis: false,
   watch: false,
   encryptedStorage: __DEV__ && process.env.NODE_ENV !== 'test',
+  devTools: __DEV__ || process.env.EXPO_PUBLIC_DEV_TOOLS === '1',
 };

@@ -473,7 +473,7 @@ export const radius = {
  * Alturas MÍNIMAS (crecen con el texto). V4: todo botón estándar mide al menos 56; `compact` (44) solo para acciones
  * secundarias como Editar; `elder` = acciones del adulto mayor; `orb` = botón central de BUDDY en la barra.
  */
-export const touch = { min: 48, chip: 44, compact: 44, secondary: 56, primary: 56, elder: 72, elderMin: 64, timeRow: 56, tabBar: 72, orb: 64, tile: 44 } as const;
+export const touch = { min: 48, chip: 44, compact: 40, secondary: 56, primary: 56, elder: 72, elderMin: 64, timeRow: 56, tabBar: 72, orb: 64, tile: 44 } as const;
 
 export const fonts = {
   regular: 'Manrope_400Regular',

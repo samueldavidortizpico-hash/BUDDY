@@ -70,7 +70,7 @@ export function Skeleton({ width = '100%', height = 20, round = radius.sm, style
   return (
     <View
       accessibilityLabel={strings.common.loading}
-      style={[{ width, height, borderRadius: round, backgroundColor: t.c.surface2, overflow: 'hidden' }, style]}
+      style={[{ width, height, borderRadius: round, backgroundColor: t.c.surface2, overflow: 'hidden' }, t.hc && t.hairline, style]}
     >
       {reduce || t.hc ? null : (
         <Animated.View style={[StyleSheet.absoluteFill, shine]}>

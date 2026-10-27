@@ -6,6 +6,8 @@ export const esCO = {
   common: {
     back: 'Volver',
     close: 'Cerrar',
+    clear: 'Borrar lo escrito',
+    valid: 'Formato correcto',
     cancel: 'Cancelar',
     save: 'Guardar',
     continue: 'Continuar',

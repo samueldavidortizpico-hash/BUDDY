@@ -29,8 +29,9 @@ it('uses compact horizontal padding for secondary actions', async () => {
   const button = ui.getByRole('button', { name: 'Editar' });
   const style = StyleSheet.flatten(button.props.style);
   expect(style.paddingHorizontal).toBeLessThanOrEqual(12);
-  // V4: 44 visibles (brief) + 2 arriba y 2 abajo de área táctil = 48 (mínimo de accesibilidad).
-  expect(style.minHeight).toBe(44);
+  // V4.3: 40 visibles, radio 12 (brief) + 4 arriba y 4 abajo de área táctil = 48 (mínimo de accesibilidad).
+  expect(style.minHeight).toBe(40);
+  expect(style.borderRadius).toBe(12);
   expect(style.minHeight + button.props.hitSlop.top + button.props.hitSlop.bottom).toBeGreaterThanOrEqual(48);
 });
 

@@ -1,16 +1,16 @@
 import { useRouter, type Href } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
-import { Icon, type IconName } from '@/components/icon';
-import { IconTile } from '@/components/icon-tile';
+import { type IconName } from '@/components/icon';
+import { ListRow } from '@/components/list-row';
 import { ScreenContainer } from '@/components/screen-container';
 import { ScreenHeader } from '@/components/screen-header';
 import { strings } from '@/i18n';
 import { useActiveElder } from '@/state/data';
 import { useSession } from '@/state/session';
-import { radius, spacing, touch, type Domain } from '@/theme';
-import { makeStyles, useBigText, useTheme } from '@/theme/provider';
+import { radius, spacing, type Domain } from '@/theme';
+import { makeStyles, useTheme } from '@/theme/provider';
 
 const S = strings.settings;
 
@@ -27,7 +27,6 @@ export default function Settings() {
   const s = useStyles();
   const user = useSession((x) => x.user);
   const elder = useActiveElder();
-  const big = useBigText();
   const groups: Item[][] = [
     [
       { key: 'account', icon: 'user', domain: 'petrol', label: S.sections.account },
@@ -59,19 +58,14 @@ export default function Settings() {
         {groups.map((items, g) => (
           <View key={g} style={[s.group, t.hairline]}>
             {items.map((r, i) => (
-              <Pressable
+              <ListRow
                 key={r.key}
+                icon={r.icon}
+                domain={r.domain}
+                title={r.label}
+                divider={i > 0}
                 onPress={() => router.push(r.href ?? ({ pathname: '/settings/[section]', params: { section: r.key } } as unknown as Href))}
-                accessibilityRole="button"
-                accessibilityLabel={r.label}
-                style={({ pressed }) => [s.row, i > 0 && s.divider, pressed && { opacity: 0.8 }]}
-              >
-                {big ? null : <IconTile icon={r.icon} domain={r.domain} size={40} />}
-                <AppText variant="bodyStrong" style={s.flex}>
-                  {r.label}
-                </AppText>
-                <Icon name="chevron" color={t.c.muted} />
-              </Pressable>
+              />
             ))}
           </View>
         ))}
@@ -82,11 +76,8 @@ export default function Settings() {
 
 const useStyles = makeStyles((t) =>
   StyleSheet.create({
-    flex: { flex: 1, minWidth: 0 },
     head: { marginBottom: spacing.md },
     groups: { gap: spacing.section },
     group: { borderRadius: radius.card, backgroundColor: t.c.surface, overflow: 'hidden', ...t.shadow.soft },
-    row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: touch.timeRow + 8, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs },
-    divider: { borderTopWidth: t.borderWidth, borderTopColor: t.c.border },
   }),
 );

@@ -11,12 +11,14 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { ToastProvider } from '@/components/feedback';
 import { ErrorState } from '@/components/states';
 import { BootScreen } from '@/features/boot/boot-screen';
 import { db, useDb } from '@/infrastructure/local/db';
 import { startSession, useSession } from '@/state/session';
+import { motion } from '@/theme';
 import { ThemeProvider, useAppearanceStore, useTheme } from '@/theme/provider';
 
 SplashScreen.preventAutoHideAsync();
@@ -82,12 +84,14 @@ export default function RootLayout() {
 
 function ThemedStack() {
   const t = useTheme();
+  const reduce = useReducedMotion();
   return (
     <>
       <StatusBar style={t.dark ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, gestureEnabled: true, animation: 'slide_from_right', contentStyle: { backgroundColor: t.c.bg } }}>
+      {/* V4.3: pantallas a 280 ms desde la derecha y modales desde abajo; con "reducir movimiento", fundido de 150 ms. */}
+      <Stack screenOptions={{ headerShown: false, gestureEnabled: true, animation: reduce ? 'fade' : 'slide_from_right', animationDuration: reduce ? motion.reduced : motion.screen, contentStyle: { backgroundColor: t.c.bg } }}>
         <Stack.Screen name="(auth)" />
-        <Stack.Screen name="legal/[doc]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="legal/[doc]" options={{ presentation: 'modal', animation: reduce ? 'fade' : 'slide_from_bottom', animationDuration: reduce ? motion.reduced : motion.sheet }} />
       </Stack>
     </>
   );
