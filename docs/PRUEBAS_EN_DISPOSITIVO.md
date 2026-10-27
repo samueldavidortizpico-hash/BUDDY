@@ -180,6 +180,34 @@ Verificación completa (Hito 8).
 5. En un build instalable, configura productos de sandbox y claves públicas RevenueCat solo fuera del repositorio; prueba compra, cancelación, restauración y expiración. No usar claves secretas en el cliente.
 6. Repite Plus y Conectar reloj con letra BUDDY máxima, fontScale 1.0/1.3/2.0, anchos 360/375/390 y VoiceOver/TalkBack. Estas comprobaciones físicas siguen pendientes.
 
+## Ronda V4.2: primera apertura (rama `v4`)
+
+**Ocultar el engranaje azul flotante.** Ese botón no es de BUDDY: es el botón de herramientas de Expo Go (SDK 58).
+Arranca así para que no aparezca ni tape "Omitir":
+
+```bash
+EXPO_NO_DEV_MENU=1 npx expo start --go --tunnel --clear
+```
+
+Vuelve en el siguiente arranque sin la variable. En una compilación de tienda no existe.
+
+**Ver de nuevo la primera apertura** (carga → 4 presentaciones → Bienvenido):
+- Con sesión: Ajustes > Acerca de > **"Ver de nuevo la presentación"**.
+- Sin sesión o desde cero: borrar la app de Expo Go (o sus datos) y volver a abrir el enlace.
+- El splash nativo y el ícono nuevos solo se ven en una compilación (`eas build`); Expo Go usa su propio ícono.
+
+Revisar:
+1. **Carga:** petróleo oscuro con destellos que titilan, el ícono (robot sobre cuadro menta) entra con un rebote leve,
+   "BUDDY" y "Siempre contigo" en blanco, barra con punta brillante; al terminar se desvanece.
+2. **Presentaciones:** deslizar con el dedo en ambas direcciones; el fondo cambia de color mientras se arrastra; la
+   ilustración flota y se mueve más lento que el texto; "Compañía 1 de 4" … "Familia 4 de 4" y "Omitir" en una fila;
+   "Siguiente" con texto blanco; la 4 lleva a Bienvenido.
+3. **Bienvenido:** la tarjeta sube desde abajo; al tocar una opción aparecen borde y check; "Soy adulto mayor" oculta
+   "Crear cuenta" y deja "Iniciar sesión" grande.
+4. **Letra al máximo y modo oscuro:** ninguna palabra partida; la ilustración se achica; en oscuro las ilustraciones
+   van en una tarjeta redondeada.
+5. **Reducir movimiento** (Ajustes del iPhone > Accesibilidad > Movimiento): solo fundidos, sin rebote ni paralaje.
+
 ## Ronda V4: lista exacta para probar en el iPhone (rama `v4`)
 
 Preparar: Ajustes del iPhone > Accesibilidad > Pantalla y tamaño del texto > Texto más grande **al máximo**; en BUDDY,

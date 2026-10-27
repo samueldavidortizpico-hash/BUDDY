@@ -797,6 +797,7 @@ export const esCO = {
     reset: 'Restablecer datos',
     resetTitle: '¿Restablecer todos los datos?',
     version: (v: string) => `Versión ${v}`,
+    replayIntro: 'Ver de nuevo la presentación',
     howAssistant: 'Cómo funciona el asistente',
     howAssistantBody:
       'BUDDY entiende frases en español con reglas locales (sin inteligencia artificial en esta versión). Siempre te muestra una propuesta y solo actúa cuando la confirmas. No diagnostica ni recomienda dosis.',

@@ -499,6 +499,8 @@ function Advanced() {
 function About() {
   const t = useTheme();
   const s = useStyles();
+  const router = useRouter();
+  const setAppearance = useAppearanceStore((x) => x.set);
   return (
     <View style={s.stack}>
       <View style={s.center}>
@@ -506,6 +508,15 @@ function About() {
         <AppText variant="h2">{strings.brand.name}</AppText>
         <AppText variant="secondary" color={t.c.muted}>{S.version(Constants.expoConfig?.version ?? '1.0.0')}</AppText>
       </View>
+      <Button
+        label={S.replayIntro}
+        variant="secondary"
+        icon="sparkle"
+        onPress={() => {
+          setAppearance({ introSeen: false });
+          router.push('/onboarding');
+        }}
+      />
       <Card style={s.stack}>
         <AppText variant="h3">{S.howAssistant}</AppText>
         <AppText variant="secondary">{S.howAssistantBody}</AppText>

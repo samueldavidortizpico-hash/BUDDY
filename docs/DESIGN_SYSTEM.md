@@ -141,25 +141,46 @@ fuera de foco (`useIsFocused`) y con "reducir movimiento".
 `Appear` (entrada escalonada) se reescribió con un valor compartido: la versión anterior usaba una animación
 `entering` personalizada que **Reanimated no soporta en web** (lo avisaba en consola) y aparecía sin retardo.
 
-## El robot (`src/components/robot`)
+## El robot (`src/components/robot`) · V4.2
 
-- Recurso: `assets/branding/buddy-robot.png` (896×1024, fondo transparente). Generado con un script de Pillow desde
-  `buddy-logo.png`: silueta por cierre morfológico (para que el cuerpo blanco no se vacíe), color-a-alfa en el
-  contorno y borrado de la sombra del suelo por color (gris neutro vs. blanco cálido). Revisado sobre claro y oscuro.
-  **Limitación:** el robot original solo mide 112×128 px, así que a 300 dp se ve suave. Se necesita una exportación
-  transparente de alta resolución (o por capas) del dueño.
-- `BuddyRobot` props: `size, mood (idle|wave|think|talk|celebrate|worry), flying, glow, shadow, sparkles, entrance,
-  skipEntrance, tapFlip, onPress, accessibilityLabel`. Punto único de reemplazo: `ROBOT_SOURCE` + `RobotArt`.
-- Idle: vaivén en 2.8 s, deriva en 5 s, inclinación ±2.5° en 4.2 s desfasada, sombra que se achica al subir,
-  propulsión menta .35–.6 en sincronía, latido coral 1→1.15 cada 1.6 s (coordenadas en `HEART`), 6 destellos de 4 puntas
-  (1.6–2.4 s), saludo cada 7 s.
-- Entrada de bienvenida (~3.2 s, una vez por sesión, saltable con un toque): vuelo curvo desde abajo a la derecha
-  (x ease-out, y ease-in-out con arco), inclinación +18°→−6°, escala .6→1.05, 3 fantasmas (.25/.15/.08),
-  aterrizaje con resorte 11/140, squash .94/1.04/1, destello menta; texto palabra a palabra desde 1.9 s.
-- Estados: celebrate (salto + voltereta 360° en 700 ms + destellos + háptico), think (tres puntos), talk (anillo + ecualizador),
-  worry (inclinación lenta y serena). Con imagen plana se mueve el conjunto; ojos y brazos no se animan.
-- Movimiento reducido: sin vuelo ni bucles; aparición de 320 ms y latido muy leve.
-- Rendimiento: `renderToHardwareTextureAndroid` y `shouldRasterizeIOS` en el contenedor; máximo 6 destellos y 3 fantasmas; sin blur.
+- **Siempre la imagen real** (`assets/branding/buddy-robot.png`, 792×887, transparente); el robot dibujado en código se
+  eliminó. `BuddyRobot({ size, shape: 'circle' | 'square', accessibilityLabel })` lo pone dentro de un marco con
+  degradado menta muy claro `#EFFCF7` → turquesa claro `#B9EEE4` (oscuro: `#1B3A4E` → `#12283A`); nunca sobre blanco puro.
+  Ocupa el 78 % del alto del marco: nunca se corta.
+- **Dónde aparece:** ícono de la app, splash nativo y portada de carga (`buddy-splash.png`), presentación 1 (dentro de su
+  ilustración), botón central de BUDDY y encabezado del chat. Ajustes > Acerca de muestra el ícono. En el resto de
+  pantallas (estados vacíos, registro, adulto mayor, permisos) lo reemplaza un `IconTile` del dominio.
+- **Limitación:** el original del dueño es pequeño (≈ 112 px); a tamaño grande se ve suave. Falta la exportación en alta.
+
+## Primera apertura · V4.2
+
+| Pantalla | Fondo | Elementos | Movimiento |
+| --- | --- | --- | --- |
+| Carga | petróleo `#3F8676` → `#174B55` → `#082C3E` → `#052338` (diagonal) | 8 destellos de 4 puntas, ícono 188, "BUDDY" 42 negrita del sistema, "Siempre contigo" 19, barra 6 × 300 con relleno `#1E9FA6` → `#5ED9B5` y punta `#D9FFF4` | ícono con resorte 11/140 (rebote leve), destellos titilan 1,7–2,5 s, salida: ícono ×1,08 y fundido 300 ms |
+| Presentaciones 1–4 | banda tintada izq → der (1 `#6FE6E2`→`#D4CBF9`, 2 `#A3EDCF`→`#C4C3F8`, 3 `#C6BBFB`→`#FBA694`, 4 `#9FB7DA`→`#A6CFEE`) fundida con el tono de arriba y de abajo | barra "Etiqueta n de 4" · "Omitir"; ilustración real; título 34/40 `#174A59`; texto 18 `#3E4F5C`; puntos; "Siguiente" | deslizar con el dedo; fondo que cambia por opacidad; paralaje ×0,42; flotación 2,6 s; título y texto escalonados (60 / 120 px); detalle propio (destellos, aviso que late, latido doble, mundo que se mece) |
+| Bienvenido | encabezado `#1A4681` → `#1F72A2` → `#19A6A8`; pantalla `#ECF3FA` → `#E8FAF0` | "Bienvenido" 36 blanco; tarjeta radio 28 con la pregunta y 3 filas (icono en círculo de color, título, subtítulo) | tarjeta entra desde abajo (48 px, resorte suave); selección con borde y check que crece |
+
+- **Botón turquesa (`variant="mint"`):** `#0C939B` → `#14A3A6`, texto **blanco** a 20 px en negrita (letra grande WCAG):
+  3,1:1, sobre el mínimo de 3:1. El turquesa medido en la referencia (`#26B5BB`) daba 2,4:1 con texto blanco.
+- **Oscuro:** las ilustraciones (de fondo claro) van en una tarjeta redondeada de radio 36 con borde blanco al 12 %.
+- **Reducir movimiento:** sin rebote, flotación, paralaje ni titileo; solo fundidos.
+
+## Modo oscuro · V4.2 (noche azul, sin verde de fondo)
+
+| Token | Valor |
+| --- | --- |
+| Fondo | `#0B1622` |
+| Superficie 1 / 2 | `#13212E` / `#1B2B3A` |
+| Borde | blanco al 8 % |
+| Texto principal / secundario | `#F3F6F8` / `#A7B4C2` |
+| Acento principal (botón principal, BUDDY, "todo bien") | turquesa `#2BC4B4` con texto `#062A2A` (7:1) |
+| Medicamentos · salud mental · sueño · agua · actividad | coral `#FF9C8A` · lavanda `#A99DFF` · índigo `#8C93FF` · cielo `#7CC2FF` · menta `#5ED9B5` |
+| Alertas · éxito · peligro | ámbar `#F6D27A` · `#4AD395` · `#FF8585` |
+| Fondos de tarjeta de dominio | el color del dominio al 16 % sobre la superficie (`mintPale` `#1F3E44`, `coralPale` `#39353D`, …) |
+| Iconos blancos sobre menta | `mintStrong` `#1F9E91` (3,3:1), `mintDeep` `#178C6F` |
+| Degradados | carga: petróleo propio; presentaciones: tintes oscuros por pantalla; Bienvenido: `#132A4D` → `#15405C` → `#0F6B70` |
+
+El resto de botones usa superficie 2 con texto claro. Contraste verificado en `src/theme/__tests__/contrast.test.ts`.
 
 ## Componentes nuevos o ampliados
 

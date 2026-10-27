@@ -89,3 +89,60 @@ Las ilustraciones se usan **con su propio fondo**, fundidas en el degradado de c
 5. Ilustración de Familia (mundo con casas, personas y cinta).
 
 Comprobación sobre blanco, fondo de pantalla y `#0D3946`: `docs/diseno/comprobacion/`.
+
+## Paso 2 · Dónde quedó el robot
+
+Siempre la imagen real, dentro de un marco con degradado (nunca sobre blanco, nunca cortado):
+ícono de la app y splash nativo, portada de carga, presentación 1 (dentro de su ilustración), botón central de BUDDY,
+encabezado del chat y el ícono en Ajustes > Acerca de. Se eliminaron el robot vectorial (`vector.tsx`), el robot de las
+pantallas de cuenta (`auth-robot.tsx`) y la galería `/dev/robot`. En estados vacíos, registro, permisos, escáner,
+ubicación, Resumen sin datos y la pantalla del adulto mayor lo reemplaza un `IconTile` del dominio; las burbujas del chat
+usan un destello; el lanzador flotante (que ya no se monta) usa una campana.
+
+## Paso 3 · Las pantallas frente a la referencia (3 rondas)
+
+| Ronda | Qué se vio | Qué se corrigió |
+| --- | --- | --- |
+| 1 (`ronda1/todas-comparacion.png`) | Presentaciones y Bienvenido ya coinciden en estructura, color e ilustración. La carga mostraba "BUDDY" en letra serif: la portada se dibuja **antes** de que carguen las fuentes (también en el iPhone). | Letra del sistema en negrita en la carga; ícono a 188 (igual que el splash nativo, para un paso continuo). |
+| 2 (`ronda2/`, oscuro y letra máxima) | En oscuro las ilustraciones parecían recortes claros pegados sobre la noche. Con letra máxima, en Bienvenido "Soy administ-rador" se partía. | Oscuro: ilustración en tarjeta redondeada (radio 36). Letra muy grande: las opciones ocultan icono y check, y los textos tienen tope de escala. |
+| 3 (`ronda3/`) | Oscuro intencional; ninguna palabra partida; la ilustración se achica con letra grande y el texto se puede desplazar dentro de la presentación. | — |
+
+Comparaciones lado a lado: `docs/capturas/v4_2/ronda2/<pantalla>-comparacion.png` y `todas-comparacion.png`.
+
+Diferencias que quedan, a propósito:
+- El texto de "Siguiente" es blanco (lo pide la ronda); en la referencia es oscuro. Para que el blanco cumpla contraste
+  el turquesa es un poco más profundo (`#0C939B` → `#14A3A6`) y la etiqueta va a 20 px en negrita.
+- La carga muestra en letra pequeña la tarea real del arranque ("Cargando las letras"): BUDDY nunca falla en silencio.
+- Las ilustraciones se ven suaves: son las de la referencia, de ≈ 150 px.
+
+## Paso 4 · Engranaje flotante y personalización
+
+- El botón azul de engranaje es la herramienta de **Expo Go (SDK 58)**, no código de BUDDY: no se puede quitar desde la
+  app. Se oculta arrancando con `EXPO_NO_DEV_MENU=1 npx expo start …` (ver `docs/PRUEBAS_EN_DISPOSITIVO.md`); en una
+  compilación de tienda no existe.
+- Se quitó el botón de apariencia de Bienvenido. La personalización vive solo en Ajustes > Apariencia (tema automático,
+  claro, oscuro, alto contraste y tamaño de letra con vista previa) y, para el adulto mayor, en Opciones > Apariencia.
+- Nuevo: Ajustes > Acerca de > "Ver de nuevo la presentación".
+
+## Paso 5 · Modo oscuro (noche azul)
+
+Tokens en `docs/DESIGN_SYSTEM.md` (sección "Modo oscuro · V4.2"). Capturas de toda la app con
+`scripts/capture/v4-screens.mjs` (antes: `docs/capturas/v4/v4_2-antes/`, después: `docs/capturas/v4/v4_2-despues/`, sin
+subir al repositorio por tamaño) y comparación curada en `docs/capturas/v4_2/oscuro/antes-despues-1.png` y `-2.png`
+(fila de arriba antes, abajo después: Inicio, Novedades, Rutina, Medicamento, Chat, Ubicación, Salud, Ajustes,
+Apariencia, Vista de Elis, Adulto mayor, Opciones).
+
+- Antes: fondo petróleo verdoso (`#0A2630`), superficies verde azuladas y botón principal petróleo apagado.
+- Después: noche azul neutra (`#0B1622` / `#13212E` / `#1B2B3A`), texto `#F3F6F8` / `#A7B4C2`, turquesa `#2BC4B4` solo en
+  el botón principal, BUDDY y "todo bien" (texto `#062A2A`, 7:1).
+- Corrección tras revisar: al mezclar ámbar y coral al 16 % sobre la superficie azul las tarjetas de "Atención" y de
+  medicamentos se veían grises; se mezclan sobre un oscuro neutro para conservar el tono cálido (`#3B321C`, `#3F2A2A`).
+- El control automático no encontró fallas nuevas en oscuro; las que reporta (correo largo con letra 2,0, horas "08:00"
+  en Salud con alto contraste y letra 1,3) ya existían antes de esta ronda.
+
+## Paso 6 · Verificación
+
+- `npx tsc --noEmit`: sin errores. `npx expo lint`: sin avisos. `npx jest`: 51 suites, 874 pruebas, todas pasan
+  (las pruebas del robot vectorial se eliminaron con él; se agregó la del robot real).
+- `npx expo-doctor`: 20/20.
+- No se inició el servidor de desarrollo; las capturas usan la exportación web estática.
