@@ -1,4 +1,5 @@
 ---
+
 name: buddy-medical-safety
 description: Reglas de seguridad clínica, privacidad y trazabilidad para BUDDY. Usar SIEMPRE que se trabaje en funciones de medicamentos (registro, dosis, interacciones, advertencias), funciones de IA (extracción desde fotos de recetas/cajas, resúmenes, chat), monitoreo de salud o signos vitales, alertas al paciente o cuidador, manejo de datos de salud, consentimiento, claves/API o Supabase con datos sensibles, y antes de habilitar cualquier evaluación médica para usuarios reales.
 ---
