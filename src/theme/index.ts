@@ -77,8 +77,11 @@ export interface DomainStyle {
 
 /** Mosaico de icono (V4): fondo vivo del dominio y glifo con contraste ≥ 3:1 (prueba en theme/__tests__). */
 export interface Tile {
+  /** Parada final (la más oscura) del degradado: sirve de fondo sólido. */
   bg: string;
   fg: string;
+  /** V5: degradado vivo del dominio (el glifo blanco da ≥ 3:1 en ambas paradas; prueba en theme/__tests__). */
+  gradient: Gradient;
 }
 
 export type StatusKind = 'ok' | 'attention' | 'action' | 'none';
@@ -104,6 +107,9 @@ export interface Theme {
   tiles: Record<Domain | 'petrol' | 'slate', Tile>;
   status: Record<StatusKind, StatusStyle>;
   gradients: { primary: Gradient; coral: Gradient; welcome: Gradient; screen: Gradient; plus: Gradient };
+  /** V5: degradados luminosos por tono para acciones de dominio (Button variant="solid"); texto `onBright` ≥ 4,5:1. */
+  bright: Record<Tone, Gradient>;
+  onBright: string;
   /** Elevación V4.3: `soft` = nivel 1 (tarjetas), `elevated` = nivel 2 (flotantes), `sheet` = nivel 3 (hojas y modales). */
   shadow: { soft: ViewStyle; elevated: ViewStyle; hero: ViewStyle; sheet: ViewStyle; glow: Record<Tone, ViewStyle> };
   borderWidth: number;
@@ -115,9 +121,10 @@ export interface Theme {
 
 // V4.3: 60 % fondos neutros, 30 % superficies y texto, 10 % color de marca o de dominio. El color identifica el dato.
 const LIGHT: Palette = {
-  bg: '#F4F7F6',
+  // V5: fondo con tinte menta (menos blanco); las tarjetas siguen blancas para que el texto respire.
+  bg: '#EEF5F3',
   surface: '#FFFFFF',
-  surface2: '#EDF3F2',
+  surface2: '#E4EEEC',
   text: '#102A33',
   muted: '#5B6B73',
   tertiary: '#8A99A0',
@@ -247,74 +254,77 @@ function softTheme(name: 'light' | 'dark'): Theme {
     },
     domains: {
       water: {
-        gradient: p(['#E8F3FD', '#E8F3FD'], ['#22384B', '#22384B']),
+        gradient: p(['#E3F1FE', '#C9E4FD'], ['#1D3A54', '#16293D']),
         accent: p('#3D9BEF', '#7CC2FF'),
         text: p('#102A33', '#F3F6F8'),
-        muted: p('#2D71AE', '#B9DBFA'),
+        muted: p('#1F5C94', '#B9DBFA'),
         tone: 'sky',
       },
       medication: {
-        gradient: p(['#FDEDE9', '#FDEDE9'], ['#382B2D', '#382B2D']),
+        gradient: p(['#FFEDE8', '#FFD9CF'], ['#43302F', '#2E2328']),
         accent: p('#E8735F', '#FF9C8A'),
         text: p('#102A33', '#F3F6F8'),
-        muted: p('#A95445', '#FFC9BE'),
+        muted: p('#8E3F31', '#FFC9BE'),
         tone: 'coral',
       },
       mood: {
-        gradient: p(['#EFEDFE', '#EFEDFE'], ['#28324B', '#28324B']),
+        gradient: p(['#F1EEFF', '#DDD7FF'], ['#2E3358', '#22273F']),
         accent: p('#7B6CF0', '#A99DFF'),
         text: p('#102A33', '#F3F6F8'),
-        muted: p('#695CCC', '#D3CCFF'),
+        muted: p('#5446B8', '#D3CCFF'),
         tone: 'lavender',
       },
       sleep: {
-        gradient: p(['#ECEEFC', '#ECEEFC'], ['#24314B', '#24314B']),
+        gradient: p(['#EBEDFD', '#D5D9FB'], ['#272F58', '#1D2440']),
         accent: p('#5B63D6', '#8C93FF'),
         text: p('#102A33', '#F3F6F8'),
-        muted: p('#5860D0', '#C9CCFF'),
+        muted: p('#454CB8', '#C9CCFF'),
         tone: 'lavender',
       },
       activity: {
-        gradient: p(['#E5F7F1', '#E5F7F1'], ['#1E3B41', '#1E3B41']),
+        gradient: p(['#E2F8F0', '#C6F0E0'], ['#1B4443', '#152E33']),
         accent: p('#23A989', '#5ED9B5'),
         text: p('#102A33', '#F3F6F8'),
-        muted: p('#1A7D65', '#B4EEDC'),
+        muted: p('#146650', '#B4EEDC'),
         tone: 'mint',
       },
       food: {
-        gradient: p(['#FDF4DD', '#FDF4DD'], ['#37332B', '#37332B']),
+        gradient: p(['#FFF5DB', '#FFE7AE'], ['#423A24', '#2E2A20']),
         accent: p('#C98A12', '#F6D27A'),
         text: p('#102A33', '#F3F6F8'),
-        muted: p('#95660D', '#F2E2B0'),
+        muted: p('#75500A', '#F2E2B0'),
         tone: 'yellow',
       },
       contact: {
-        gradient: p(['#E3F5F3', '#E3F5F3'], ['#163841', '#163841']),
+        gradient: p(['#E0F6F3', '#C2ECE7'], ['#15434A', '#122E38']),
         accent: p('#1FA9A0', '#2BC4B4'),
         text: p('#102A33', '#F3F6F8'),
-        muted: p('#177B75', '#A8E6DE'),
+        muted: p('#126460', '#A8E6DE'),
         tone: 'mint',
       },
       followUp: {
-        gradient: p(['#FDF4DD', '#FDF4DD'], ['#37332B', '#37332B']),
+        gradient: p(['#FFF5DB', '#FFE7AE'], ['#423A24', '#2E2A20']),
         accent: p('#C98A12', '#F6D27A'),
         text: p('#102A33', '#F3F6F8'),
-        muted: p('#95660D', '#F2E2B0'),
+        muted: p('#75500A', '#F2E2B0'),
         tone: 'yellow',
       },
     },
-    tiles: {
-      water: { bg: p('#E8F3FD', '#22384B'), fg: p('#3990DE', '#7CC2FF') },
-      medication: { bg: p('#FDEDE9', '#382B2D'), fg: p('#D56A57', '#FF9C8A') },
-      mood: { bg: p('#EFEDFE', '#28324B'), fg: p('#7B6CF0', '#A99DFF') },
-      sleep: { bg: p('#ECEEFC', '#24314B'), fg: p('#5B63D6', '#8C93FF') },
-      activity: { bg: p('#E5F7F1', '#1E3B41'), fg: p('#219D7F', '#5ED9B5') },
-      food: { bg: p('#FDF4DD', '#37332B'), fg: p('#BD8211', '#F6D27A') },
-      contact: { bg: p('#E3F5F3', '#163841'), fg: p('#1D9B93', '#2BC4B4') },
-      followUp: { bg: p('#FDF4DD', '#37332B'), fg: p('#BD8211', '#F6D27A') },
-      petrol: { bg: p('#E6EEF0', '#1B2B3A'), fg: p('#174A59', '#F3F6F8') },
-      slate: { bg: p('#EDF3F2', '#1B2B3A'), fg: p('#5B6B73', '#A7B4C2') },
-    },
+    // V5: mosaicos vivos (degradado del dominio con glifo blanco), iguales en claro y oscuro: el color ES el dominio.
+    tiles: Object.fromEntries(
+      Object.entries({
+        water: ['#3792E6', '#2470D8'],
+        medication: ['#EE6A55', '#D9483A'],
+        mood: ['#8B7CF6', '#6A55E0'],
+        sleep: ['#6B73E8', '#4347C4'],
+        activity: ['#1FA385', '#0E8072'],
+        food: ['#C97D0A', '#A86404'],
+        contact: ['#1A9C94', '#0E7F86'],
+        followUp: ['#C97D0A', '#A86404'],
+        petrol: ['#236A78', '#174A59'],
+        slate: ['#7C8B97', '#5B6B73'],
+      } satisfies Record<Domain | 'petrol' | 'slate', [string, string]>).map(([k, g]) => [k, { bg: g[1], fg: '#FFFFFF', gradient: g }]),
+    ) as unknown as Theme['tiles'],
     status: {
       ok: { bg: p('#E6F5ED', '#1B3A3C'), border: p('#BFE6D0', '#255A4F'), accent: p('#2E9E64', '#4AD395'), text: p('#102A33', '#F3F6F8'), muted: p('#1F5E40', '#B7E9CF') },
       attention: { bg: p('#FDF4DD', '#3B321C'), border: p('#F1DDA6', '#6E5A27'), accent: p('#C98A12', '#F6D27A'), text: p('#102A33', '#FFF4D6'), muted: p('#6B4E0A', '#EEDCA8') },
@@ -326,9 +336,21 @@ function softTheme(name: 'light' | 'dark'): Theme {
       primary: p(['#12807F', '#0B5F73'], ['#3FD6C2', '#1FB5C8']),
       coral: [c.coralCta, c.coralCtaEnd],
       welcome: p(['#F6F9F8', '#E9F6F2'], ['#08121B', '#0D1B28']),
-      screen: p(['#F6F9F8', '#F4F7F6'], ['#0B1825', '#08121B']),
-      plus: p(['#0D3946', '#155E68', '#1FA9A0'], ['#0B2233', '#123D4A', '#1B8C86']),
+      screen: p(['#EEF7F4', '#F1F4FA'], ['#0B1825', '#08121B']),
+      // V5: Plus gana una parada índigo (premium) antes del turquesa.
+      plus: p(['#1F2A6B', '#16527A', '#1FA9A0'], ['#151B45', '#123D5A', '#1B8C86']),
     },
+    bright: {
+      mint: ['#7BE3C4', '#3CCBA0'],
+      coral: ['#FFB3A4', '#FF8571'],
+      lavender: ['#C2B8FF', '#9C8CF8'],
+      sky: ['#9AD0FF', '#5FB0F7'],
+      yellow: ['#FFDD85', '#F4BE3C'],
+      red: ['#FFB0B0', '#F27C7C'],
+      petrol: ['#7BE3C4', '#3CCBA0'],
+      slate: ['#DDE7E5', '#C6D3D0'],
+    },
+    onBright: '#102A33',
     shadow: {
       // Oscuro (V4.4): sombras negras reales; sobre #08121B dan la profundidad que antes faltaba.
       soft: dark ? { boxShadow: `${sh(1, 2, 0.3)}, ${sh(4, 14, 0.28)}` } : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(4, 12, 0.06)}` },
@@ -430,9 +452,11 @@ function hcTheme(name: 'hcLight' | 'hcDark'): Theme {
       contact: dom(blue, 'lavender'),
       followUp: dom(fg, 'yellow'),
     },
-    tiles: Object.fromEntries((['water', 'medication', 'mood', 'sleep', 'activity', 'food', 'contact', 'followUp', 'petrol', 'slate'] as const).map((k) => [k, { bg, fg }])) as Theme['tiles'],
+    tiles: Object.fromEntries((['water', 'medication', 'mood', 'sleep', 'activity', 'food', 'contact', 'followUp', 'petrol', 'slate'] as const).map((k) => [k, { bg, fg, gradient: flat(bg) }])) as Theme['tiles'],
     status: Object.fromEntries((['ok', 'attention', 'action', 'none'] as const).map((k) => [k, { bg, border: fg, accent: k === 'action' ? red : k === 'ok' ? green : fg, text: fg, muted: fg }])) as Theme['status'],
     gradients: { primary: flat(fg), coral: flat(fg), welcome: flat(bg), screen: flat(bg), plus: flat(bg) },
+    bright: Object.fromEntries((['mint', 'coral', 'lavender', 'sky', 'yellow', 'red', 'petrol', 'slate'] as const).map((k) => [k, flat(fg)])) as Theme['bright'],
+    onBright: bg,
     shadow: {
       soft: none,
       elevated: none,

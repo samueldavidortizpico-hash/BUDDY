@@ -55,6 +55,12 @@ describe.each(['light', 'dark'] as const)('V4 %s', (name) => {
   const t = themes[name];
   it.each(Object.entries(t.tiles))('mosaico %s ≥ 3:1', (_k, tile) => {
     expect(contrast(tile.fg, tile.bg)).toBeGreaterThanOrEqual(3);
+    // V5: el mosaico es un degradado; el glifo también debe leerse sobre la parada clara.
+    expect(contrast(tile.fg, tile.gradient[0])).toBeGreaterThanOrEqual(3);
+  });
+  // V5: botones de dominio (variant="solid"): texto ≥ 4,5:1 en las dos paradas del degradado luminoso.
+  it.each(Object.entries(t.bright))('botón de dominio %s: texto ≥ 4,5:1', (_k, g) => {
+    for (const stop of g) expect(contrast(t.onBright, stop)).toBeGreaterThanOrEqual(4.5);
   });
   it.each(Object.entries(t.status))('estado %s: texto ≥ 4,5:1', (_k, st) => {
     expect(contrast(st.text, st.bg)).toBeGreaterThanOrEqual(4.5);
