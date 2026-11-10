@@ -33,6 +33,8 @@ export type AuthErrorCode =
   | 'wrong_role'
   | 'revoked'
   | 'forbidden'
+  /** La cuenta se creó pero el servidor exige confirmar el correo: todavía no hay sesión. */
+  | 'confirm_email'
   | 'network'
   | 'unknown';
 
@@ -59,7 +61,11 @@ export interface AuthService {
   /** Envía (o explica por qué no puede enviar) el enlace de recuperación. Nunca revela si el correo existe. */
   resetPassword(email: string): Promise<{ sent: boolean; message: string }>;
   updatePassword(input: { current: string; next: string }): Promise<void>;
-  deleteAccount(password: string): Promise<void>;
+  /**
+   * Elimina la cuenta del administrador. `linked.elderIds`: sus personas, para eliminar también los accesos (adulto
+   * mayor y enfermera) que creó para ellas; ninguna credencial vinculada debe sobrevivir a su administrador.
+   */
+  deleteAccount(password: string, linked?: { elderIds: string[] }): Promise<void>;
   /**
    * Cuentas del adulto mayor creadas por su administrador. Local: en este teléfono. Supabase: exige una Edge Function con
    * la clave de servicio (docs/SUPABASE_PLAN.md); la app nunca crea usuarios para otra persona directamente.

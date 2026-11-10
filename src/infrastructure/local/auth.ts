@@ -199,6 +199,8 @@ export function createLocalAuthProvider(): AuthService {
       const acc = await verify(email, password);
       if (role && roleOf(acc) !== role) throw new AuthError('wrong_role', roleOf(acc) === 'elder' ? e.wrongRoleElder : roleOf(acc) === 'nurse' ? e.wrongRoleNurse : e.wrongRoleAdmin);
       if (acc.revoked) throw new AuthError('revoked', e.revoked);
+      // SEC-06 (defensa adicional): un acceso vinculado solo vale mientras exista la cuenta de su administrador.
+      if (isLinkedRole(roleOf(acc)) && !(await ownerExists(acc.ownerId))) throw new AuthError('revoked', e.revoked);
       await setSession(acc);
       return publicUser(acc);
     },
@@ -230,11 +232,25 @@ export function createLocalAuthProvider(): AuthService {
       await writeAccount({ ...acc, salt, hash: await hashSecret(next, salt), iterations: ITERATIONS });
     },
 
-    async deleteAccount(password) {
+    async deleteAccount(password, linked) {
       const session = await this.getSession();
       if (!session) throw new AuthError('invalid_credentials', e.invalid);
+      // Una cuenta vinculada no se elimina a sí misma: la revoca o la borra su administrador.
+      if (roleOf(session) !== 'caregiver') throw new AuthError('forbidden', e.forbidden);
       await verify(session.email, password);
+      // SEC-06: primero los accesos que creó (adulto mayor y enfermera de cada persona). Si algo falla a mitad, la
+      // cuenta del administrador sigue existiendo y se puede reintentar; nunca queda un acceso huérfano válido.
+      for (const elderId of linked?.elderIds ?? []) {
+        for (const role of ['elder', 'nurse'] as const) {
+          const email = await secureStorage.get(managedKey(elderId, role));
+          if (!email) continue;
+          const acc = await readAccount(email);
+          if (acc && acc.ownerId === session.id) await secureStorage.remove(await accountKey(acc.email));
+          await secureStorage.remove(managedKey(elderId, role));
+        }
+      }
       await secureStorage.remove(await accountKey(session.email));
+      await secureStorage.remove(ownerKey(session.id));
       const index = JSON.parse((await secureStorage.get(INDEX_KEY)) ?? '[]') as string[];
       await secureStorage.set(INDEX_KEY, JSON.stringify(index.filter((id) => id !== session.id)));
       await setSession(null);
@@ -278,6 +294,14 @@ export function createLocalAuthProvider(): AuthService {
       return acc && acc.ownerId === ownerId ? { email: acc.email, revoked: !!acc.revoked } : null;
     },
   };
+
+  /** ¿Sigue existiendo en este teléfono la cuenta del administrador que creó un acceso vinculado? */
+  async function ownerExists(ownerId: string | null | undefined): Promise<boolean> {
+    if (!ownerId) return false;
+    const email = await secureStorage.get(ownerKey(ownerId));
+    const owner = email ? await readAccount(email) : null;
+    return !!owner && owner.id === ownerId && roleOf(owner) === 'caregiver';
+  }
 
   /** Solo el administrador con sesión iniciada gestiona las cuentas de sus personas. */
   async function requireOwner(ownerId: string) {

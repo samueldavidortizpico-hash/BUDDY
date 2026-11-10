@@ -145,6 +145,7 @@ export const esCO = {
       locked: (s: number) => `Demasiados intentos. Espera ${s > 90 ? `${Math.ceil(s / 60)} min` : `${s} s`} y vuelve a intentarlo.`,
       unknown: 'No pudimos completar la acción. Inténtalo de nuevo.',
       notConfigured: 'El servidor de cuentas aún no está configurado.',
+      confirmEmail: 'Creamos tu cuenta. Revisa tu correo y toca el enlace para confirmarla; después inicia sesión.',
       required: 'Este dato es obligatorio.',
       wrongRoleElder: 'Esta cuenta es de un adulto mayor. Vuelve y elige "Soy adulto mayor".',
       wrongRoleAdmin: 'Esta cuenta es de un administrador. Vuelve y elige "Soy administrador".',

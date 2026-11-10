@@ -13,17 +13,28 @@ import { getSupabase, supabaseConfigured } from './client';
 
 const e = strings.auth.errors;
 
-type SbUser = { id: string; email?: string; created_at: string; user_metadata?: { name?: string; role?: 'caregiver' | 'elder'; owner_id?: string; elder_id?: string } };
+type Link = { role?: 'caregiver' | 'elder' | 'nurse'; owner_id?: string; elder_id?: string };
+type SbUser = { id: string; email?: string; created_at: string; user_metadata?: { name?: string }; app_metadata?: Link };
 
-const toUser = (u: SbUser): AuthUser => ({
-  id: u.id,
-  email: u.email ?? '',
-  name: u.user_metadata?.name ?? '',
-  createdAt: u.created_at,
-  role: u.user_metadata?.role ?? 'caregiver',
-  ownerId: u.user_metadata?.owner_id ?? null,
-  elderId: u.user_metadata?.elder_id ?? null,
-});
+/**
+ * SEC-10: el rol y el vínculo (administrador y persona) salen de `app_metadata`, que solo escribe el servidor (la Edge
+ * Function `manage-elder-account` con la clave de servicio). `user_metadata` lo puede editar el propio usuario desde el
+ * cliente, así que de ahí solo se lee el nombre: nunca decide a qué cuenta o persona se accede. Sin vínculo del
+ * servidor, la cuenta es un administrador de sus propios datos. RLS debe repetir esta regla (docs/SUPABASE_PLAN.md).
+ */
+export const toUser = (u: SbUser): AuthUser => {
+  const link = u.app_metadata ?? {};
+  const linked = (link.role === 'elder' || link.role === 'nurse') && !!link.owner_id && !!link.elder_id;
+  return {
+    id: u.id,
+    email: u.email ?? '',
+    name: u.user_metadata?.name ?? '',
+    createdAt: u.created_at,
+    role: linked ? link.role : 'caregiver',
+    ownerId: linked ? link.owner_id! : null,
+    elderId: linked ? link.elder_id! : null,
+  };
+};
 
 function guard() {
   if (!supabaseConfigured) throw new AuthError('not_configured', e.notConfigured);
@@ -48,6 +59,9 @@ export function createSupabaseAuthProvider(): AuthService {
       if (!isAcceptablePassword(password)) throw new AuthError('weak_password', e.weak);
       const { data, error } = await guard().auth.signUp({ email: normalizeEmail(email), password, options: { data: { name: name.trim() } } });
       if (error || !data.user) mapError(error);
+      // FUN-04: si el proyecto exige confirmar el correo, hay usuario pero NO sesión. No se entra a la app: quien
+      // llama muestra "revisa tu correo" en vez de una sesión que el servidor rechazaría en cada operación.
+      if (!data.session) throw new AuthError('confirm_email', e.confirmEmail);
       return toUser(data.user as SbUser);
     },
 
@@ -58,7 +72,7 @@ export function createSupabaseAuthProvider(): AuthService {
       const user = toUser(data.user as SbUser);
       if (role && roleOf(user) !== role) {
         await sb.auth.signOut();
-        throw new AuthError('wrong_role', roleOf(user) === 'elder' ? e.wrongRoleElder : e.wrongRoleAdmin);
+        throw new AuthError('wrong_role', roleOf(user) === 'elder' ? e.wrongRoleElder : roleOf(user) === 'nurse' ? e.wrongRoleNurse : e.wrongRoleAdmin);
       }
       return user;
     },

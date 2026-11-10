@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { FEATURES } from '@/config/features';
 import { PLAN_ORDER, type Feature, type PlanId } from '@/config/plans';
 import { EntitlementService, featureAvailable } from '@/domain/entitlements';
 import { db, useDb } from '@/infrastructure/local/db';
@@ -12,6 +13,8 @@ const PLAN_KEY = 'buddyPlan';
 const SINCE_KEY = 'buddyPlanSince';
 
 function testPlanOf(drafts: Record<string, unknown> | undefined): PlanId | undefined {
+  // SEC-05: fuera de desarrollo el plan de prueba no existe, aunque el borrador siga guardado.
+  if (!FEATURES.devTools) return undefined;
   const p = drafts?.[PLAN_KEY];
   if (typeof p === 'string' && (PLAN_ORDER as string[]).includes(p)) return p as PlanId;
   // Compatibilidad con el interruptor anterior "BUDDY Plus de prueba".
@@ -57,6 +60,7 @@ export function useRenewalDate(): Date | null {
 export const planActions = {
   /** Plan de prueba en este teléfono: no compra ni cobra. */
   setTestPlan(plan: PlanId, owner = currentUserId()) {
+    if (!FEATURES.devTools) return;
     db.setDraft(owner, PLAN_KEY, plan);
     db.setDraft(owner, SINCE_KEY, plan === 'free' ? null : new Date().toISOString());
     db.setDraft(owner, 'buddyPlusTest', null);

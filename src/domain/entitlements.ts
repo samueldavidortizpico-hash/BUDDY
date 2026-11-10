@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 
+import { FEATURES } from '@/config/features';
 import { ENTITLEMENT_IDS, FEATURE_PLAN, PLAN_ORDER, PRODUCT_IDS, type BillingPeriod, type Feature, type PaidPlanId, type PlanId } from '@/config/plans';
 
 export type { Feature, PlanId } from '@/config/plans';
@@ -27,15 +28,24 @@ export function highestPlan(plans: PlanId[]): PlanId {
 }
 
 let configuredPublicKey: string | null = null;
+let configuredUser: string | null = null;
 
-async function getConfiguredPurchases() {
+/**
+ * `userId`: la cuenta de BUDDY dueña del plan. Las compras quedan asociadas a ella (SEC-05): en un teléfono con varias
+ * cuentas, una no hereda la suscripción de otra. SIN PROBAR contra las tiendas (docs/PAGOS.md).
+ */
+async function getConfiguredPurchases(userId?: string) {
   const key = Platform.OS === 'ios' ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY : Platform.OS === 'android' ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY : undefined;
   if (!key) return null;
   const { default: Purchases, LOG_LEVEL } = await import('react-native-purchases');
   if (configuredPublicKey !== key) {
     Purchases.setLogLevel(LOG_LEVEL.WARN);
-    Purchases.configure({ apiKey: key });
+    Purchases.configure(userId ? { apiKey: key, appUserID: userId } : { apiKey: key });
     configuredPublicKey = key;
+    configuredUser = userId ?? null;
+  } else if (userId && configuredUser !== userId) {
+    await Purchases.logIn(userId);
+    configuredUser = userId;
   }
   return Purchases;
 }
@@ -64,8 +74,8 @@ const planFromInfo = (info: CustomerInfo): PlanId =>
  * compras reales exigen un build instalable y productos creados en las tiendas (docs/PAGOS.md). Sin claves: gratis.
  */
 export const revenueCatProvider: EntitlementProvider = {
-  async getPlan() {
-    const Purchases = await getConfiguredPurchases();
+  async getPlan(userId) {
+    const Purchases = await getConfiguredPurchases(userId || undefined);
     if (!Purchases) return 'free';
     return planFromInfo(await Purchases.getCustomerInfo());
   },
@@ -89,10 +99,14 @@ export const revenueCatProvider: EntitlementProvider = {
   },
 };
 
-/** Fachada: el plan de prueba local (solo desarrollo) manda sobre la tienda. */
+/**
+ * Fachada. El plan de prueba local manda sobre la tienda SOLO donde existen las herramientas de desarrollo
+ * (`FEATURES.devTools`: desarrollo o exportación de capturas). En una compilación de tienda el borrador se ignora
+ * aunque siga guardado o alguien lo escriba en el almacenamiento: el plan lo decide la compra (SEC-05).
+ */
 export const EntitlementService = {
-  async getPlan(userId: string, localOverride?: PlanId): Promise<PlanId> {
-    if (localOverride !== undefined) return localOverride;
+  async getPlan(userId: string, localOverride?: PlanId, allowOverride: boolean = FEATURES.devTools): Promise<PlanId> {
+    if (allowOverride && localOverride !== undefined) return localOverride;
     return revenueCatProvider.getPlan(userId);
   },
   canUse: featureAvailable,
