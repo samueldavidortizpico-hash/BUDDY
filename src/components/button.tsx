@@ -21,7 +21,7 @@ import { AppText } from './app-text';
 import { Icon, type IconName } from './icon';
 import { PressableScale } from './pressable-scale';
 
-export type ButtonVariant = 'mint' | 'primary' | 'coral' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'tonal' | 'white' | 'text';
+export type ButtonVariant = 'mint' | 'primary' | 'solid' | 'coral' | 'secondary' | 'outline' | 'danger' | 'ghost' | 'tonal' | 'white' | 'text';
 
 interface VariantStyle {
   gradient?: readonly [string, string, ...string[]];
@@ -40,6 +40,8 @@ function glow(t: Theme, rgb: string): ViewStyle | undefined {
   return { boxShadow: `0px 2px 4px rgba(${rgb}, ${t.dark ? 0.2 : 0.18}), 0px 10px 24px rgba(${rgb}, ${t.dark ? 0.28 : 0.32})` };
 }
 
+const GLOW: Record<Tone, string> = { mint: '60, 203, 160', coral: '255, 133, 113', lavender: '156, 140, 248', sky: '95, 176, 247', yellow: '244, 190, 60', red: '242, 124, 124', petrol: '60, 203, 160', slate: '100, 116, 139' };
+
 function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyle {
   const hcBorder = { border: t.c.text, borderWidth: 2 };
   const brand = t.dark ? t.c.accent : t.c.primary;
@@ -49,6 +51,10 @@ function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyl
       // V4.4: una sola acción de marca. Claro: turquesa → petróleo con blanco (4,75 y 6,8:1). Oscuro: turquesa → cian
       // con texto petróleo casi negro (≥ 6:1). 'mint' queda como alias para no tocar cada pantalla.
       return { gradient: t.gradients.primary, text: t.c.onPrimary, shadow: glow(t, t.dark ? '43, 196, 180' : '11, 95, 115'), dim: 0.08, ...(t.hc ? hcBorder : {}) };
+    case 'solid':
+      // V5: acción llena con el color luminoso de su dominio (agua azul, medicamentos coral, sueño lavanda…) y texto
+      // petróleo ≥ 4,5:1. Para que no todos los botones sean del mismo turquesa.
+      return { gradient: t.bright[tone], text: t.onBright, shadow: glow(t, GLOW[tone]), dim: 0.06, ...(t.hc ? hcBorder : {}) };
     case 'coral':
       return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: glow(t, '255, 119, 107'), dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'secondary':

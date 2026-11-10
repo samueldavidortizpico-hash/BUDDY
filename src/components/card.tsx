@@ -53,6 +53,8 @@ export function Card({
     padding,
     backgroundColor: variant === 'status' ? t.status[status].bg : variant === 'tint' ? t.tones[tone].bg : variant === 'white' ? t.c.surface : t.hc ? t.c.bg : 'transparent',
     ...(variant === 'status' ? { borderWidth: t.borderWidth, borderColor: t.status[status].border } : null),
+    // V5: la tarjeta de dominio lleva un borde de su propio color (más definición sobre el fondo con tinte).
+    ...(variant === 'gradient' && domain && !t.hc ? { borderWidth: 1, borderColor: t.tones[t.domains[domain].tone].soft } : null),
   };
   const body = (
     <>
