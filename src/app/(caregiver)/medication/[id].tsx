@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Card } from '@/components/card';
+import { ProgressBar } from '@/components/charts';
 import { BottomSheet, ConfirmDialog, useToast } from '@/components/feedback';
 import { Field, Stepper } from '@/components/forms';
 import { Icon, type IconName } from '@/components/icon';
@@ -66,6 +67,12 @@ export default function MedicationDetail() {
   const schedule = med.schedule.kind === 'times' ? scheduleTimes(med.schedule).map(formatClock).join(' · ') : `Cada ${med.schedule.everyHours} h desde ${formatClock(med.schedule.from)}`;
   const runOut = est.runOutDate ? parseISODate(est.runOutDate) : null;
   const low = est.level === 'low' || est.level === 'out';
+  const dom = t.domains.medication;
+  // Solo presentación: las mismas tomas del historial, agrupadas por día para leerlas de un vistazo.
+  const historyDays = [...new Set(history.map((h) => h.date))];
+  const takenCount = history.filter((h) => h.status === 'taken').length;
+  // Barra de existencias: lo que queda frente a un empaque (tope 100 %). Sin tamaño de empaque no hay barra.
+  const stockRatio = med.unitsPerPackage && med.unitsOnHand != null ? Math.min(1, med.unitsOnHand / med.unitsPerPackage) : null;
 
   return (
     <ScreenContainer
@@ -79,15 +86,16 @@ export default function MedicationDetail() {
     >
       <View style={s.stack}>
         {/* Datos: concentración, dosis, horas, días e instrucciones. */}
-        <Card style={s.block}>
+        {/* V5: la ficha vive en el coral de medicamentos; etiquetas e iconos toman el tono del dominio. */}
+        <Card variant="gradient" domain="medication" style={s.block}>
           {med.photoUri ? <Image source={{ uri: med.photoUri }} style={s.photo} contentFit="cover" accessibilityLabel={M.photo} /> : null}
           <View style={s.dataHead}>
             {big ? null : <IconTile icon="meds" domain="medication" size={56} />}
             {/* El nombre es el héroe aquí y no en el encabezado, donde se partía junto a "Editar". */}
             <View style={s.flex}>
-              <AppText variant="h2">{med.name}</AppText>
-              <AppText variant="secondaryStrong" color={med.paused ? t.status.attention.text : t.c.muted}>{`${med.paused ? M.paused : M.forms[med.form]} · ${doseText(med)}`}</AppText>
-              {med.strength ? <AppText variant="secondary" color={t.c.muted}>{`${M.strength}: ${med.strength}`}</AppText> : null}
+              <AppText variant="h2" color={dom.text}>{med.name}</AppText>
+              <AppText variant="secondaryStrong" color={med.paused ? t.status.attention.text : dom.muted}>{`${med.paused ? M.paused : M.forms[med.form]} · ${doseText(med)}`}</AppText>
+              {med.strength ? <AppText variant="secondary" color={dom.muted}>{`${M.strength}: ${med.strength}`}</AppText> : null}
             </View>
           </View>
           <Fact icon="clock" label={M.schedule} value={schedule} />
@@ -135,6 +143,7 @@ export default function MedicationDetail() {
           ) : (
             <>
               <AppText variant="heroL" style={s.tabular}>{`${String(med.unitsOnHand).replace('.', ',')} ${stockUnit(med, med.unitsOnHand ?? 0)}`}</AppText>
+              {stockRatio !== null ? <ProgressBar ratio={stockRatio} color={low ? t.status.attention.accent : t.c.success} height={10} label={`${M.stock}: ${Math.round(stockRatio * 100)} %`} /> : null}
               <AppText variant={low ? 'secondaryStrong' : 'secondary'} color={low ? t.status.attention.text : t.c.muted}>
                 {est.level === 'out' ? M.outOfStock : est.daysLeft !== null && runOut ? M.estimate(est.daysLeft, `${runOut.getDate()}/${runOut.getMonth() + 1}`) : ''}
               </AppText>
@@ -155,20 +164,31 @@ export default function MedicationDetail() {
 
         {history.length ? (
           <Card style={s.block}>
-            <AppText variant="h3">{M.history}</AppText>
-            {history.map((h) => {
-              const icon: IconName = h.status === 'taken' ? 'check' : h.status === 'skipped' ? 'close' : 'clock';
-              const color = h.status === 'taken' ? t.c.success : h.status === 'skipped' ? t.c.danger : t.c.muted;
-              return (
-                <View key={h.id} style={s.doseRow} accessible accessibilityLabel={`${formatRelativeDay(h.date, today)}, ${formatClock(h.time)}: ${M.statuses[h.status]}`}>
-                  <View style={[s.histIcon, { borderColor: color }]}>
-                    <Icon name={icon} color={color} size={18} strokeWidth={2.6} />
-                  </View>
-                  <AppText variant="secondary" style={s.flex}>{`${formatRelativeDay(h.date, today)} · ${formatClock(h.time)}`}</AppText>
-                  <AppText variant="captionStrong" color={color}>{M.statuses[h.status]}</AppText>
+            {/* V5: resumen arriba y un bloque por día; cada toma es una pastilla con icono, hora y palabra (nunca solo color). */}
+            <View style={s.histHead}>
+              <AppText variant="h3" style={s.flex}>{M.history}</AppText>
+              <View style={[s.chip, s.histSummary, { backgroundColor: t.status.ok.bg, borderColor: t.status.ok.border }]}>
+                <AppText variant="captionStrong" color={t.status.ok.text} style={s.tabular}>{M.historySummary(takenCount, history.length)}</AppText>
+              </View>
+            </View>
+            {historyDays.map((day) => (
+              <View key={day} style={s.histDay}>
+                <AppText variant="captionStrong" color={t.c.muted}>{formatRelativeDay(day, today)}</AppText>
+                <View style={s.histPills}>
+                  {history.filter((h) => h.date === day).map((h) => {
+                    const icon: IconName = h.status === 'taken' ? 'check' : h.status === 'skipped' ? 'close' : 'clock';
+                    const look = h.status === 'taken' ? t.status.ok : h.status === 'skipped' ? t.status.action : t.status.none;
+                    return (
+                      <View key={h.id} style={[s.histPill, { backgroundColor: look.bg, borderColor: look.border }]} accessible accessibilityLabel={`${formatRelativeDay(h.date, today)}, ${formatClock(h.time)}: ${M.statuses[h.status]}`}>
+                        <Icon name={icon} color={look.accent} size={16} strokeWidth={2.8} />
+                        <AppText variant="captionStrong" color={look.text} style={s.tabular}>{formatClock(h.time)}</AppText>
+                        <AppText variant="caption" color={look.muted}>{M.statuses[h.status]}</AppText>
+                      </View>
+                    );
+                  })}
                 </View>
-              );
-            })}
+              </View>
+            ))}
           </Card>
         ) : null}
 
@@ -228,11 +248,11 @@ function Fact({ icon, label, value }: { icon: IconName; label: string; value: st
   const t = useTheme();
   const s = useStyles();
   return (
-    <View style={s.fact} accessible accessibilityLabel={`${label}: ${value}`}>
-      <Icon name={icon} color={t.c.muted} size={20} />
+    <View style={[s.fact, t.hc ? null : { borderTopColor: t.tones.coral.soft }]} accessible accessibilityLabel={`${label}: ${value}`}>
+      <Icon name={icon} color={t.domains.medication.muted} size={20} />
       <View style={s.flex}>
-        <AppText variant="caption" color={t.c.muted}>{label}</AppText>
-        <AppText variant="secondaryStrong">{value}</AppText>
+        <AppText variant="caption" color={t.domains.medication.muted}>{label}</AppText>
+        <AppText variant="secondaryStrong" color={t.domains.medication.text}>{value}</AppText>
       </View>
     </View>
   );
@@ -263,7 +283,10 @@ const useStyles = makeStyles((t) =>
     divider: { paddingTop: spacing.sm, borderTopWidth: t.borderWidth, borderTopColor: t.c.border },
     r8: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md },
     chip: { alignSelf: 'flex-start', minHeight: 28, justifyContent: 'center', paddingHorizontal: spacing.sm, borderRadius: radius.pill, borderWidth: 1, marginTop: 2 },
-    doseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 48 },
-    histIcon: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+    histHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
+    histSummary: { marginTop: 0 },
+    histDay: { gap: spacing.xs, paddingTop: spacing.sm, borderTopWidth: t.borderWidth, borderTopColor: t.c.border },
+    histPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    histPill: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 36, paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, borderRadius: radius.pill, borderWidth: 1 },
   }),
 );

@@ -519,7 +519,8 @@ const useStyles = makeStyles((t) =>
       bottom: 4,
       left: 4,
       borderRadius: radius.pill,
-      backgroundColor: t.hc ? t.c.text : t.c.surface,
+      // En oscuro la superficie es MÁS oscura que el riel y la opción elegida casi no se distinguía: sube un nivel.
+      backgroundColor: t.hc ? t.c.text : t.dark ? t.tones.slate.soft : t.c.surface,
       ...t.shadow.soft,
     },
     scrollSegment: { gap: spacing.xs, padding: 4, borderRadius: radius.pill, backgroundColor: t.c.surface2 },

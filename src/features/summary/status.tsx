@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo } from 'react';
 import { Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, { ZoomIn, useReducedMotion } from 'react-native-reanimated';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
@@ -72,12 +73,14 @@ export function StatusHero({ elder, phone }: { elder: Elder; phone?: string }) {
   const look = LOOK[st.level];
   const kind: StatusKind = st.help ? 'action' : look.kind;
   const tone = t.status[kind];
+  const reduce = useReducedMotion();
   return (
     <Card variant="status" status={kind} style={s.hero}>
       <View accessible accessibilityRole="summary" accessibilityLabel={`${S.levels[st.level]}. ${st.reason}`} accessibilityLiveRegion="polite" style={s.heroBody}>
-        <View style={[s.heroIcon, { backgroundColor: t.hc ? t.c.bg : tone.accent }, t.hc && t.hairline]}>
+        {/* V5: al cambiar de estado el icono vuelve a entrar con un resorte corto: el hijo nota que algo cambió. */}
+        <Animated.View key={kind} entering={reduce ? undefined : ZoomIn.springify().damping(13)} style={[s.heroIcon, { backgroundColor: t.hc ? t.c.bg : tone.accent }, t.hc && t.hairline]}>
           <Icon name={st.help ? 'shield' : look.icon} color={t.hc ? t.c.text : t.dark ? t.c.bg : '#FFFFFF'} size={30} strokeWidth={2.4} />
-        </View>
+        </Animated.View>
         <AppText variant="display" color={tone.text} maxScale={1.4}>
           {S.levels[st.level]}
         </AppText>

@@ -528,6 +528,7 @@ export const esCO = {
     held: 'Retenida: confirma antes',
     schedule: 'Horas',
     history: 'Últimas tomas',
+    historySummary: (taken: number, total: number) => `${taken} de ${total} tomadas`,
   },
   scan: {
     title: 'Escanear envase',
