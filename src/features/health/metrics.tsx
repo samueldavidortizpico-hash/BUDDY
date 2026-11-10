@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '@/components/app-text';
-import { Bars, Face } from '@/components/charts';
+import { Bars, Face, ProgressBar } from '@/components/charts';
 import { activitySummary, adherence, answersBy, mealsSummary, moodTrend, periodDays, waterByDay, type Period } from '@/domain/health';
 import type { Answer3 } from '@/domain/types';
 import { strings } from '@/i18n';
@@ -68,6 +68,8 @@ export type HealthData = ReturnType<typeof useHealth>;
 export function MetricBody({ metric, data, big = false }: { metric: MetricKey; data: HealthData; big?: boolean }) {
   const t = useTheme();
   const d = t.domains[METRICS.find((m) => m.key === metric)!.domain];
+  // Riel translúcido: sobre la tarjeta de color el gris neutro se veía sucio y el tinte del dominio no se distinguía.
+  const track = t.hc ? undefined : t.dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.72)';
   const num = (n: string | number, sub: string) => (
     <View>
       <AppText variant={big ? 'heroXL' : 'heroL'} color={d.text}>
@@ -91,9 +93,7 @@ export function MetricBody({ metric, data, big = false }: { metric: MetricKey; d
       return (
         <View style={styles.gap}>
           {num(`${a.taken} de ${a.total}`, `${H.taken} · ${pct} %`)}
-          <View style={[styles.track, { backgroundColor: t.c.surface2 }]} accessible accessibilityLabel={`${pct} %`}>
-            <View style={[styles.fill, { width: `${pct}%`, backgroundColor: t.hc ? t.c.text : d.accent }]} />
-          </View>
+          <ProgressBar ratio={pct / 100} color={d.accent} track={track} label={`${pct} %`} />
           <AppText variant="caption" color={d.muted}>{`${a.snoozed} ${H.snoozed} · ${a.skipped} ${H.skipped} · ${a.unconfirmed} ${H.unconfirmed}`}</AppText>
         </View>
       );
@@ -104,7 +104,7 @@ export function MetricBody({ metric, data, big = false }: { metric: MetricKey; d
       return (
         <View style={styles.gap}>
           {num(data.days.length === 1 ? total : (total / data.days.length).toFixed(1).replace('.', ','), data.days.length === 1 ? `de ${data.waterGoal || '—'} vasos` : 'vasos por día en promedio')}
-          {data.days.length > 1 ? <Bars values={data.water} max={Math.max(data.waterGoal, ...data.water)} color={d.accent} labels={data.days.length <= 7 ? data.days.map(dayInitial) : undefined} height={big ? 120 : 64} /> : null}
+          {data.days.length > 1 ? <Bars values={data.water} max={Math.max(data.waterGoal, ...data.water)} color={d.accent} labels={data.days.length <= 7 ? data.days.map(dayInitial) : undefined} labelColor={d.muted} track={track} height={big ? 120 : 64} /> : null}
         </View>
       );
     }
@@ -129,7 +129,7 @@ export function MetricBody({ metric, data, big = false }: { metric: MetricKey; d
             <AppText variant="secondary" color={d.muted}>{H.noData}</AppText>
           )}
           {/* Barras de los últimos 7 días (se animan al aparecer). Sin respuesta, la barra queda vacía. */}
-          <Bars values={week} max={3} color={d.accent} labels={data.week.map(dayInitial)} labelColor={d.muted} height={big ? 96 : 48} />
+          <Bars values={week} max={3} color={d.accent} labels={data.week.map(dayInitial)} labelColor={d.muted} track={track} height={big ? 96 : 48} />
           {metric === 'mood' && data.trend ? <AppText variant="caption" color={d.muted}>{H.trend[data.trend]}</AppText> : null}
         </View>
       );
@@ -159,6 +159,4 @@ const styles = StyleSheet.create({
   gap: { gap: spacing.sm },
   faceBox: { flexShrink: 0 },
   textCol: { flex: 1, minWidth: 0 },
-  track: { height: 12, borderRadius: 6, overflow: 'hidden' },
-  fill: { height: 12, borderRadius: 6 },
 });

@@ -111,7 +111,7 @@ export default function MedicationDetail() {
                 <Row
                   key={it.dose.id}
                   style={i > 0 ? s.divider : undefined}
-                  action={it.status !== 'taken' && it.status !== 'skipped' ? <Button label={M.markTaken} size="sm" variant="tonal" tone="mint" icon="check" onPress={() => doseActions.confirm(it.dose.id, 'caregiver')} /> : null}
+                  action={it.status !== 'taken' && it.status !== 'skipped' ? <Button label={M.markTaken} size="sm" variant="solid" tone="mint" icon="check" onPress={() => doseActions.confirm(it.dose.id, 'caregiver')} /> : null}
                 >
                   <AppText variant="bodyStrong" style={s.tabular}>{formatClock(effectiveTime(it.dose))}</AppText>
                   <StatusChip status={it.dose.safetyHold && it.status !== 'taken' && it.status !== 'skipped' ? 'held' : it.status} />
@@ -141,7 +141,7 @@ export default function MedicationDetail() {
             </>
           )}
           <View style={s.stackTight}>
-            <Button label={M.purchase} icon="plus" variant="tonal" tone="yellow" onPress={() => setBuy(true)} />
+            <Button label={M.purchase} icon="plus" variant="solid" tone="yellow" onPress={() => setBuy(true)} />
             <Button label={M.correct} icon="pencil" variant="text" onPress={() => { setFixValue(med.unitsOnHand != null ? String(med.unitsOnHand) : ''); setFix(true); }} />
           </View>
         </Card>

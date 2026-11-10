@@ -202,8 +202,11 @@ function PlanCard({ id, period, selected, current, onSelect }: { id: PaidPlanId;
   }, [selected, reduce, lift]);
   const lifted = useAnimatedStyle(() => ({ transform: [{ scale: 1 + 0.015 * lift.value }, { translateY: -4 * lift.value }] }));
   const tile = t.tiles[plan.domain];
+  const dom = t.domains[plan.domain];
   const body = (
     <View style={[s.card, selected && s.cardOn, recommended && s.cardRecommended]}>
+      {/* V5: cada plan se reconoce por su color: una franja con su tinte que se funde con la tarjeta. */}
+      {t.hc ? null : <LinearGradient pointerEvents="none" colors={[dom.gradient[1], t.c.surface]} style={s.cardBand} />}
       {recommended && !t.hc ? <Shine /> : null}
       <View style={s.cardHead}>
         <IconTile icon={plan.icon} domain={plan.domain} size={44} />
@@ -234,7 +237,7 @@ function PlanCard({ id, period, selected, current, onSelect }: { id: PaidPlanId;
           </AppText>
         ) : (
           <>
-            <CountUp value={price} format={formatCOP} variant="heroL" />
+            <CountUp value={price} format={formatCOP} variant="heroL" color={t.hc ? undefined : dom.muted} />
             <AppText variant="secondaryStrong" color={t.c.muted}>
               {period === 'monthly' ? P.perMonth : P.perYear}
             </AppText>
@@ -253,7 +256,7 @@ function PlanCard({ id, period, selected, current, onSelect }: { id: PaidPlanId;
           </View>
         ))}
       </View>
-      <Button label={selected ? P.chosen(plan.name) : P.choosePlan(plan.name)} icon={selected ? 'check' : undefined} variant={selected ? 'primary' : 'secondary'} onPress={onSelect} />
+      <Button label={selected ? P.chosen(plan.name) : P.choosePlan(plan.name)} icon={selected ? 'check' : undefined} variant={selected ? 'solid' : 'tonal'} tone={dom.tone} onPress={onSelect} />
     </View>
   );
   return (
@@ -363,6 +366,7 @@ const useStyles = makeStyles((t) =>
     cardPress: { borderRadius: radius.cardLg, overflow: 'hidden' },
     ring: { padding: 2, borderRadius: radius.cardLg },
     card: { gap: spacing.md, padding: spacing.lg, borderRadius: radius.cardLg, backgroundColor: t.c.surface, borderWidth: 1, borderColor: t.hc ? t.c.text : t.c.border, overflow: 'hidden' },
+    cardBand: { position: 'absolute', top: 0, left: 0, right: 0, height: 120 },
     cardRecommended: { borderWidth: 0, borderRadius: radius.cardLg - 2 },
     cardOn: { borderColor: t.hc ? t.c.text : t.c.accent, borderWidth: 2 },
     cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

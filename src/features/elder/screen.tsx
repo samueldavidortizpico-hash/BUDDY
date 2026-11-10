@@ -454,7 +454,7 @@ function ItemView({
           <AppText variant="heroL" color={d.text} style={s.tabular}>
             {E.waterProgress(item.glasses, item.goal)}
           </AppText>
-          <Button label={E.waterBtn} icon="drop" size="elder" variant={t.dark ? 'primary' : 'white'} disabled={preview} onPress={() => { if (preview) return; elderAnswers.addWater(elderId); onThanks(); }} />
+          <Button label={E.waterBtn} icon="drop" size="elder" variant="solid" tone="sky" disabled={preview} onPress={() => { if (preview) return; elderAnswers.addWater(elderId); onThanks(); }} />
         </View>
       );
     case 'appointment': {

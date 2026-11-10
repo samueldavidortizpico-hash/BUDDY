@@ -17,13 +17,15 @@ import { formatPhone } from '@/domain/validation';
 import { strings } from '@/i18n';
 import { useActiveElder, useRecords } from '@/state/data';
 import { useRecentAny } from '@/state/recent';
-import { motion, radius, spacing, touch, type Domain } from '@/theme';
+import { motion, radius, spacing, touch, type Domain, type Tone } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 import { formatClock } from '@/utils/dates';
 
 const R = strings.routine;
 type Seg = 'meds' | 'water' | 'questions' | 'appointments' | 'contacts';
 const SEGS: Seg[] = ['meds', 'water', 'questions', 'appointments', 'contacts'];
+/** V5: "Agregar" toma el color de la sección (medicamentos coral, agua azul, preguntas lavanda, citas ámbar, contactos menta). */
+const SEG_TONE: Record<Seg, Tone> = { meds: 'coral', water: 'sky', questions: 'lavender', appointments: 'yellow', contacts: 'mint' };
 
 /** Rutina del adulto mayor: todo lo programado, la vista previa de su pantalla y la entrega del teléfono. */
 export default function Routine() {
@@ -148,7 +150,7 @@ export default function Routine() {
       </View>
 
       {/* "+ Agregar" con palabra: un "+" solo no dice qué hace. Secundario: no pesa más que la lista. */}
-      <Button label={seg === 'meds' ? R.addMed : R.add} icon="plus" variant="secondary" haptic="light" onPress={fab} style={s.add} />
+      <Button label={seg === 'meds' ? R.addMed : R.add} icon="plus" variant="solid" tone={SEG_TONE[seg]} haptic="light" onPress={fab} style={s.add} />
 
       <BottomSheet visible={addSheet} onClose={() => setAddSheet(false)} title={R.addHow}>
         <Button label={R.manual} icon="pencil" variant="tonal" tone="coral" size="elder" onPress={() => { setAddSheet(false); router.push({ pathname: '/medication/new', params: { mode: 'manual' } }); }} />
@@ -173,6 +175,8 @@ function Row({ ids, domain, icon, title, detail, times = [], onPress }: { ids: s
       accessibilityLabel={`${title}. ${detail}${recent ? `. ${R.isNew}` : ''}`}
       style={[s.rowItem, recent && { borderColor: t.hc ? t.c.text : t.c.mintStrong, borderWidth: 2 }]}
     >
+      {/* V5: franja del color del dominio en el borde: la lista se lee por colores sin teñir toda la fila. */}
+      {t.hc ? null : <View pointerEvents="none" style={[s.rowAccent, { backgroundColor: t.domains[domain].accent }]} />}
       <IconTile icon={icon} domain={domain} />
       <View style={s.flex}>
         <AppText variant="bodyStrong">{title}</AppText>
@@ -229,6 +233,7 @@ const useStyles = makeStyles((t) =>
       ...t.hairline,
       ...t.shadow.soft,
     },
+    rowAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 5 },
     newBadge: { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.pill },
     // En el flujo, al final del contenido: con la barra flotante (V2.4) un botón absoluto quedaba sobre la barra.
     add: { marginTop: spacing.lg },

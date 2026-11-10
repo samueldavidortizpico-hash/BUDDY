@@ -81,7 +81,7 @@ function Water() {
         <TimeField key={`${time}-${i}`} label={`Vaso ${i + 1}`} value={time} onChange={(v) => setTimes(times.map((x, j) => (j === i ? v : x)))} onRemove={times.length > 1 ? () => setTimes(times.filter((_, j) => j !== i)) : undefined} />
       ))}
       <Button label={R.addTime} icon="plus" variant="ghost" size="md" onPress={() => setTimes([...times, '12:00'])} />
-      <Button label={strings.common.save} icon="check" onPress={() => { routineActions.setWater(Math.max(glasses, times.length), sortTimes(times)); toast(strings.common.done); }} />
+      <Button label={strings.common.save} icon="check" variant="solid" tone="sky" onPress={() => { routineActions.setWater(Math.max(glasses, times.length), sortTimes(times)); toast(strings.common.done); }} />
     </View>
   );
 }
@@ -176,7 +176,7 @@ function Activities() {
       ) : (
         <EmptyState title={R.emptyGeneric} />
       )}
-      <Button label={R.add} icon="plus" variant="tonal" tone="mint" onPress={() => setOpen(true)} />
+      <Button label={R.add} icon="plus" variant="solid" tone="mint" onPress={() => setOpen(true)} />
       <BottomSheet visible={open} onClose={() => setOpen(false)} title={R.sections.activities}>
         <View style={s.wrap}>
           {KINDS.map((k) => (
@@ -260,7 +260,7 @@ function Contacts() {
       ) : (
         <EmptyState title={C.empty} />
       )}
-      <Button label={C.add} icon="plus" variant="tonal" tone="lavender" onPress={() => open('new')} />
+      <Button label={C.add} icon="plus" variant="solid" tone="lavender" onPress={() => open('new')} />
       <BottomSheet visible={!!editing} onClose={() => setEditing(null)} title={editing === 'new' ? C.add : strings.common.edit}>
         <Field label={C.name} value={name} onChangeText={setName} error={errors.name} autoCapitalize="words" />
         <ChipList label={C.relation} values={relation ? [relation] : []} onChange={(v) => setRelation(v.at(-1) ?? '')} suggestions={C.relationSuggest} tone="lavender" />
@@ -298,7 +298,7 @@ function Checkin() {
           <Button label={R.noCheckin} variant="ghost" size="md" onPress={() => routineActions.setCheckinTime(null)} />
         </>
       ) : (
-        <Button label={R.checkinTime} icon="clock" onPress={() => routineActions.setCheckinTime('10:00')} />
+        <Button label={R.checkinTime} icon="clock" variant="solid" tone="lavender" onPress={() => routineActions.setCheckinTime('10:00')} />
       )}
     </View>
   );

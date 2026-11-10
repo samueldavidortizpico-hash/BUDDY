@@ -357,9 +357,29 @@ function ConfirmScene({ active, t }: SceneProps) {
         </Animated.View>
       </View>
       <Animated.View style={[styles.ripple, ripple]} />
+      {t.hc ? null : BURST.map((b, i) => <Confetti key={i} p={p} spec={b} color={t.tones[b.tone].solid} />)}
       <Animated.View style={[styles.finger, { backgroundColor: t.dark ? 'rgba(255,255,255,0.32)' : 'rgba(16,42,51,0.24)' }, finger]} />
     </>
   );
+}
+
+/** Confeti de la confirmación: ocho piezas de los colores de la marca salen del botón al quedar "Tomada". */
+const BURST: { a: number; r: number; s: number; tone: Tone }[] = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+  a: (i / 8) * Math.PI * 2 + 0.3,
+  r: 58 + (i % 3) * 18,
+  s: 8 + (i % 3) * 3,
+  tone: (['mint', 'coral', 'lavender', 'sky', 'yellow'] as const)[i % 5],
+}));
+
+function Confetti({ p, spec, color }: { p: SharedValue<number>; spec: (typeof BURST)[number]; color: string }) {
+  const style = useAnimatedStyle(() => {
+    const v = easeOut(seg(p.get(), 0.34, 0.62));
+    return {
+      opacity: v > 0 && v < 1 ? 1 - v * v : 0,
+      transform: [{ translateX: Math.cos(spec.a) * spec.r * v }, { translateY: Math.sin(spec.a) * spec.r * v - 12 * v }, { scale: 1 - 0.4 * v }, { rotate: `${v * 200}deg` }],
+    };
+  });
+  return <Animated.View style={[styles.confetti, { width: spec.s, height: spec.s, borderRadius: spec.s / 3, backgroundColor: color }, style]} />;
 }
 
 // 4 · Te enteras a tiempo: llega el aviso al celular del hijo, el ícono late y aparecen las acciones.
@@ -449,6 +469,7 @@ const styles = StyleSheet.create({
   bigButton: { position: 'absolute', left: 18, right: 18, bottom: 18, height: 64, borderRadius: 20, overflow: 'hidden' },
   ripple: { position: 'absolute', left: 140, top: 230, width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: '#FFFFFF' },
   finger: { position: 'absolute', left: 148, top: 236, width: 46, height: 46, borderRadius: 23, borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.95)' },
+  confetti: { position: 'absolute', left: 156, top: 246 },
   // 4
   clock: { position: 'absolute', top: 4, left: 0, right: 0 },
   note: { position: 'absolute', top: 92, left: 4, right: 4, flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14 },

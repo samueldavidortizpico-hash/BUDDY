@@ -118,13 +118,16 @@ export function TodayTiles({ elder }: { elder: Elder }) {
       <AppText variant="h2">{H.today}</AppText>
       <View style={[s.tiles, column && s.tilesColumn]}>
         {tiles.map((x) => (
-          <View key={x.key} style={[s.tile, column ? s.tileWide : s.tileThird, t.hairline]} accessible accessibilityLabel={`${x.label}: ${x.value}`}>
-            <IconTile icon={x.icon} domain={x.domain} />
-            <View style={column ? s.flex : null}>
-              <AppText variant="h3" style={s.tabular}>{x.value}</AppText>
-              <AppText variant="caption" color={t.c.muted}>{x.label}</AppText>
+          // V5: cada mosaico lleva el tinte de su dominio (coral, azul, lavanda) en vez de tres tarjetas blancas iguales.
+          <Card key={x.key} variant="gradient" domain={x.domain} padding={spacing.md} style={[s.tile, column ? s.tileWide : s.tileThird]}>
+            <View style={[column ? s.tileWideBody : s.tileBody]} accessible accessibilityLabel={`${x.label}: ${x.value}`}>
+              <IconTile icon={x.icon} domain={x.domain} />
+              <View style={column ? s.flex : null}>
+                <AppText variant="h3" color={t.domains[x.domain].text} style={s.tabular}>{x.value}</AppText>
+                <AppText variant="caption" color={t.domains[x.domain].muted}>{x.label}</AppText>
+              </View>
             </View>
-          </View>
+          </Card>
         ))}
       </View>
       <View style={s.lines}>
@@ -174,9 +177,11 @@ const useStyles = makeStyles((t) =>
     today: { gap: spacing.sm },
     tiles: { flexDirection: 'row', gap: spacing.sm },
     tilesColumn: { flexDirection: 'column' },
-    tile: { gap: spacing.sm, padding: spacing.md, borderRadius: 20, backgroundColor: t.c.surface, ...t.shadow.soft },
+    tile: { overflow: 'hidden' },
+    tileBody: { gap: spacing.sm },
+    tileWideBody: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     tileThird: { flex: 1, minWidth: 0 },
-    tileWide: { flexDirection: 'row', alignItems: 'center' },
+    tileWide: {},
     lines: { gap: spacing.xs, paddingHorizontal: spacing.xxs },
     line: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 32 },
   }),

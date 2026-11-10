@@ -63,10 +63,10 @@ export default function Health() {
           <LockedPreview feature="health_history" title={H.historyLockedTitle} body={H.historyLockedBody}>
             <View style={s.previewList}>
               {CARDS.slice(0, 3).map((m) => (
-                <Card key={m.key} style={s.card}>
+                <Card key={m.key} variant="gradient" domain={m.domain} style={s.card}>
                   <View style={s.cardHead}>
                     <IconTile icon={m.icon} domain={m.domain} />
-                    <AppText variant="h3" style={s.flex}>{m.title}</AppText>
+                    <AppText variant="h3" color={t.domains[m.domain].text} style={s.flex}>{m.title}</AppText>
                   </View>
                   <MetricBody metric={m.key} data={data} />
                 </Card>
@@ -83,22 +83,23 @@ export default function Health() {
                 <WaterToday elder={data.elder!} />
               </Pressable>
             ) : (
-              <Card onPress={() => router.push({ pathname: '/health/[metric]', params: { metric: m.key } })} accessibilityLabel={m.title} style={s.card}>
+              // V5: cada métrica vive en el color de su dominio (coral, lavanda, índigo, azul): el fondo ya dice qué es.
+              <Card variant="gradient" domain={m.domain} onPress={() => router.push({ pathname: '/health/[metric]', params: { metric: m.key } })} accessibilityLabel={m.title} style={s.card}>
                 <View style={s.cardHead}>
                   {big ? null : <IconTile icon={m.icon} domain={m.domain} />}
-                  <AppText variant="h3" style={s.flex}>{m.title}</AppText>
-                  <Icon name="chevron" color={t.c.muted} />
+                  <AppText variant="h3" color={t.domains[m.domain].text} style={s.flex}>{m.title}</AppText>
+                  <Icon name="chevron" color={t.domains[m.domain].muted} />
                 </View>
                 <MetricBody metric={m.key} data={data} />
               </Card>
             )}
           </Appear>
         ))}
-        <Card style={s.card} onPress={watch ? () => router.push('/health/watch') : undefined} accessibilityLabel={H.stepsWatch}>
+        <Card variant="gradient" domain="activity" style={s.card} onPress={watch ? () => router.push('/health/watch') : undefined} accessibilityLabel={H.stepsWatch}>
           <View style={s.cardHead}>
             {big ? null : <IconTile icon="watch" domain="activity" />}
-            <AppText variant="h3" style={s.flex}>{H.stepsWatch}</AppText>
-            {watch ? <Icon name="chevron" color={t.c.muted} /> : null}
+            <AppText variant="h3" color={t.domains.activity.text} style={s.flex}>{H.stepsWatch}</AppText>
+            {watch ? <Icon name="chevron" color={t.domains.activity.muted} /> : null}
           </View>
           <MetricBody metric="activity" data={data} />
           {watch ? null : <PlusLock feature="watch" label={H.watchPlus} />}

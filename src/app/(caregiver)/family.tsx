@@ -205,7 +205,7 @@ const useStyles = makeStyles((t) =>
     divider: { borderTopWidth: t.borderWidth, borderTopColor: t.c.border },
     week: { flexDirection: 'row', gap: 6 },
     day: { flex: 1, minHeight: 64, alignItems: 'center', justifyContent: 'center', gap: 2, paddingHorizontal: 2, borderRadius: radius.sm, backgroundColor: t.c.surface, overflow: 'hidden', ...t.hairline },
-    dayOn: { backgroundColor: t.tiles.contact.bg, borderColor: t.hc ? t.c.text : t.tiles.contact.fg },
+    dayOn: { backgroundColor: t.tones.mint.bg, borderColor: t.hc ? t.c.text : t.domains.contact.accent },
     note: { gap: spacing.xs },
   }),
 );
