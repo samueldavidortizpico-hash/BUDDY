@@ -1,24 +1,24 @@
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Extrapolation, interpolate, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
+import Animated, { Extrapolation, interpolate, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
-import { Illustration, SlideBackgrounds } from '@/features/onboarding/hero';
+import { Scene, SlideBackgrounds } from '@/features/onboarding/hero';
 import { strings } from '@/i18n';
-import { motion, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { makeStyles, useAppearanceStore, useTextScaleFactor, useTheme } from '@/theme/provider';
 
 const S = strings.onboarding;
 const TOP_BAR = 52;
-const FOOTER = 128;
+const FOOTER = 96;
 
 /**
- * Primera apertura (V4.2, referencias 02 a 05): cuatro presentaciones que se deslizan con el dedo. Cada una muestra SOLO
- * su ilustración en la mitad superior, el título y el texto abajo, y "Siguiente"; la cuarta lleva a Bienvenido.
- * "Omitir" también lleva a Bienvenido. Al terminar se recuerda en el teléfono y no vuelve a aparecer sola.
+ * Primera apertura (V4.4): la promesa de BUDDY en cuatro escenas vivas que se deslizan con el dedo (features/onboarding/
+ * hero.tsx), cada una con un título y UNA línea. Arriba, una barra por paso que se llena siguiendo al dedo, y "Omitir";
+ * abajo, "Siguiente" (en la última, "Empezar"). Al terminar se recuerda en el teléfono y no vuelve a aparecer sola.
  */
 export default function Onboarding() {
   const router = useRouter();
@@ -32,13 +32,13 @@ export default function Onboarding() {
   const x = useSharedValue(0);
   const [i, setI] = useState(0);
   const leaving = useRef(false);
-  const slide = S.slides[i];
   const n = S.slides.length;
+  const last = i === n - 1;
 
-  // La ilustración ocupa la mitad superior; con letra grande cede espacio al texto (nunca se recorta).
+  // La escena ocupa la parte superior; con letra grande cede espacio al texto (nunca se recorta).
   const free = height - insets.top - insets.bottom - TOP_BAR - FOOTER;
-  const art = Math.round(Math.max(150, Math.min(width * 1.05, free * (big ? 0.36 : 0.52))));
-  const illustrationEnd = (insets.top + TOP_BAR + art) / height;
+  const art = Math.round(Math.max(170, Math.min(width * 1.05, free * (big ? 0.4 : 0.6))));
+  const top = insets.top + TOP_BAR;
 
   const onScroll = useAnimatedScrollHandler((e) => {
     x.set(e.contentOffset.x);
@@ -50,26 +50,23 @@ export default function Onboarding() {
     router.replace('/');
   };
   const next = () => {
-    if (i === n - 1) return finish();
+    if (last) return finish();
     setI(i + 1);
     pager.current?.scrollTo({ x: (i + 1) * width, animated: true });
   };
 
   return (
     <View style={[s.root, { backgroundColor: t.c.bg }]}>
-      <SlideBackgrounds x={x} width={width} illustrationEnd={illustrationEnd} />
+      <SlideBackgrounds x={x} width={width} top={top} size={art} />
 
       <View style={[s.top, { paddingTop: insets.top }]}>
-        <View style={s.label} accessible accessibilityLabel={`${slide.eyebrow}. ${S.progress(i + 1, n)}`}>
-          <AppText variant="secondaryStrong" color={t.c.text} numberOfLines={1} maxScale={1.4}>
-            {slide.eyebrow}
-          </AppText>
-          <AppText variant="secondaryStrong" color={t.c.text} maxScale={1.4}>
-            {S.counter(i + 1, n)}
-          </AppText>
+        <View style={s.steps} accessible accessibilityRole="progressbar" accessibilityLabel={S.progress(i + 1, n)}>
+          {S.slides.map((_, k) => (
+            <Step key={k} index={k} x={x} width={width} />
+          ))}
         </View>
         <Pressable onPress={finish} accessibilityRole="button" accessibilityLabel={S.skip} hitSlop={8} style={s.skip}>
-          <AppText variant="secondaryStrong" color={t.c.text} maxScale={1.4}>
+          <AppText variant="secondaryStrong" color={t.c.muted} maxScale={1.4}>
             {S.skip}
           </AppText>
         </Pressable>
@@ -88,41 +85,40 @@ export default function Onboarding() {
       >
         {S.slides.map((sl, k) => (
           <Animated.ScrollView key={k} style={{ width }} contentContainerStyle={s.page} showsVerticalScrollIndicator={false} bounces={false}>
-            <Illustration index={k} x={x} width={width} height={art} />
+            <Scene index={k} x={x} width={width} height={art} active={k === i} />
             <Copy index={k} x={x} width={width} title={sl.title} body={sl.body} active={k === i} />
           </Animated.ScrollView>
         ))}
       </Animated.ScrollView>
 
       <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        <Dots x={x} width={width} count={n} label={S.progress(i + 1, n)} />
-        <Button label={strings.common.next} variant="mint" haptic shine style={s.cta} onPress={next} />
+        <Button label={last ? S.begin : strings.common.next} variant="primary" haptic shine={last} trailing={last ? undefined : 'chevron'} style={s.cta} onPress={next} />
       </View>
     </View>
   );
 }
 
-/** Título y texto: entran escalonados al deslizar (el texto viaja más que el título; solo transform y opacidad). */
+/** Título y línea: llegan con el dedo (la línea viaja más que el título). Solo transform y opacidad. */
 function Copy({ index, x, width, title, body, active }: { index: number; x: SharedValue<number>; width: number; title: string; body: string; active: boolean }) {
   const t = useTheme();
   const s = useStyles();
   const head = useAnimatedStyle(() => {
     const d = x.get() / Math.max(1, width) - index;
-    return { opacity: interpolate(Math.abs(d), [0, 0.6], [1, 0], Extrapolation.CLAMP), transform: [{ translateX: d * 60 }] };
+    return { opacity: interpolate(Math.abs(d), [0, 0.6], [1, 0], Extrapolation.CLAMP), transform: [{ translateX: d * 50 }] };
   });
   const text = useAnimatedStyle(() => {
     const d = x.get() / Math.max(1, width) - index;
-    return { opacity: interpolate(Math.abs(d), [0, 0.5], [1, 0], Extrapolation.CLAMP), transform: [{ translateX: d * 120 }] };
+    return { opacity: interpolate(Math.abs(d), [0, 0.5], [1, 0], Extrapolation.CLAMP), transform: [{ translateX: d * 110 }] };
   });
   return (
     <View style={s.copy} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'} accessibilityElementsHidden={!active}>
       <Animated.View style={head}>
-        <AppText variant="display" color={t.dark || t.hc ? t.c.text : '#174A59'} accessibilityRole="header" style={s.title}>
+        <AppText variant="display" align="center" accessibilityRole="header">
           {title}
         </AppText>
       </Animated.View>
       <Animated.View style={text}>
-        <AppText variant="body" color={t.dark || t.hc ? t.c.muted : '#3E4F5C'}>
+        <AppText variant="body" align="center" color={t.c.muted}>
           {body}
         </AppText>
       </Animated.View>
@@ -130,42 +126,32 @@ function Copy({ index, x, width, title, body, active }: { index: number; x: Shar
   );
 }
 
-/** Puntos de paginación: el activo se alarga siguiendo al dedo (escala horizontal). */
-function Dots({ x, width, count, label }: { x: SharedValue<number>; width: number; count: number; label: string }) {
+/** Barra de un paso: se llena mientras el dedo llega a su página (escala horizontal desde la izquierda). */
+function Step({ index, x, width }: { index: number; x: SharedValue<number>; width: number }) {
+  const t = useTheme();
+  const s = useStyles();
+  const fill = useAnimatedStyle(() => ({
+    transform: [{ scaleX: index === 0 ? 1 : interpolate(x.get() / Math.max(1, width), [index - 1, index], [0, 1], Extrapolation.CLAMP) }],
+  }));
   return (
-    <View style={styles.dots} accessible accessibilityLabel={label}>
-      {Array.from({ length: count }, (_, k) => (
-        <Dot key={k} index={k} x={x} width={width} />
-      ))}
+    <View style={[s.step, { backgroundColor: t.hc ? t.c.surface2 : t.dark ? 'rgba(255,255,255,0.14)' : 'rgba(16,42,51,0.12)' }, t.hc && t.hairline]}>
+      <Animated.View style={[s.stepFill, { backgroundColor: t.hc ? t.c.text : t.c.accent }, fill]} />
     </View>
   );
 }
-
-function Dot({ index, x, width }: { index: number; x: SharedValue<number>; width: number }) {
-  const t = useTheme();
-  const style = useAnimatedStyle(() => {
-    const near = interpolate(Math.abs(x.get() / Math.max(1, width) - index), [0, 1], [1, 0], Extrapolation.CLAMP);
-    return { opacity: 0.35 + 0.65 * near, transform: [{ scaleX: withSpring(1 + near * 1.6, motion.spring) }] };
-  });
-  return <Animated.View style={[styles.dot, { backgroundColor: t.hc ? t.c.text : t.dark ? '#2BC4B4' : '#139AA0' }, style]} />;
-}
-
-const styles = StyleSheet.create({
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 18, paddingVertical: spacing.xs },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-});
 
 const useStyles = makeStyles(() =>
   StyleSheet.create({
     root: { flex: 1 },
     flex: { flex: 1 },
-    top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg },
-    label: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: TOP_BAR, flexShrink: 1 },
+    top: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg },
+    steps: { flex: 1, flexDirection: 'row', gap: 6, minHeight: TOP_BAR, alignItems: 'center' },
+    step: { flex: 1, height: 5, borderRadius: 3, overflow: 'hidden' },
+    stepFill: { width: '100%', height: '100%', borderRadius: 3, transformOrigin: 'left' },
     skip: { minHeight: TOP_BAR, minWidth: 64, justifyContent: 'center', alignItems: 'flex-end' },
-    page: { flexGrow: 1 },
-    copy: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.sm },
-    title: { fontSize: 34, lineHeight: 40 },
-    footer: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingTop: spacing.xs },
+    page: { flexGrow: 1, justifyContent: 'center', paddingBottom: spacing.xl },
+    copy: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, gap: spacing.sm, alignItems: 'center' },
+    footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs },
     cta: { borderRadius: radius.pill, minHeight: 60 },
   }),
 );

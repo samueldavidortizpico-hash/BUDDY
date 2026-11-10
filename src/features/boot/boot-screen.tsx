@@ -32,16 +32,15 @@ const ICON = require('../../../assets/branding/buddy-splash.png');
 /** Medido en la referencia: verde azulado arriba a la derecha que se hunde en petróleo casi negro. */
 const PETROL = ['#3F8676', '#174B55', '#082C3E', '#052338'] as const;
 const STAR = 'M12 0 C12.8 8 16 11.2 24 12 C16 12.8 12.8 16 12 24 C11.2 16 8 12.8 0 12 C8 11.2 11.2 8 12 0Z';
+// V4.4: cuatro destellos (antes ocho) para que el protagonista sea el halo que respira alrededor del ícono.
 const SPARKS = [
-  { x: 16, y: 13, s: 12, d: 1700 },
-  { x: 83, y: 9, s: 22, d: 2300 },
-  { x: 90, y: 34, s: 10, d: 1900 },
-  { x: 9, y: 40, s: 9, d: 2100 },
-  { x: 74, y: 62, s: 12, d: 2500 },
-  { x: 20, y: 74, s: 8, d: 1800 },
-  { x: 60, y: 22, s: 7, d: 2000 },
-  { x: 86, y: 80, s: 9, d: 2200 },
+  { x: 16, y: 14, s: 12, d: 1900 },
+  { x: 82, y: 11, s: 18, d: 2300 },
+  { x: 10, y: 66, s: 9, d: 2100 },
+  { x: 86, y: 72, s: 11, d: 2500 },
 ];
+/** Halo: anillos que salen del ícono como un pulso tranquilo ("BUDDY está pendiente"). */
+const HALO_MS = 2600;
 
 export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, boolean>; onDone: () => void; onRetry: () => void }) {
   const reduce = useReducedMotion();
@@ -105,9 +104,12 @@ export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, b
       ))}
 
       <View style={styles.center}>
-        <Animated.View style={[styles.iconWrap, iconStyle]}>
-          <Image source={ICON} style={styles.icon} contentFit="contain" accessible={false} />
-        </Animated.View>
+        <View style={styles.iconStage}>
+          {reduce ? null : [0, 1, 2].map((k) => <HaloRing key={k} index={k} />)}
+          <Animated.View style={[styles.iconWrap, iconStyle]}>
+            <Image source={ICON} style={styles.icon} contentFit="contain" accessible={false} />
+          </Animated.View>
+        </View>
         <Animated.View style={[styles.words, wordStyle]}>
           <Text style={styles.word} accessibilityRole="header" maxFontSizeMultiplier={1.4}>
             BUDDY
@@ -151,6 +153,16 @@ export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, b
   );
 }
 
+/** Anillo del halo: nace del borde del ícono, crece y se desvanece; tres desfasados forman un pulso continuo. */
+function HaloRing({ index }: { index: number }) {
+  const v = useSharedValue(0);
+  useEffect(() => {
+    v.set(withDelay((index * HALO_MS) / 3, withRepeat(withTiming(1, { duration: HALO_MS, easing: Easing.out(Easing.quad) }), -1, false)));
+  }, [v, index]);
+  const style = useAnimatedStyle(() => ({ opacity: 0.45 * (1 - v.get()), transform: [{ scale: 1 + 0.75 * v.get() }] }));
+  return <Animated.View pointerEvents="none" style={[styles.halo, style]} />;
+}
+
 /** Destello de cuatro puntas que titila (opacidad y escala). */
 function Sparkle({ spec, still, index }: { spec: (typeof SPARKS)[number]; still: boolean; index: number }) {
   const v = useSharedValue(still ? 0.7 : 0.2);
@@ -175,7 +187,9 @@ function twinkle(v: SharedValue<number>, ms: number, delay: number) {
 const styles = StyleSheet.create({
   spark: { position: 'absolute' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 24 },
-  iconWrap: { borderRadius: 43, boxShadow: '0 18px 40px rgba(0, 0, 0, 0.38)' },
+  iconWrap: { borderRadius: 43, boxShadow: '0 18px 40px rgba(0, 0, 0, 0.38), 0 0 60px rgba(94, 217, 181, 0.25)' },
+  iconStage: { width: 188, height: 188 },
+  halo: { ...StyleSheet.absoluteFill, borderRadius: 52, borderWidth: 2, borderColor: 'rgba(158, 240, 220, 0.9)' },
   icon: { width: 188, height: 188 },
   words: { alignItems: 'center', marginTop: 28, gap: 4 },
   // La portada se dibuja ANTES de que carguen las fuentes de la app: letra del sistema, en negrita.

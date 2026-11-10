@@ -1,14 +1,16 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
 import { Button } from '@/components/button';
 import { Icon, type IconName } from '@/components/icon';
 import { PressableScale } from '@/components/pressable-scale';
+import { ROBOT_IMAGE, ROBOT_RATIO } from '@/components/robot';
 import type { Role } from '@/domain/types';
 import { strings } from '@/i18n';
 import { useHomeHref } from '@/state/nav';
@@ -19,8 +21,8 @@ import { makeStyles, useAppearanceStore, useBigText, useTheme } from '@/theme/pr
 const R = strings.auth.roles;
 const S = strings.welcome;
 type Choice = 'admin' | 'elder' | 'nurse';
-/** Encabezado medido en la referencia 06: azul → azul petróleo → turquesa. */
-const HEADER = { light: ['#1A4681', '#1F72A2', '#19A6A8'] as const, dark: ['#132A4D', '#15405C', '#0F6B70'] as const };
+/** Encabezado (V4.4): el mismo turquesa → petróleo de la marca y de los botones, no un azul aparte. */
+const HEADER = { light: ['#1FA9A0', '#12807F', '#0B5F73'] as const, dark: ['#12494F', '#0F3040', '#0B1E2D'] as const };
 
 /**
  * Bienvenido (V4.2, referencia 06): encabezado con degradado y "Bienvenido" en blanco; tarjeta blanca con la pregunta
@@ -44,6 +46,17 @@ export default function Welcome() {
   }, [reduce, card]);
   const cardStyle = useAnimatedStyle(() => ({ opacity: Math.min(1, card.get() * 1.5), transform: [{ translateY: reduce ? 0 : 48 * (1 - card.get()) }] }));
   const actionsStyle = useAnimatedStyle(() => ({ opacity: card.get() }));
+  // BUDDY entra con un resorte y saluda dos veces: el único momento animado de la pantalla.
+  const wave = useSharedValue(0);
+  useEffect(() => {
+    if (reduce) return;
+    const swing = (deg: number) => withTiming(deg, { duration: 180, easing: Easing.inOut(Easing.quad) });
+    wave.set(withDelay(420, withSequence(swing(12), swing(-8), swing(12), swing(-8), swing(0))));
+  }, [reduce, wave]);
+  const robotStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, card.get() * 1.4),
+    transform: [{ translateY: reduce ? 0 : 20 * (1 - card.get()) }, { rotate: `${wave.get()}deg` }],
+  }));
 
   if (status === 'signedIn') return <Redirect href={home} />;
   if (!introSeen) return <Redirect href="/onboarding" />;
@@ -53,10 +66,13 @@ export default function Welcome() {
 
   return (
     <View style={s.root}>
-      {t.hc ? null : <LinearGradient colors={t.dark ? ['#0B1622', '#0E1C2A'] : ['#ECF3FA', '#E8FAF0']} style={StyleSheet.absoluteFill} />}
+      {t.hc ? null : <LinearGradient colors={t.dark ? t.gradients.welcome : ['#ECF6F4', '#E8FAF0']} style={StyleSheet.absoluteFill} />}
       <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: Math.max(insets.bottom, spacing.md) }]} bounces={false} showsVerticalScrollIndicator={false}>
         <View style={[s.header, { paddingTop: insets.top + spacing.lg }]}>
-          {t.hc ? null : <LinearGradient colors={t.dark ? HEADER.dark : HEADER.light} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.6 }} style={StyleSheet.absoluteFill} />}
+          {t.hc ? null : <LinearGradient colors={t.dark ? HEADER.dark : HEADER.light} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
+          <Animated.View style={[s.robot, robotStyle]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Image source={ROBOT_IMAGE} style={s.robotImg} contentFit="contain" accessible={false} />
+          </Animated.View>
           <AppText variant="display" color={t.hc ? t.c.text : '#FFFFFF'} align="center" accessibilityRole="header" style={s.headText}>
             {S.header}
           </AppText>
@@ -151,7 +167,9 @@ const useStyles = makeStyles((t) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: t.c.bg },
     scroll: { flexGrow: 1 },
-    header: { paddingBottom: 64, paddingHorizontal: spacing.lg, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden' },
+    header: { paddingBottom: 64, paddingHorizontal: spacing.lg, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, overflow: 'hidden', alignItems: 'center' },
+    robot: { marginBottom: spacing.xs, transformOrigin: 'bottom' },
+    robotImg: { width: 96 * ROBOT_RATIO, height: 96 },
     headText: { fontSize: 36, lineHeight: 42 },
     card: {
       marginTop: -40,

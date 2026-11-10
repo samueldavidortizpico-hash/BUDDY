@@ -21,7 +21,7 @@ import { makeStyles, useTheme } from '@/theme/provider';
 
 const ICON = require('../../../assets/branding/buddy-splash.png');
 /** Degradado del encabezado: el principal en claro y su versión de noche en oscuro. */
-const HEADER = { light: ['#14837D', '#155E68', '#174A59'] as const, dark: ['#0E3B44', '#0F2B3C', '#0B1E2D'] as const };
+const HEADER = { light: ['#1FA9A0', '#12807F', '#0B5F73'] as const, dark: ['#12494F', '#0F3040', '#0B1E2D'] as const };
 
 export function AuthShell({ tagline, back = '/', children, footer }: { tagline: string; back?: Href; children: ReactNode; footer?: ReactNode }) {
   const router = useRouter();

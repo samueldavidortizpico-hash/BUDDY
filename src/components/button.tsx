@@ -34,29 +34,33 @@ interface VariantStyle {
   dim: number;
 }
 
+/** Brillo de color bajo las acciones llenas (V4.4): el botón principal se lee como LA acción de la pantalla. */
+function glow(t: Theme, rgb: string): ViewStyle | undefined {
+  if (t.hc) return undefined;
+  return { boxShadow: `0px 2px 4px rgba(${rgb}, ${t.dark ? 0.2 : 0.18}), 0px 10px 24px rgba(${rgb}, ${t.dark ? 0.28 : 0.32})` };
+}
+
 function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyle {
   const hcBorder = { border: t.c.text, borderWidth: 2 };
   const brand = t.dark ? t.c.accent : t.c.primary;
   switch (variant) {
     case 'primary':
-      // V4.3: degradado principal turquesa → petróleo a 135° con texto blanco (≥ 4,5:1 en ambos extremos).
-      return { gradient: t.gradients.primary, text: t.c.onPrimary, shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'mint':
-      // V4.2: turquesa de la primera apertura con texto BLANCO. Blanco sobre #14A3A6 da 3,1:1 y la etiqueta va a 20 px
-      // en negrita (letra grande WCAG, mínimo 3:1); el turquesa de la referencia (#26B5BB) solo daba 2,4:1.
-      return { gradient: ['#0C939B', '#14A3A6'], text: '#FFFFFF', shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
+      // V4.4: una sola acción de marca. Claro: turquesa → petróleo con blanco (4,75 y 6,8:1). Oscuro: turquesa → cian
+      // con texto petróleo casi negro (≥ 6:1). 'mint' queda como alias para no tocar cada pantalla.
+      return { gradient: t.gradients.primary, text: t.c.onPrimary, shadow: glow(t, t.dark ? '43, 196, 180' : '11, 95, 115'), dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'coral':
-      return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
+      return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: glow(t, '255, 119, 107'), dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'secondary':
-      // Superficie 2 con texto de marca, sin borde.
-      return { bg: t.c.surface2, text: t.hc ? t.c.text : t.dark ? t.c.text : t.c.primary, dim: 0.05, ...(t.hc ? hcBorder : {}) };
+      // Menta pálida con texto de marca (4,6:1 en claro): con color, sin competir con la principal.
+      return { bg: t.c.mintPale, text: t.hc ? t.c.text : t.dark ? t.c.text : t.ink.info, dim: 0.05, ...(t.hc ? hcBorder : {}) };
     case 'outline':
       return { bg: 'transparent', border: t.hc ? t.c.text : brand, borderWidth: t.hc ? 2 : 1.5, text: t.hc ? t.c.text : brand, dim: 0.04 };
     case 'danger':
       return { bg: t.c.dangerPale, text: t.ink.danger, dim: 0.05, ...(t.hc ? { border: t.c.danger, borderWidth: 2 } : {}) };
     case 'ghost':
-      // Superficie propia y borde ≥ 3:1: transparente no parecía un botón en el iPhone (V4, error 2).
-      return { bg: t.c.surface, border: t.hc ? t.c.text : t.dark ? '#5B6B7A' : '#9AABB0', borderWidth: t.hc ? 2 : 1.5, text: t.c.text, dim: 0.04 };
+      // Superficie propia y borde de marca ≥ 3:1: transparente no parecía un botón en el iPhone (V4, error 2).
+      return { bg: t.c.surface, border: t.hc ? t.c.text : t.dark ? 'rgba(43, 196, 180, 0.55)' : t.ink.info, borderWidth: t.hc ? 2 : 1.5, text: t.hc ? t.c.text : t.dark ? t.c.text : t.ink.info, dim: 0.04 };
     case 'white':
       return t.hc ? { bg: t.c.bg, ...hcBorder, text: t.c.text, dim: 0.05 } : { bg: '#FFFFFF', text: '#0D3946', shadow: t.shadow.soft, dim: 0.05 };
     case 'tonal':

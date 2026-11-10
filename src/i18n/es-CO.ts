@@ -50,28 +50,30 @@ export const esCO = {
     modes: { auto: 'automática', light: 'clara', dark: 'oscura' } as Record<string, string>,
   },
   onboarding: {
+    // V4.4: la promesa contada en cuatro pasos (tranquilizar → recordar → confirmar → avisar), una línea cada uno.
     slides: [
-      {
-        eyebrow: 'Compañía',
-        title: 'Tu compañero diario',
-        body: 'BUDDY está aquí para acompañarte, ofrecerte tranquilidad y una presencia constante para que siempre te sientas apoyado.',
-      },
-      {
-        eyebrow: 'Cuidado diario',
-        title: 'Tus rutinas bajo control',
-        body: 'Organiza tus medicamentos, citas y actividades de forma sencilla, con recordatorios claros para vivir con total tranquilidad.',
-      },
-      {
-        eyebrow: 'Bienestar',
-        title: '¿Cómo te sientes hoy?',
-        body: 'Un espacio para registrar cómo te sientes, tu descanso y tus emociones, ayudándote a mantener un equilibrio saludable.',
-      },
-      {
-        eyebrow: 'Familia',
-        title: 'Cerca de quienes más quieres',
-        body: 'Une a la familia y a los cuidadores en un entorno seguro y confiable para que todos compartan tranquilidad.',
-      },
+      { title: 'Sabes que está bien', body: 'Su día entero, de un vistazo, aunque estés lejos.' },
+      { title: 'BUDDY le recuerda cada toma', body: 'A la hora exacta, con voz clara y letra grande.' },
+      { title: 'Confirma con un solo toque', body: 'Un botón grande. Nada que aprender.' },
+      { title: 'Si algo falla, te enteras a tiempo', body: 'Te avisamos a ti y a quien tú elijas.' },
     ],
+    /** Escenas de ejemplo (decorativas, ocultas al lector de pantalla). */
+    demo: {
+      ok: 'Rosa está bien',
+      okDetail: 'Tomó su medicamento 8:02 a. m.',
+      chips: ['3 de 3', '5 vasos', 'Ánimo bien'],
+      reminder: 'Rosa, es hora de tu Losartán',
+      reminderTime: '8:00 a. m.',
+      med: 'Losartán 50 mg',
+      take: 'Ya la tomé',
+      taken: 'Tomada',
+      clock: '8:30',
+      now: 'ahora',
+      alert: 'Rosa no ha confirmado la toma de las 8:00 a. m.',
+      call: 'Llamar',
+      view: 'Ver',
+    },
+    begin: 'Empezar',
     scanKey: 'BUDDY advierte posibles contradicciones y NUNCA receta. Por mayor seguridad, consulta siempre con un médico.',
     pharmaSoon: 'Revisión con base farmacológica',
     chatExample: 'Ponle losartán a las 6',
@@ -83,7 +85,6 @@ export const esCO = {
     signIn: 'Ya tengo cuenta',
     progress: (i: number, n: number) => `Paso ${i} de ${n}`,
     skip: 'Omitir',
-    counter: (i: number, n: number) => `${i} de ${n}`,
   },
   auth: {
     signUpTitle: 'Crea tu cuenta',

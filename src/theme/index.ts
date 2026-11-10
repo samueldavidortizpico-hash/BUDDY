@@ -156,17 +156,18 @@ const LIGHT: Palette = {
 
 // V4.2: noche azul neutra (no petróleo ni verde). El turquesa es el acento principal y se usa con moderación;
 // los fondos de tarjeta llevan el color de su dominio al 16 % sobre la superficie.
+// V4.4: fondo más profundo (#08121B) para que las superficies se separen sin depender solo del borde.
 const DARK: Palette = {
-  bg: '#0B1622',
-  surface: '#13212E',
-  surface2: '#1B2B3A',
+  bg: '#08121B',
+  surface: '#132230',
+  surface2: '#1B2D3E',
   text: '#F3F6F8',
   muted: '#A7B4C2',
   tertiary: '#7D8B98',
-  border: 'rgba(255, 255, 255, 0.08)',
+  border: 'rgba(255, 255, 255, 0.1)',
   accent: '#2BC4B4',
   primary: '#2BC4B4',
-  primaryEnd: '#22B3A6',
+  primaryEnd: '#1FB5C8',
   onPrimary: '#062A2A', // el blanco sobre turquesa no llega a 4,5:1; petróleo casi negro da 7:1
   coralCta: '#FF9C8A',
   coralCtaEnd: '#FF8577',
@@ -321,16 +322,18 @@ function softTheme(name: 'light' | 'dark'): Theme {
       none: { bg: p('#EDF3F2', '#1B2B3A'), border: p('#DCE6E4', '#2A3B4C'), accent: p('#5B6B73', '#A7B4C2'), text: p('#102A33', '#F3F6F8'), muted: p('#5B6B73', '#A7B4C2') },
     },
     gradients: {
-      primary: p(['#14837D', '#174A59'], ['#2BC4B4', '#22B3A6']),
+      // V4.4: turquesa → petróleo en claro (blanco 4,75 y 6,8:1); turquesa → cian en oscuro (texto petróleo ≥ 6:1).
+      primary: p(['#12807F', '#0B5F73'], ['#3FD6C2', '#1FB5C8']),
       coral: [c.coralCta, c.coralCtaEnd],
-      welcome: p(['#F6F9F8', '#E9F6F2'], ['#0B1622', '#0F1D2B']),
-      screen: p(['#F6F9F8', '#F4F7F6'], ['#0D1926', '#0B1622']),
+      welcome: p(['#F6F9F8', '#E9F6F2'], ['#08121B', '#0D1B28']),
+      screen: p(['#F6F9F8', '#F4F7F6'], ['#0B1825', '#08121B']),
       plus: p(['#0D3946', '#155E68', '#1FA9A0'], ['#0B2233', '#123D4A', '#1B8C86']),
     },
     shadow: {
-      soft: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(4, 12, 0.06)}` },
-      elevated: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(8, 24, 0.1)}` },
-      hero: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(8, 24, 0.1)}` },
+      // Oscuro (V4.4): sombras negras reales; sobre #08121B dan la profundidad que antes faltaba.
+      soft: dark ? { boxShadow: `${sh(1, 2, 0.3)}, ${sh(4, 14, 0.28)}` } : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(4, 12, 0.06)}` },
+      elevated: dark ? { boxShadow: `${sh(2, 4, 0.3)}, ${sh(10, 28, 0.42)}` } : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(8, 24, 0.1)}` },
+      hero: dark ? { boxShadow: `${sh(2, 4, 0.3)}, ${sh(10, 28, 0.42)}` } : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(8, 24, 0.1)}` },
       sheet: dark ? { boxShadow: sh(16, 40, 0.5) } : { boxShadow: `${sh(2, 6, 0.05)}, ${sh(16, 40, 0.14)}` },
       glow: {
         mint: glow('33, 173, 139'),

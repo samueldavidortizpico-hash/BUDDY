@@ -95,8 +95,8 @@ it('P10/P11: la Vista de [nombre] tiene flecha atrás, banner y "Cambiar a la cu
 
 it('P12: el onboarding tiene 4 presentaciones que explican qué es BUDDY', async () => {
   await ui(<Onboarding />);
-  expect(screen.getByText('1 de 4')).toBeTruthy();
-  expect(screen.getByText('Tu compañero diario')).toBeTruthy();
+  expect(screen.getByLabelText('Paso 1 de 4')).toBeTruthy();
+  expect(screen.getByText('Sabes que está bien')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Siguiente' })).toBeTruthy();
 });
 
