@@ -4,7 +4,41 @@ Fuente única: `src/theme/index.ts`. Ningún color, tamaño ni espacio suelto en
 desarrollo). Controles automáticos: `scripts/capture/v4-screens.mjs` (web, 360/375/390 × letra 1,0/1,3/2,0 × claro,
 oscuro y alto contraste), `scripts/check-headers.ts` y las pruebas de `src/__tests__/v4/` y `layout-v31`.
 
-## V4.3 · Nivel profesional (vigente; reemplaza las medidas de "Tokens V4" donde difieran)
+## V5 · Color por dominio y movimiento (vigente; rama `feat/ui-v5`)
+
+Capturas antes y después: `docs/capturas/v5/antes/` y `docs/capturas/v5/despues/` (390 px, claro y oscuro, exportación
+web con datos sintéticos; `node scripts/capture/v4_3.mjs dist docs/capturas/v5/despues base …`).
+
+**Qué cambia frente a V4.3.** La regla "tarjetas neutras, el color solo en el icono" se reemplaza: el color del dominio
+ahora tiñe la tarjeta, el mosaico y la acción.
+
+- **Fondo claro con tinte** `#EEF5F3` (antes `#F4F7F6`), superficie 2 `#E4EEEC`; las tarjetas base siguen blancas.
+- **Tarjetas de dominio** (`Card variant="gradient" domain`): degradado suave de dos paradas con borde del mismo tono.
+  Claro / oscuro: agua `#E3F1FE→#C9E4FD` / `#1D3A54→#16293D`; medicamentos `#FFEDE8→#FFD9CF` / `#43302F→#2E2328`;
+  ánimo `#F1EEFF→#DDD7FF` / `#2E3358→#22273F`; sueño `#EBEDFD→#D5D9FB` / `#272F58→#1D2440`; actividad
+  `#E2F8F0→#C6F0E0` / `#1B4443→#152E33`; comida y seguimiento `#FFF5DB→#FFE7AE` / `#423A24→#2E2A20`; contacto
+  `#E0F6F3→#C2ECE7` / `#15434A→#122E38`. Texto ≥ 9,9:1 y secundario ≥ 5:1 sobre la parada más exigente.
+- **Mosaicos vivos** (`theme.tiles[*].gradient`, glifo blanco ≥ 3:1 en las dos paradas, iguales en claro y oscuro):
+  agua `#3792E6→#2470D8`, medicamentos `#EE6A55→#D9483A`, ánimo `#8B7CF6→#6A55E0`, sueño `#6B73E8→#4347C4`,
+  actividad `#1FA385→#0E8072`, comida y seguimiento `#C97D0A→#A86404`, contacto `#1A9C94→#0E7F86`.
+- **Botón de dominio** (`Button variant="solid" tone`): degradado luminoso `theme.bright[tone]` con texto petróleo
+  `theme.onBright` (≥ 5:1) y brillo de su color. Menta `#7BE3C4→#3CCBA0`, coral `#FFB3A4→#FF8571`, lavanda
+  `#C2B8FF→#9C8CF8`, cielo `#9AD0FF→#5FB0F7`, amarillo `#FFDD85→#F4BE3C`. El principal de marca sigue siendo
+  turquesa → petróleo; `tonal` queda para acciones secundarias.
+- **Degradado Plus** con una parada índigo: `#1F2A6B → #16527A → #1FA9A0`.
+- **Contraste:** `src/theme/__tests__/contrast.test.ts` mide además la parada clara de cada mosaico y las dos paradas
+  de cada botón de dominio (230 comprobaciones, todas en verde).
+
+**Componentes nuevos.** `ProgressBar` (se llena con `scaleX`), `PulseRings` (radar suave), `Bars` con riel propio,
+brillo y entrada escalonada de 45 ms; `IconTile` aparece con un resorte corto.
+
+**Dónde se aplica.** Salud (cada métrica en su color), "Hoy" del Inicio, Rutina (franja de color por fila y "Agregar"
+del color de la sección), Ubicación (radar mientras espera, punto "en vivo", "Cómo llegar" azul), BUDDY Plus (franja,
+precio y botón del color de cada plan) y la escena 3 del carrusel (confeti al confirmar).
+
+**Sin probar en celular:** todo lo anterior se revisó en la exportación web; faltan hápticos, FPS y lector de pantalla.
+
+## V4.3 · Nivel profesional (reemplazado por V5 donde difiera; reemplaza las medidas de "Tokens V4")
 
 Galería con todos los estados: `/dev/gallery` (capturas en `docs/capturas/v4_3/galeria/`). Capturas antes y después:
 `scripts/capture/v4_3.mjs`. Desbordes: `scripts/check-overflow.mjs` (15 pantallas, 390 y 360, letra normal y 200 %).
