@@ -13,7 +13,7 @@ import { ElderLocation } from '@/features/elder/location';
 import { db, useDb } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { locationActions } from '@/state/location';
-import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
+import { RenderProviders, handPhoneTo, seedRenderData, testUser } from '@/testing/render-fixtures';
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => true, replace: jest.fn() }),
@@ -50,29 +50,37 @@ describe('estado de la ubicación (puro)', () => {
 
 describe('consentimiento (matriz can)', () => {
   it('solo el adulto mayor decide; sin consentimiento no se registra nada', () => {
-    expect(locationActions.record(elderId, { lat: 1, lng: 1, accuracy: null }, 'elder')).toBeNull();
+    handPhoneTo(elderId);
+    expect(locationActions.record(elderId, { lat: 1, lng: 1, accuracy: null })).toBeNull(); // sin consentimiento no se registra
+    db.setHandoff(null);
     locationActions.request(elderId);
     expect(db.get('elders', elderId)!.locationConsent).toBe('requested');
-    expect(locationActions.decide(elderId, true, 'caregiver')).toBeNull();
+    // SEC-04: el administrador, sin entregar el teléfono, no puede aceptar por el adulto mayor.
+    expect(locationActions.decide(elderId, true)).toBeNull();
     expect(db.get('elders', elderId)!.locationConsent).toBe('requested');
-    locationActions.decide(elderId, true, 'elder');
-    expect(locationActions.record(elderId, { lat: 1, lng: 1, accuracy: null }, 'caregiver')).toBeNull();
-    expect(locationActions.record(elderId, { lat: 1, lng: 1, accuracy: null }, 'elder')).not.toBeNull();
+    handPhoneTo(elderId);
+    locationActions.decide(elderId, true);
+    expect(db.get('elders', elderId)).toMatchObject({ locationConsent: 'granted', locationDecidedBy: testUser.id, locationDecidedVia: 'handoff' });
+    db.setHandoff(null);
+    expect(locationActions.record(elderId, { lat: 1, lng: 1, accuracy: null })).toBeNull(); // el administrador no registra la ubicación
+    handPhoneTo(elderId);
+    expect(locationActions.record(elderId, { lat: 1, lng: 1, accuracy: null })).not.toBeNull();
   });
 
   it(`conserva solo las últimas ${KEEP_FIXES} y revocar las borra de verdad (no quedan con deletedAt)`, () => {
     locationActions.request(elderId);
-    locationActions.decide(elderId, true, 'elder');
+    handPhoneTo(elderId);
+    locationActions.decide(elderId, true);
     // Una ubicación cada 10 minutos (dos en el mismo minuto se descartan como duplicadas).
     jest.useFakeTimers();
     for (let i = 0; i < KEEP_FIXES + 5; i++) {
       jest.setSystemTime(new Date(2026, 9, 12, 8, i * 10));
-      locationActions.record(elderId, { lat: i, lng: i, accuracy: 10 }, 'elder');
+      locationActions.record(elderId, { lat: i, lng: i, accuracy: 10 });
     }
     jest.useRealTimers();
     expect(fixes()).toHaveLength(KEEP_FIXES);
     expect(fixes().some((f) => f.lat === 0)).toBe(false); // se descartaron las más viejas
-    locationActions.revoke(elderId, 'elder');
+    locationActions.revoke(elderId);
     expect(Object.keys(useDb.getState().locations)).toHaveLength(0);
     expect(db.get('elders', elderId)!.locationConsent).toBe('revoked');
   });
@@ -87,6 +95,8 @@ describe('pantallas', () => {
     expect(screen.getByText(L.requested('Rosa'))).toBeTruthy();
     await c.unmount();
 
+    // El teléfono pasa al adulto mayor: desde aquí las decisiones son suyas.
+    handPhoneTo(elderId);
     const e = await ui(<ElderScreen elderId={elderId} />);
     expect(screen.queryByText(L.elderAsk('Laura'))).toBeNull();
     expect(screen.queryByRole('button', { name: L.stop })).toBeNull();

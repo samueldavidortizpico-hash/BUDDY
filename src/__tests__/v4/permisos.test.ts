@@ -2,7 +2,7 @@
 import { db } from '@/infrastructure/local/db';
 import { elderAnswers } from '@/state/care';
 import { locationActions } from '@/state/location';
-import { seedRenderData, testUser } from '@/testing/render-fixtures';
+import { handPhoneTo, seedRenderData, testUser } from '@/testing/render-fixtures';
 
 const news = (elderId: string) => db.list('alerts', testUser.id, elderId).filter((a) => a.kind === 'permission_changed' && a.status === 'pending');
 
@@ -15,7 +15,8 @@ it('desactivar los avisos genera una novedad que explica la consecuencia', async
 
 it('aceptar y dejar de compartir la ubicación genera una novedad cada vez', async () => {
   const elder = await seedRenderData();
-  locationActions.decide(elder.id, true, 'elder');
-  locationActions.revoke(elder.id, 'elder');
+  handPhoneTo(elder.id);
+  locationActions.decide(elder.id, true);
+  locationActions.revoke(elder.id);
   expect(news(elder.id).map((a) => a.detail.split(' a las')[0])).toEqual(['Rosa activó compartir su ubicación en su celular', 'Rosa desactivó compartir su ubicación en su celular']);
 });

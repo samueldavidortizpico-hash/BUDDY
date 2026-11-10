@@ -21,7 +21,7 @@ import { strings } from '@/i18n';
 import { activeElderId } from '@/state/actions';
 import { elderAnswers } from '@/state/care';
 import { sessionActions, useSession } from '@/state/session';
-import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
+import { RenderProviders, forceRecord, seedRenderData, testUser } from '@/testing/render-fixtures';
 
 describe('matriz can(rol, acción)', () => {
   const adminOnly: Permission[] = ['add_medication', 'remove_medication', 'set_water_goal', 'edit_profile', 'manage_access', 'request_location', 'settings', 'use_assistant', 'handoff'];
@@ -46,7 +46,7 @@ describe('cuentas del adulto mayor (dos cuentas en un mismo dispositivo)', () =>
     // Sesión real del administrador en el proveedor local; la persona pasa a ser suya.
     const admin = await auth.signUp({ name: 'Laura', email: unique('laura'), password: 'Segura123' });
     useSession.setState({ status: 'signedIn', user: admin });
-    db.putMany('elders', [{ ...db.get('elders', elderId)!, ownerUserId: admin.id }]);
+    forceRecord('elders', elderId, { ownerUserId: admin.id });
   });
 
   it('el administrador crea el acceso; el adulto mayor entra con su rol y ve solo su perfil', async () => {
@@ -137,7 +137,7 @@ describe('navegación por rol', () => {
 
   it('"Opciones" → contraseña de cuenta del administrador; una incorrecta conserva el rol adulto', async () => {
     const owner = await sessionActions.signUp({ name: '[PRUEBA] Admin', email: unique('v31-admin'), password: 'Segura123!' });
-    db.update('elders', elderId, { ownerUserId: owner.id });
+    forceRecord('elders', elderId, { ownerUserId: owner.id });
     await sessionActions.createElderAccess({ elderId, name: '[PRUEBA] Rosa', email: unique('v31-elder'), password: 'Codigo123!' });
     await sessionActions.switchToElder(elderId, 'Codigo123!');
     const r = await renderRouter(routes, { initialUrl: '/elder' });
@@ -194,7 +194,7 @@ describe('extremo a extremo: entrar como adulto mayor, salir y entrar como admin
     const adminEmail = unique('admin');
     const admin = await auth.signUp({ name: 'Laura', email: adminEmail, password: 'Segura123' });
     useSession.setState({ status: 'signedIn', user: admin });
-    db.putMany('elders', [{ ...db.get('elders', elderId)!, ownerUserId: admin.id }]);
+    forceRecord('elders', elderId, { ownerUserId: admin.id });
     const elderEmail = unique('rosa');
     await sessionActions.createElderAccess({ elderId, name: 'Rosa', email: elderEmail, password: 'Rosa2026!' });
     await sessionActions.signOut();

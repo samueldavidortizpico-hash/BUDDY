@@ -6,7 +6,7 @@ import ElderLayout from '@/app/elder/_layout';
 import { db } from '@/infrastructure/local/db';
 import { useHomeHref } from '@/state/nav';
 import { useSession } from '@/state/session';
-import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
+import { RenderProviders, forceRecord, seedRenderData, testUser } from '@/testing/render-fixtures';
 
 jest.mock('expo-router', () => ({
   Redirect: ({ href }: { href: string }) => {
@@ -26,8 +26,8 @@ beforeEach(async () => { elderId = (await seedRenderData()).id; });
 function HomeProbe() { return <Text>{String(useHomeHref())}</Text>; }
 
 it.each(['missing', 'deleted', 'other-owner'])('does not bounce summary/elder with a %s patient', async (kind) => {
-  if (kind === 'deleted') db.update('elders', elderId, { deletedAt: new Date().toISOString() });
-  if (kind === 'other-owner') db.update('elders', elderId, { ownerUserId: 'another-user' });
+  if (kind === 'deleted') forceRecord('elders', elderId, { deletedAt: new Date().toISOString() });
+  if (kind === 'other-owner') forceRecord('elders', elderId, { ownerUserId: 'another-user' });
   db.setHandoff({ userId: testUser.id, elderId: kind === 'missing' ? 'missing' : elderId, failedPins: 0, lockedUntil: null });
   const caregiver = await render(<CaregiverLayout />, { wrapper: RenderProviders });
   expect(caregiver.getByText('stack')).toBeTruthy();

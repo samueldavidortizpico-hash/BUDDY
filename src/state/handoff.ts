@@ -5,7 +5,9 @@
 import { db } from '@/infrastructure/local/db';
 import { hashSecret, newSalt } from '@/infrastructure/local/auth';
 
-import { currentUserId } from './session';
+import { FEATURES } from '@/config/features';
+
+import { currentRole, currentUserId } from './session';
 
 const MAX = 5;
 const PIN_ITERATIONS = 300;
@@ -30,7 +32,8 @@ export const handoffActions = {
   },
   async setPin(pin: string) {
     const acc = account();
-    if (!acc || !/^\d{4}$/.test(pin)) return false;
+    // El PIN es del administrador: una cuenta vinculada no lo cambia aunque llegue aquí.
+    if (!acc || currentRole() !== 'caregiver' || !/^\d{4}$/.test(pin)) return false;
     const salt = await newSalt();
     const pinHash = await hashSecret(pin, salt, PIN_ITERATIONS);
     if (currentUserId() !== acc.ownerUserId || account()?.id !== acc.id) return false;
@@ -41,7 +44,7 @@ export const handoffActions = {
     const userId = currentUserId();
     const elder = db.get('elders', elderId);
     const acc = account();
-    if (!elder || elder.deletedAt || elder.ownerUserId !== userId || !acc?.pinHash || !acc.pinSalt) {
+    if (currentRole() !== 'caregiver' || !elder || elder.deletedAt || elder.ownerUserId !== userId || !acc?.pinHash || !acc.pinSalt) {
       throw new Error('No se puede entregar el teléfono sin paciente y PIN válidos.');
     }
     db.setHandoff({ userId, elderId, failedPins: 0, lockedUntil: null, mode: 'locked' });
@@ -50,7 +53,8 @@ export const handoffActions = {
   startTest(elderId: string) {
     const userId = currentUserId();
     const elder = db.get('elders', elderId);
-    if (!elder || elder.deletedAt || elder.ownerUserId !== userId) throw new Error('No se puede probar sin una persona válida.');
+    // Sale sin PIN y deja actuar como el adulto mayor: solo existe con las herramientas de desarrollo.
+    if (!FEATURES.devTools || currentRole() !== 'caregiver' || !elder || elder.deletedAt || elder.ownerUserId !== userId) throw new Error('No se puede probar sin una persona válida.');
     db.setHandoff({ userId, elderId, failedPins: 0, lockedUntil: null, mode: 'test' });
   },
   /** Sale del modo prueba. No sirve para una entrega real (esa exige el PIN). */

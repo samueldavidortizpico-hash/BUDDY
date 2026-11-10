@@ -28,7 +28,7 @@ const plan = () => planNotifications({ now: new Date(), meds: db.list('medicatio
 
 it('F-01: confirmar 08:00 y editar a 09:00 no crea otra dosis hoy', () => {
   const med = medication();
-  doseActions.confirm(doses(med.id)[0].id, 'elder');
+  doseActions.confirm(doses(med.id)[0].id);
   medicationActions.update(med.id, { schedule: { kind: 'times', times: ['09:00'], days: [] } });
   expect(doses(med.id)).toHaveLength(1);
   expect(plan().some(n => n.key.includes(`${today}-09:00`))).toBe(false);
@@ -36,9 +36,9 @@ it('F-01: confirmar 08:00 y editar a 09:00 no crea otra dosis hoy', () => {
 it('F-06: Tomé → No tomé devuelve existencias exactamente una vez', () => {
   const med = medication();
   const id = doses(med.id)[0].id;
-  doseActions.confirm(id, 'elder');
-  doseActions.skip(id, 'caregiver');
-  doseActions.skip(id, 'caregiver');
+  doseActions.confirm(id);
+  doseActions.skip(id);
+  doseActions.skip(id);
   expect(db.get('medications', med.id)!.unitsOnHand).toBe(30);
 });
 it('F-07: mover una toma cierra su alerta antigua', () => {
@@ -51,7 +51,7 @@ it('F-07: mover una toma cierra su alerta antigua', () => {
 });
 it('F-07: mover una toma pospuesta elimina la clave antigua y su segundo aviso', () => {
   const med = medication();
-  doseActions.snooze(doses(med.id)[0].id, 'elder');
+  doseActions.snooze(doses(med.id)[0].id);
   medicationActions.update(med.id, { schedule: { kind: 'times', times: ['09:00'], days: [] } });
   expect(doses(med.id)).toHaveLength(1);
   expect(plan().some(n => n.key.includes(`${today}-08:00`))).toBe(false);
@@ -96,7 +96,7 @@ it('R2 sin registros hoy: agregar una segunda hora la programa hoy', () => {
 
 it('R3 con un registro hoy: agregar una segunda hora rige desde mañana', () => {
   const med = medication(['08:00']);
-  doseActions.confirm(doses(med.id)[0].id, 'elder');
+  doseActions.confirm(doses(med.id)[0].id);
   medicationActions.update(med.id, { schedule: { kind: 'times', times: ['08:00', '20:00'], days: [] } });
   expect(times(med.id)).toEqual(['08:00:taken']);
   expect(doseAmbiguity(doses(med.id), med.id, today)).toBe(true);
@@ -106,7 +106,7 @@ it('R4 tres tomas: con la 1.ª tomada, cambiar las horas mueve solo las pendient
   const med = medication(['08:00', '14:00', '20:00']);
   jest.setSystemTime(at(8, 5));
   const first = doses(med.id).find(d => d.time === '08:00')!;
-  doseActions.confirm(first.id, 'elder');
+  doseActions.confirm(first.id);
   medicationActions.update(med.id, { schedule: { kind: 'times', times: ['09:00', '15:00', '21:00'], days: [] } });
   expect(doses(med.id)).toHaveLength(3);
   expect(times(med.id)).toEqual(['08:00:taken', '15:00:pending', '21:00:pending']);
@@ -125,12 +125,12 @@ it('R2 bajar y volver a subir la frecuencia sin registros no duplica ni pierde t
 it('R6 corrección accidental repetida: el inventario queda coherente y deja asientos', () => {
   const med = medication();
   const id = doses(med.id)[0].id;
-  doseActions.confirm(id, 'elder');
-  doseActions.skip(id, 'caregiver');
-  doseActions.confirm(id, 'caregiver');
+  doseActions.confirm(id);
+  doseActions.skip(id);
+  doseActions.confirm(id);
   expect(db.get('medications', med.id)!.unitsOnHand).toBe(29);
-  doseActions.skip(id, 'caregiver');
-  doseActions.skip(id, 'caregiver');
+  doseActions.skip(id);
+  doseActions.skip(id);
   expect(db.get('medications', med.id)!.unitsOnHand).toBe(30);
   const moves = db.list('stock', testUser.id, elderId).filter(s => s.medicationId === med.id).map(s => s.units);
   expect(moves).toEqual([-1, 1, -1, 1]);
@@ -139,8 +139,8 @@ it('R6 corrección accidental repetida: el inventario queda coherente y deja asi
 it('R1 cada confirmación y corrección agrega un evento con autor y hora, sin sobrescribir', () => {
   const med = medication();
   const id = doses(med.id)[0].id;
-  doseActions.confirm(id, 'elder');
-  doseActions.skip(id, 'caregiver');
+  doseActions.confirm(id);
+  doseActions.skip(id);
   const history = db.get('doses', id)!.history!;
   expect(history.map(h => h.action)).toEqual(['created', 'confirm', 'skip']);
   expect(history.every(h => h.by && h.at)).toBe(true);
@@ -154,7 +154,7 @@ it('R7 medianoche: 23:50 pertenece a su día y 00:10 al siguiente', () => {
   const late = doses(med.id).find(d => d.time === '23:50')!;
   jest.setSystemTime(new Date(2026, 9, 24, 0, 5));
   doseActions.sync(elderId, new Date());
-  doseActions.confirm(late.id, 'elder');
+  doseActions.confirm(late.id);
   expect(db.get('doses', late.id)!.date).toBe(today);
   expect(doses(med.id).filter(d => d.date === '2026-10-24').map(d => d.time).sort()).toEqual(['00:10', '23:50']);
   expect(doses(med.id).filter(d => d.date === today)).toHaveLength(2);

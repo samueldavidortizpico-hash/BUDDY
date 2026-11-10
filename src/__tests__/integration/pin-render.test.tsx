@@ -8,7 +8,7 @@ import { strings } from '@/i18n';
 import { elderActions } from '@/state/actions';
 import { handoffActions } from '@/state/handoff';
 import { sessionActions, useSession } from '@/state/session';
-import { RenderProviders, seedRenderData } from '@/testing/render-fixtures';
+import { RenderProviders, forceRecord, seedRenderData } from '@/testing/render-fixtures';
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
@@ -22,7 +22,7 @@ beforeEach(async () => {
   elderId = (await seedRenderData()).id;
   const owner = await sessionActions.signUp({ name: '[PRUEBA] Admin', email: `password-ui-${Date.now()}-${Math.random()}@example.test`, password: 'Segura123!' });
   ownerId = owner.id;
-  db.update('elders', elderId, { ownerUserId: owner.id });
+  forceRecord('elders', elderId, { ownerUserId: owner.id });
   elderActions.setActive(elderId);
   await handoffActions.setPin('1234');
   handoffActions.start(elderId);

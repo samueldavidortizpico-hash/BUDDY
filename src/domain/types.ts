@@ -72,6 +72,12 @@ export interface Elder extends SyncMeta {
   locationConsent?: LocationConsent;
   locationRequestedAt?: Timestamp | null;
   locationDecidedAt?: Timestamp | null;
+  /**
+   * Trazabilidad del consentimiento: quién lo decidió (id de la cuenta con sesión) y por qué vía: con la cuenta propia
+   * del adulto mayor (`account`) o en el teléfono entregado por su administrador (`handoff`).
+   */
+  locationDecidedBy?: string | null;
+  locationDecidedVia?: 'account' | 'handoff' | null;
   firstName: string;
   lastName: string;
   gender: Gender;
@@ -294,7 +300,8 @@ export interface CheckinAnswer extends SyncMeta {
   /** ¿Tiene algún malestar? */
   unwell: boolean | null;
   /** Respuestas exactas de automatizaciones, además de las métricas diarias ya normalizadas. */
-  automationAnswers?: Record<string, { answer: string; respondedAt: Timestamp }>;
+  /** `waterEntryId`: el vaso que esa respuesta sumó (para no sumarlo dos veces ni dejarlo si la respuesta cambia). */
+  automationAnswers?: Record<string, { answer: string; respondedAt: Timestamp; waterEntryId?: string }>;
 }
 
 // ── Avisos ───────────────────────────────────────────────────

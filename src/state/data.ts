@@ -1,5 +1,5 @@
 /** Hooks de lectura: datos vivos de la cuenta conectada y de su adulto mayor activo. */
-import { isLinkedRole } from '@/domain/permissions';
+import { canAccessRecord, isLinkedRole } from '@/domain/permissions';
 import { useMemo } from 'react';
 
 import type { AccountSettings, Elder } from '@/domain/types';
@@ -48,22 +48,29 @@ export function useActiveElder(): Elder | null {
  */
 export function useRecords<K extends CollectionName>(coll: K, opts: { scope?: 'elder' | 'account'; elderId?: string | null } = {}): Collections[K][] {
   const userId = useUserId();
+  const user = useSession((s) => s.user);
   const active = useActiveElder();
   const table = useDb((s) => s[coll]) as Record<string, Collections[K]>;
   const elderId = opts.elderId !== undefined ? opts.elderId : opts.scope === 'account' ? undefined : (active?.id ?? null);
   return useMemo(
     () =>
       Object.values(table).filter(
-        (r) => r.ownerUserId === userId && !r.deletedAt && (elderId === undefined || r.elderId === elderId),
+        // Misma frontera que la base: una cuenta vinculada no ve a otra persona aunque pida "toda la cuenta".
+        (r) => r.ownerUserId === userId && !r.deletedAt && (elderId === undefined || r.elderId === elderId) && canAccessRecord(user, coll, r, 'read'),
       ),
-    [table, userId, elderId],
+    [table, userId, elderId, user, coll],
   );
 }
 
+/**
+ * Un registro por id (rutas como /medication/[id]). SEC-01: solo si es de la cuenta y la persona de la sesión; un id de
+ * otra cuenta guardada en el mismo teléfono devuelve `null`, igual que si no existiera.
+ */
 export function useRecord<K extends CollectionName>(coll: K, id: string | undefined): Collections[K] | null {
+  const user = useSession((s) => s.user);
   const table = useDb((s) => s[coll]) as Record<string, Collections[K]>;
   const rec = id ? table[id] : undefined;
-  return rec && !rec.deletedAt ? rec : null;
+  return rec && !rec.deletedAt && canAccessRecord(user, coll, rec, 'read') ? rec : null;
 }
 
 export const dbReady = () => db.isReady();

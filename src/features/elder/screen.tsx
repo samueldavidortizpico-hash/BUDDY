@@ -392,9 +392,9 @@ function ItemView({
             </AppText>
           ) : null}
           <View style={s.actions}>
-            <Button label={E.taken} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; doseActions.confirm(dose.id, 'elder'); onThanks(); }} />
-            {snoozesLeft ? <Button label={E.snooze} icon="clock" variant="white" disabled={preview} onPress={() => !preview && doseActions.snooze(dose.id, 'elder')} /> : null}
-            <Button label={E.notTaken} variant="ghost" disabled={preview} onPress={() => !preview && doseActions.skip(dose.id, 'elder')} />
+            <Button label={E.taken} icon="check" size="elder" disabled={preview} onPress={() => { if (preview) return; doseActions.confirm(dose.id); onThanks(); }} />
+            {snoozesLeft ? <Button label={E.snooze} icon="clock" variant="white" disabled={preview} onPress={() => !preview && doseActions.snooze(dose.id)} /> : null}
+            <Button label={E.notTaken} variant="ghost" disabled={preview} onPress={() => !preview && doseActions.skip(dose.id)} />
           </View>
         </View>
       );

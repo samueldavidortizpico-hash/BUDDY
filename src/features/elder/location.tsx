@@ -35,7 +35,7 @@ export function ElderLocation({ elder, caregiver, preview }: { elder: Elder; car
     let alive = true;
     const tick = async () => {
       const r = await currentFix(false);
-      if (alive && r.ok) locationActions.record(elder.id, r, 'elder');
+      if (alive && r.ok) locationActions.record(elder.id, r);
     };
     tick();
     const id = setInterval(tick, EVERY_MS);
@@ -47,10 +47,10 @@ export function ElderLocation({ elder, caregiver, preview }: { elder: Elder; car
 
   const accept = async () => {
     setBusy(true);
-    locationActions.decide(elder.id, true, 'elder');
+    locationActions.decide(elder.id, true);
     // El permiso del sistema se pide aquí, en contexto, después de que la persona aceptó.
     const r = await currentFix(true);
-    if (r.ok) locationActions.record(elder.id, r, 'elder');
+    if (r.ok) locationActions.record(elder.id, r);
     else toast({ message: L.permissionDenied, icon: 'info' });
     setBusy(false);
   };
@@ -67,7 +67,7 @@ export function ElderLocation({ elder, caregiver, preview }: { elder: Elder; car
         <AppText variant="body" color={t.c.muted}>{L.elderAskBody}</AppText>
         <View style={s.row}>
           <Button label={L.accept} icon="check" disabled={busy || preview} onPress={accept} style={s.flex} />
-          <Button label={L.notNow} variant="ghost" disabled={busy || preview} onPress={() => locationActions.decide(elder.id, false, 'elder')} style={s.flex} />
+          <Button label={L.notNow} variant="ghost" disabled={busy || preview} onPress={() => locationActions.decide(elder.id, false)} style={s.flex} />
         </View>
       </View>
     );
@@ -82,7 +82,7 @@ export function ElderLocation({ elder, caregiver, preview }: { elder: Elder; car
           disabled={preview}
           onPress={() => Alert.alert('Dejar de compartir ubicación', 'Tu familia dejará de ver tu ubicación actual.', [
             { text: strings.common.cancel, style: 'cancel' },
-            { text: L.stop, style: 'destructive', onPress: () => { locationActions.revoke(elder.id, 'elder'); toast({ message: L.stopped, icon: 'check' }); } },
+            { text: L.stop, style: 'destructive', onPress: () => { locationActions.revoke(elder.id); toast({ message: L.stopped, icon: 'check' }); } },
           ])}
         />}>
           <AppText variant="secondary" color={t.c.muted}>{L.sharing(who)}</AppText>

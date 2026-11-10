@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ToastProvider } from '@/components/feedback';
-import { db, useDb } from '@/infrastructure/local/db';
+import { db, useDb, type CollectionName, type Collections } from '@/infrastructure/local/db';
 import { elderActions } from '@/state/actions';
 import { ensureAccount, useSession } from '@/state/session';
 import { DEFAULT_APPEARANCE, ThemeProvider, useAppearanceStore } from '@/theme/provider';
@@ -37,4 +37,17 @@ export function seedMedication(elderId: string) {
     startDate: toISODate(new Date()), endDate: null, instructions: '', purpose: '', description: '',
     unitsPerPackage: 30, unitsOnHand: 30, refillAlertDays: 3, photoUri: null, paused: false,
   }, { userId: testUser.id, elderId });
+}
+
+/**
+ * SOLO PRUEBAS: reescribe un registro directo en el almacén, sin la frontera de acceso. Sirve para preparar escenarios
+ * que la app ya no permite por sus casos de uso (una persona de otra cuenta, un registro borrado).
+ */
+export function forceRecord<K extends CollectionName>(coll: K, id: string, patch: Partial<Collections[K]>) {
+  useDb.setState((s) => ({ [coll]: { ...s[coll], [id]: { ...s[coll][id], ...patch } } }) as never);
+}
+
+/** SOLO PRUEBAS: el teléfono queda entregado a esa persona (lo que hace real una respuesta "del adulto mayor"). */
+export function handPhoneTo(elderId: string) {
+  db.setHandoff({ userId: testUser.id, elderId, failedPins: 0, lockedUntil: null, mode: 'locked' });
 }

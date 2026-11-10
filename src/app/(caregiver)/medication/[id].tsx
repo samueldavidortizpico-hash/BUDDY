@@ -119,7 +119,7 @@ export default function MedicationDetail() {
                 <Row
                   key={it.dose.id}
                   style={i > 0 ? s.divider : undefined}
-                  action={it.status !== 'taken' && it.status !== 'skipped' ? <Button label={M.markTaken} size="sm" variant="solid" tone="mint" icon="check" onPress={() => doseActions.confirm(it.dose.id, 'caregiver')} /> : null}
+                  action={it.status !== 'taken' && it.status !== 'skipped' ? <Button label={M.markTaken} size="sm" variant="solid" tone="mint" icon="check" onPress={() => doseActions.confirm(it.dose.id)} /> : null}
                 >
                   <AppText variant="bodyStrong" style={s.tabular}>{formatClock(effectiveTime(it.dose))}</AppText>
                   <StatusChip status={it.dose.safetyHold && it.status !== 'taken' && it.status !== 'skipped' ? 'held' : it.status} />

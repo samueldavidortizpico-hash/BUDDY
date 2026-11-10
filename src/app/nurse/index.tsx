@@ -111,7 +111,7 @@ export default function NurseHome() {
                         icon="check"
                         size="sm"
                         onPress={() => {
-                          doseActions.confirm(dose.id, 'nurse');
+                          doseActions.confirm(dose.id);
                           successHaptic();
                           toast({ message: N.administeredDone(medication.name), icon: 'check' });
                         }}

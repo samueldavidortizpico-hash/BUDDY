@@ -15,7 +15,7 @@ import { getAuthService } from '@/infrastructure';
 import { db } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
 import { sessionActions, useSession } from '@/state/session';
-import { RenderProviders, seedRenderData } from '@/testing/render-fixtures';
+import { RenderProviders, forceRecord, seedRenderData } from '@/testing/render-fixtures';
 
 let mockParams: Record<string, string> = {};
 const mockPush = jest.fn();
@@ -97,7 +97,7 @@ describe('1.2 acceso del adulto mayor', () => {
   it('restablecer muestra una contraseña temporal UNA vez, que sirve para entrar', async () => {
     const admin = await getAuthService().signUp({ name: 'Laura', email: unique('laura'), password: 'Segura123' });
     useSession.setState({ status: 'signedIn', user: admin });
-    db.update('elders', elderId, { ownerUserId: admin.id });
+    forceRecord('elders', elderId, { ownerUserId: admin.id });
     const email = unique('rosa');
     await sessionActions.createElderAccess({ elderId, name: 'Rosa', email, password: 'Rosa2026!' });
     mockParams = { elderId };

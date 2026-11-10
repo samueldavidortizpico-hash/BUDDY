@@ -7,7 +7,7 @@ import { sinceText, verify, type Heartbeat } from '@/domain/verification';
 import { db } from '@/infrastructure/local/db';
 import { beat, doseActions, elderAnswers, heartbeats } from '@/state/care';
 import { computeFeed } from '@/state/feed';
-import { seedRenderData, testUser } from '@/testing/render-fixtures';
+import { handPhoneTo, seedRenderData, testUser } from '@/testing/render-fixtures';
 
 const at = (d: number, h: number, m = 0) => new Date(2026, 9, d, h, m);
 const hb = (d: Date, kind: Heartbeat['kind'] = 'app_open', notifications?: Heartbeat['notifications']): Heartbeat => ({ at: d.toISOString(), kind, ...(notifications ? { notifications } : {}) });
@@ -89,10 +89,12 @@ describe('señales de vida desde el celular del adulto mayor', () => {
     const med = db.insert('medications', { name: 'Losartán [PRUEBA]', activeIngredient: '', strength: '', form: 'tablet', doseAmount: 1, doseUnit: 'unit', schedule: { kind: 'times', times: ['08:00'], days: [] }, startDate: '2026-10-20', endDate: null, instructions: '', purpose: '', description: '', unitsPerPackage: 30, unitsOnHand: 30, refillAlertDays: 3, photoUri: null, paused: false }, { userId: testUser.id, elderId });
     doseActions.sync(elderId, new Date());
     const dose = db.list('doses', testUser.id, elderId).find((d) => d.medicationId === med.id)!;
-    doseActions.confirm(dose.id, 'caregiver');
+    doseActions.confirm(dose.id);
     expect(heartbeats.recent(elderId)).toHaveLength(0);
     doseActions.reset(dose.id);
-    doseActions.confirm(dose.id, 'elder');
+    // Solo cuenta como señal de vida si responde quien tiene el teléfono entregado (o su propia cuenta).
+    handPhoneTo(elderId);
+    doseActions.confirm(dose.id);
     expect(heartbeats.recent(elderId).map((b) => b.kind)).toEqual(['answer']);
   });
 

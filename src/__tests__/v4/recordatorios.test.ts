@@ -51,7 +51,7 @@ it('aviso, segundo aviso, "sin confirmar" y cancelación al responder, en orden'
   expect(pendingAlerts()).toHaveLength(1);
   expect(computeFeed(new Date()).some((f) => f.key === `dose-${doses(med.id)[0].id}`)).toBe(true);
   tick(at(20, 8, 40));
-  doseActions.confirm(doses(med.id)[0].id, 'elder');
+  doseActions.confirm(doses(med.id)[0].id);
   expect(pendingAlerts()).toHaveLength(0);
   expect(computeFeed(new Date()).some((f) => f.key.startsWith('dose-'))).toBe(false);
   expect(keys(med.id).some((k) => k.includes('2026-10-20'))).toBe(false);
@@ -61,7 +61,7 @@ it('aviso, segundo aviso, "sin confirmar" y cancelación al responder, en orden'
 it('posponer mueve el aviso y el "sin confirmar" a la nueva hora', () => {
   const med = medication('08:00');
   tick(at(20, 8, 5));
-  doseActions.snooze(doses(med.id)[0].id, 'elder'); // 08:15
+  doseActions.snooze(doses(med.id)[0].id); // 08:15
   tick(at(20, 8, 31));
   expect(pendingAlerts()).toHaveLength(0); // 08:15 + 30 = 08:45
   tick(at(20, 8, 45));
@@ -79,7 +79,7 @@ it('cambio de día: una toma de las 23:50 sin respuesta avisa al administrador a
   expect(pendingAlerts()).toHaveLength(1);
   expect(pendingAlerts()[0].refId).toBe(doses(med.id).find((d) => d.date === '2026-10-20')!.id);
   // Responder cierra la alerta; la toma del 21 es otra y sigue pendiente para su hora.
-  doseActions.confirm(pendingAlerts()[0].refId!, 'caregiver');
+  doseActions.confirm(pendingAlerts()[0].refId!);
   expect(pendingAlerts()).toHaveLength(0);
   expect(doses(med.id).find((d) => d.date === '2026-10-21')?.status).toBe('pending');
 });

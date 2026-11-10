@@ -2,7 +2,9 @@
  * Base de datos local de BUDDY: colecciones tipadas en un store zustand persistido en AsyncStorage.
  * - Cada registro lleva SyncMeta (UUID, dueño, adulto mayor, fechas, borrado lógico, estado de sincronización).
  * - El esquema tiene versión y migraciones (`migrate`). Al subir de versión, añade un caso en MIGRATIONS.
- * - Los datos de cada cuenta quedan aislados por `ownerUserId`.
+ * - Los datos de cada cuenta quedan aislados por `ownerUserId`: leer y escribir pasa por la FRONTERA DE ACCESO que
+ *   instala la sesión (`setAccessGuard`). `putMany` y `purgeAccountData` son el contrato interno de sincronización y de
+ *   borrado de cuenta: no pasan por la frontera y solo los usa la infraestructura o la capa de sesión.
  * Es la única capa que conoce el store; el resto usa `db.*` o los hooks de src/state.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -171,6 +173,29 @@ export interface Actor {
 
 let authorResolver: () => string | null = () => null;
 
+/**
+ * Metadatos que solo escribe la base: un caso de uso no puede cambiar el dueño, la persona, el autor, las fechas, la
+ * versión, el estado de sincronización ni el borrado lógico (para eso están `remove` y `restore`). Auditoría
+ * 2026-11-10, SEC-02: antes `update` aceptaba un `Partial` del registro completo.
+ */
+const PROTECTED = ['id', 'ownerUserId', 'elderId', 'createdBy', 'createdAt', 'updatedAt', 'deletedAt', 'syncStatus', 'version'] as const;
+export type Patch<K extends CollectionName> = Partial<Omit<Collections[K], (typeof PROTECTED)[number]>>;
+
+/** A quién pertenece un registro: lo único que la frontera necesita saber de él. */
+export interface Scope {
+  ownerUserId: string;
+  elderId: string | null;
+}
+export type AccessMode = 'read' | 'write';
+/**
+ * Frontera de acceso: ¿quien está conectado puede leer o escribir datos de esa cuenta y esa persona? La define la sesión
+ * (la base no conoce la sesión). Sin sesión instalada (pruebas de infraestructura pura) todo pasa.
+ */
+export type AccessGuard = (coll: CollectionName | 'drafts', scope: Scope, mode: AccessMode) => boolean;
+let access: AccessGuard = () => true;
+
+const raw = <K extends CollectionName>(coll: K, id: string) => useDb.getState()[coll][id] as Collections[K] | undefined;
+
 function logChange(log: ChangeEntry[], entity: CollectionName, r: SyncMeta, op: ChangeEntry['op'], author: string): ChangeEntry[] {
   const entry: ChangeEntry = { id: newId(), entity, entityId: r.id, op, author, ownerUserId: r.ownerUserId, updatedAt: r.updatedAt, version: r.version ?? 1, syncStatus: 'pending' };
   const synced = log.filter((c) => c.syncStatus === 'synced');
@@ -178,19 +203,49 @@ function logChange(log: ChangeEntry[], entity: CollectionName, r: SyncMeta, op: 
   return [...kept, entry];
 }
 
+/** Única escritura sobre un registro existente: comprueba la frontera, sube la versión y deja el cambio en el ChangeLog. */
+function write<K extends CollectionName>(coll: K, id: string, patch: Partial<Collections[K]>, op: ChangeEntry['op']): Collections[K] | undefined {
+  const current = raw(coll, id);
+  if (!current || !access(coll, current, 'write')) return undefined;
+  const next = { ...current, ...patch, updatedAt: now(), syncStatus: 'pending', version: (current.version ?? 1) + 1 } as Collections[K];
+  useDb.setState((s) => ({ [coll]: { ...s[coll], [id]: next }, changelog: logChange(s.changelog, coll, next, op, authorResolver() ?? next.ownerUserId) }) as Partial<DbState>);
+  return next;
+}
+
+/**
+ * Borrado físico de TODOS los datos de una cuenta, sin frontera: lo llama la capa de sesión después de verificar la
+ * contraseña y cerrar la sesión (eliminar cuenta). Las pantallas usan `db.purgeUser`, que sí comprueba al dueño.
+ */
+export function purgeAccountData(userId: string) {
+  useDb.setState((s) => {
+    const next: Partial<DbState> = {};
+    for (const c of COLLECTIONS) {
+      next[c] = Object.fromEntries(Object.entries(s[c]).filter(([, r]) => r.ownerUserId !== userId)) as never;
+    }
+    const drafts = { ...s.drafts };
+    delete drafts[userId];
+    const lastPulledAt = { ...s.lastPulledAt };
+    delete lastPulledAt[userId];
+    return { ...next, drafts, lastPulledAt, handoff: s.handoff?.userId === userId ? null : s.handoff, changelog: s.changelog.filter((c) => c.ownerUserId !== userId) };
+  });
+}
+
 export const db = {
+  /** Un registro por id, solo si quien está conectado puede verlo (otra cuenta u otra persona → `undefined`). */
   get<K extends CollectionName>(coll: K, id: string): Collections[K] | undefined {
-    return useDb.getState()[coll][id] as Collections[K] | undefined;
+    const r = raw(coll, id);
+    return r && access(coll, r, 'read') ? r : undefined;
   },
 
   /** Registros vivos (no borrados) de una cuenta; si `elderId` se indica, solo de ese adulto mayor. */
   list<K extends CollectionName>(coll: K, userId: string, elderId?: string | null): Collections[K][] {
     return Object.values(useDb.getState()[coll] as Record<string, Collections[K]>).filter(
-      (r) => r.ownerUserId === userId && !r.deletedAt && (elderId === undefined || r.elderId === elderId),
+      (r) => r.ownerUserId === userId && !r.deletedAt && (elderId === undefined || r.elderId === elderId) && access(coll, r, 'read'),
     );
   },
 
   insert<K extends CollectionName>(coll: K, data: NewRecord<K>, actor: Actor): Collections[K] {
+    if (!access(coll, { ownerUserId: actor.userId, elderId: actor.elderId }, 'write')) throw new Error('BUDDY: escritura fuera de la cuenta o la persona de la sesión.');
     const t = now();
     const author = actor.by ?? actor.userId;
     const record = {
@@ -209,13 +264,10 @@ export const db = {
     return record;
   },
 
-  update<K extends CollectionName>(coll: K, id: string, patch: Partial<Collections[K]>): Collections[K] | undefined {
-    const current = db.get(coll, id);
-    if (!current) return undefined;
-    const next = { ...current, ...patch, updatedAt: now(), syncStatus: 'pending', version: (current.version ?? 1) + 1 } as Collections[K];
-    const op: ChangeEntry['op'] = 'deletedAt' in patch ? (patch.deletedAt ? 'delete' : 'restore') : 'update';
-    useDb.setState((s) => ({ [coll]: { ...s[coll], [id]: next }, changelog: logChange(s.changelog, coll, next, op, authorResolver() ?? next.ownerUserId) }) as Partial<DbState>);
-    return next;
+  /** Cambia campos de contenido. Los metadatos protegidos se descartan aunque lleguen por un tipo forzado. */
+  update<K extends CollectionName>(coll: K, id: string, patch: Patch<K>): Collections[K] | undefined {
+    const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => !(PROTECTED as readonly string[]).includes(k))) as Partial<Collections[K]>;
+    return write(coll, id, clean, 'update');
   },
 
   /** Las pantallas y el SyncEngine se suscriben a una colección y reaccionan al instante a cada cambio. */
@@ -230,6 +282,11 @@ export const db = {
     authorResolver = fn;
   },
 
+  /** Instala la frontera de acceso (la sesión, una sola vez al cargar). */
+  setAccessGuard(fn: AccessGuard) {
+    access = fn;
+  },
+
   /** Cambios aún no enviados al servidor. */
   pendingChanges(ownerUserId: string): ChangeEntry[] {
     return useDb.getState().changelog.filter((c) => c.ownerUserId === ownerUserId && c.syncStatus === 'pending');
@@ -237,7 +294,7 @@ export const db = {
 
   /** Borrado lógico (se puede deshacer con `restore`). */
   remove<K extends CollectionName>(coll: K, id: string) {
-    return db.update(coll, id, { deletedAt: now() } as Partial<Collections[K]>);
+    return write(coll, id, { deletedAt: now() } as Partial<Collections[K]>, 'delete');
   },
 
   /**
@@ -251,7 +308,7 @@ export const db = {
       const table = { ...s[coll] } as Record<string, Collections[K]>;
       for (const id of ids) {
         const r = table[id];
-        if (!r) continue;
+        if (!r || !access(coll, r, 'write')) continue;
         changelog = logChange(changelog, coll, { ...r, updatedAt: now() }, 'delete', authorResolver() ?? r.ownerUserId);
         delete table[id];
       }
@@ -260,33 +317,28 @@ export const db = {
   },
 
   restore<K extends CollectionName>(coll: K, id: string) {
-    return db.update(coll, id, { deletedAt: null } as Partial<Collections[K]>);
+    return write(coll, id, { deletedAt: null } as Partial<Collections[K]>, 'restore');
   },
 
-  /** Inserta registros ya formados (sincronización desde el servidor). */
+  /** Inserta registros ya formados (sincronización desde el servidor). Contrato interno: no pasa por la frontera. */
   putMany<K extends CollectionName>(coll: K, records: Collections[K][]) {
     if (!records.length) return;
     useDb.setState((s) => ({ [coll]: { ...s[coll], ...Object.fromEntries(records.map((r) => [r.id, r])) } }) as Partial<DbState>);
   },
 
-  /** Borra físicamente todos los datos de una cuenta (eliminar cuenta, restablecer). */
+  /** Borra físicamente todos los datos de la cuenta conectada (restablecer). Solo su administrador. */
   purgeUser(userId: string) {
-    useDb.setState((s) => {
-      const next: Partial<DbState> = {};
-      for (const c of COLLECTIONS) {
-        next[c] = Object.fromEntries(Object.entries(s[c]).filter(([, r]) => r.ownerUserId !== userId)) as never;
-      }
-      const drafts = { ...s.drafts };
-      delete drafts[userId];
-      return { ...next, drafts, handoff: s.handoff?.userId === userId ? null : s.handoff, changelog: s.changelog.filter((c) => c.ownerUserId !== userId) };
-    });
+    if (!access('accounts', { ownerUserId: userId, elderId: null }, 'write')) return;
+    purgeAccountData(userId);
   },
 
   draft<T>(userId: string, key: string): T | undefined {
+    if (!access('drafts', { ownerUserId: userId, elderId: null }, 'read')) return undefined;
     return useDb.getState().drafts[userId]?.[key] as T | undefined;
   },
 
   setDraft(userId: string, key: string, value: unknown) {
+    if (!access('drafts', { ownerUserId: userId, elderId: null }, 'write')) return;
     useDb.setState((s) => {
       const mine = { ...(s.drafts[userId] ?? {}) };
       if (value === undefined) delete mine[key];

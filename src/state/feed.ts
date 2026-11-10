@@ -135,7 +135,7 @@ export const feedActions = {
     switch (action.type) {
       case 'confirm_dose':
         // Confirmación del cuidador ("ya confirmé por teléfono"): queda registrada como respuesta del cuidador.
-        doseActions.confirm(action.doseId, 'caregiver');
+        doseActions.confirm(action.doseId);
         return { done: 'Listo, quedó confirmada por ti.' };
       case 'add_activity': {
         if (!elderId) return {};

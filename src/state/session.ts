@@ -4,10 +4,13 @@
  */
 import { create } from 'zustand';
 
+import { FEATURES } from '@/config/features';
 import { AuthError, dataOwnerId, roleOf, type AuthUser } from '@/domain/auth';
+import { can, canAccessRecord, type Permission } from '@/domain/permissions';
 import { ALERT_KINDS, type AccountSettings, type Role } from '@/domain/types';
 import { getAuthService, syncIfRemote } from '@/infrastructure';
-import { db } from '@/infrastructure/local/db';
+import { db, purgeAccountData, useDb } from '@/infrastructure/local/db';
+import { clearScheduled } from '@/infrastructure/notifications';
 
 type Status = 'loading' | 'signedOut' | 'signedIn';
 
@@ -20,6 +23,8 @@ export const useSession = create<SessionState>(() => ({ status: 'loading', user:
 
 // Cada cambio queda en el ChangeLog con su autor real (administrador o adulto mayor).
 db.setAuthorResolver(() => useSession.getState().user?.id ?? null);
+// Frontera de acceso de la base: cada lectura y escritura se comprueba contra la cuenta y la persona de la sesión.
+db.setAccessGuard((coll, scope, mode) => canAccessRecord(useSession.getState().user, coll, scope, mode));
 
 export const ALL_ALERTS = Object.fromEntries(ALERT_KINDS.map((k) => [k, true])) as AccountSettings['myAlerts'];
 
@@ -42,9 +47,15 @@ export function ensureAccount(user: AuthUser): AccountSettings {
 }
 
 function setUser(user: AuthUser | null) {
+  const previous = useSession.getState().user;
+  // La sesión se fija primero: la base solo deja escribir en la cuenta de quien está conectado.
+  useSession.setState({ status: user ? 'signedIn' : 'signedOut', user });
   // Los ajustes de cuenta (PIN, persona activa, avisos) son del administrador; el adulto mayor usa los de su familiar.
   if (user && roleOf(user) === 'caregiver') ensureAccount(user);
-  useSession.setState({ status: user ? 'signedIn' : 'signedOut', user });
+  // SEC-07: los avisos programados pertenecen a la cuenta que sale (cerrar sesión, entrar con otra o eliminarla). No
+  // se tocan en el primer arranque (los recordatorios sobreviven a reabrir la app) ni al pasar del adulto mayor a SU
+  // administrador en el mismo teléfono: son de la misma persona y apagarlos sería dejarla sin recordatorios.
+  if (previous && (!user || dataOwnerId(previous) !== dataOwnerId(user))) void clearScheduled().catch(() => undefined);
   if (user) syncIfRemote(dataOwnerId(user)).catch(() => undefined);
 }
 
@@ -112,6 +123,8 @@ export const sessionActions = {
     // Sin esperar al oyente del proveedor: al volver a la entrada, la sesión ya está cerrada (si no, la entrada
     // redirigía de nuevo a la pantalla del adulto mayor).
     setUser(null);
+    // Se espera a que el sistema suelte los avisos de quien salió: al terminar de cerrar sesión ya no queda ninguno.
+    await clearScheduled().catch(() => undefined);
   },
   resetPassword: (email: string) => getAuthService().resetPassword(email),
   updatePassword: (current: string, next: string) => getAuthService().updatePassword({ current, next }),
@@ -128,12 +141,19 @@ export const sessionActions = {
   revokeNurseAccess: (elderId: string) => getAuthService().revokeManagedAccount({ ownerId: currentUserId(), elderId, role: 'nurse' }),
   resetNurseAccess: (elderId: string, password: string) => getAuthService().resetManagedPassword({ ownerId: currentUserId(), elderId, password, role: 'nurse' }),
   nurseAccess: (elderId: string) => getAuthService().managedAccount({ ownerId: currentUserId(), elderId, role: 'nurse' }),
-  /** Verifica la contraseña, elimina la cuenta y borra TODOS sus datos locales. */
+  /**
+   * Verifica la contraseña, elimina la cuenta con los accesos que creó (adulto mayor y enfermera de cada persona,
+   * SEC-06) y borra TODOS sus datos locales. Solo el administrador: una cuenta vinculada la revoca quien la creó.
+   */
   deleteAccount: async (password: string) => {
     const user = useSession.getState().user;
     if (!user) throw new AuthError('invalid_credentials', 'Sin sesión');
-    await getAuthService().deleteAccount(password);
-    db.purgeUser(user.id);
+    if (roleOf(user) !== 'caregiver') throw new AuthError('forbidden', 'Solo el administrador puede eliminar la cuenta.');
+    // Todas sus personas, también las borradas: sus accesos siguen existiendo hasta eliminarlos.
+    const elderIds = Object.values(useDb.getState().elders).filter((e) => e.ownerUserId === user.id).map((e) => e.id);
+    await getAuthService().deleteAccount(password, { elderIds });
+    purgeAccountData(user.id);
+    await clearScheduled().catch(() => undefined);
   },
 };
 
@@ -155,4 +175,24 @@ export function currentAuthorId(): string {
 
 export function currentRole(): Role {
   return roleOf(useSession.getState().user);
+}
+
+/**
+ * Rol EFECTIVO de quien usa el teléfono ahora, respecto a una persona (auditoría 2026-11-10, SEC-03 y SEC-04). Sale de
+ * la sesión y de la entrega del teléfono, NUNCA de un argumento de quien llama: una sesión de adulto mayor o de
+ * enfermera actúa como tal; la del administrador actúa como el adulto mayor solo mientras el teléfono está entregado a
+ * esa persona (la entrega de prueba "Probar como" solo existe con las herramientas de desarrollo).
+ */
+export function actingRole(elderId?: string | null): Role {
+  const user = useSession.getState().user;
+  const role = roleOf(user);
+  if (!user || role !== 'caregiver') return role;
+  const handoff = db.draftHandoff();
+  const valid = !!handoff && handoff.userId === user.id && (!elderId || handoff.elderId === elderId) && (handoff.mode !== 'test' || FEATURES.devTools);
+  return valid ? 'elder' : 'caregiver';
+}
+
+/** ¿El rol efectivo puede hacer esto? Es la única puerta de la matriz `can` para los casos de uso. */
+export function allowed(action: Permission, elderId?: string | null): boolean {
+  return !!useSession.getState().user && can(actingRole(elderId), action);
 }

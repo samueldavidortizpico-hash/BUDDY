@@ -50,48 +50,48 @@ const stockAlerts = (medId: string) => db.list('alerts', testUser.id, elderId).f
 
 it('confirmar "tomé" descuenta exactamente la dosis, también fracciones y ml', () => {
   const half = med({ doseAmount: 0.5 });
-  doseActions.confirm(doseOf(half.id).id, 'elder');
+  doseActions.confirm(doseOf(half.id).id);
   expect(units(half.id)).toBe(29.5);
   const oneHalf = med({ name: '[PRUEBA] Metformina', doseAmount: 1.5 });
-  doseActions.confirm(doseOf(oneHalf.id).id, 'elder');
+  doseActions.confirm(doseOf(oneHalf.id).id);
   expect(units(oneHalf.id)).toBe(28.5);
   const syrup = med({ name: '[PRUEBA] Jarabe', form: 'syrup', doseUnit: 'ml', doseAmount: 7.5, unitsOnHand: 120 });
-  doseActions.confirm(doseOf(syrup.id).id, 'elder');
+  doseActions.confirm(doseOf(syrup.id).id);
   expect(units(syrup.id)).toBe(112.5);
 });
 
 it('confirmar dos veces la misma toma descuenta una sola vez (idempotente)', () => {
   const m = med();
   const d = doseOf(m.id);
-  doseActions.confirm(d.id, 'elder');
-  doseActions.confirm(d.id, 'caregiver');
+  doseActions.confirm(d.id);
+  doseActions.confirm(d.id);
   expect(units(m.id)).toBe(29);
 });
 
 it('omitir o posponer no descuenta', () => {
   const m = med();
-  doseActions.skip(doseOf(m.id).id, 'elder');
-  doseActions.snooze(doseOf(m.id, '20:00').id, 'elder');
+  doseActions.skip(doseOf(m.id).id);
+  doseActions.snooze(doseOf(m.id, '20:00').id);
   expect(units(m.id)).toBe(30);
 });
 
 it('corregir una confirmación devuelve las unidades (compensación)', () => {
   const m = med({ doseAmount: 0.5 });
   const d = doseOf(m.id);
-  doseActions.confirm(d.id, 'elder');
+  doseActions.confirm(d.id);
   doseActions.reset(d.id);
   expect(units(m.id)).toBe(30);
-  doseActions.confirm(d.id, 'elder');
+  doseActions.confirm(d.id);
   expect(units(m.id)).toBe(29.5);
 });
 
 it('≤ 3 días: un solo aviso por medicamento aunque se atienda sin comprar; la compra reinicia el ciclo; a 0, aviso adicional', () => {
   const m = med({ unitsOnHand: 8 }); // 2 al día → 4 días
   expect(stockAlerts(m.id)).toHaveLength(0);
-  doseActions.confirm(doseOf(m.id).id, 'elder'); // 7 → 3 días
+  doseActions.confirm(doseOf(m.id).id); // 7 → 3 días
   expect(stockAlerts(m.id).map((a) => a.kind)).toEqual(['stock_low']);
   alertActions.attend(stockAlerts(m.id)[0].id); // el cuidador lo ve pero aún no compra
-  doseActions.confirm(doseOf(m.id, '20:00').id, 'elder'); // 6 → 3 días
+  doseActions.confirm(doseOf(m.id, '20:00').id); // 6 → 3 días
   expect(stockAlerts(m.id)).toHaveLength(1);
   medicationActions.registerPurchase(m.id, { packages: 1 }); // +30
   expect(units(m.id)).toBe(36);

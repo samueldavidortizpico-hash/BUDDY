@@ -76,7 +76,7 @@ describe('ejecutor de BUDDY y casos de uso', () => {
     const med = db.list('medications', user.id).find((m) => m.name === 'Losartán')!;
     doseActions.sync(med.elderId!, new Date());
     const dose = db.list('doses', user.id).find((d) => d.medicationId === med.id)!;
-    doseActions.confirm(dose.id, 'elder');
+    doseActions.confirm(dose.id);
     expect(db.get('medications', med.id)?.unitsOnHand).toBe(29);
   });
 

@@ -17,7 +17,7 @@ import { strings } from '@/i18n';
 import { handoffActions } from '@/state/handoff';
 import { sessionActions, useSession } from '@/state/session';
 import { elderActions } from '@/state/actions';
-import { RenderProviders, seedRenderData } from '@/testing/render-fixtures';
+import { RenderProviders, forceRecord, seedRenderData } from '@/testing/render-fixtures';
 
 // Use the real Expo Router and production route guards, with lightweight
 // destination screens. Native animations remain mocked by the Jest preset.
@@ -44,7 +44,7 @@ beforeEach(async () => {
   elderId = (await seedRenderData()).id;
   const owner = await sessionActions.signUp({ name: '[PRUEBA] Admin', email: `router-v31-${Date.now()}-${Math.random()}@example.test`, password: 'Segura123!' });
   ownerId = owner.id;
-  db.update('elders', elderId, { ownerUserId: owner.id });
+  forceRecord('elders', elderId, { ownerUserId: owner.id });
   elderActions.setActive(elderId);
 });
 afterEach(() => { cleanup(); jest.useRealTimers(); });

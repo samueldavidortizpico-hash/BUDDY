@@ -37,7 +37,7 @@ export default function ElderOptions() {
   const [error, setError] = useState<string | null>(null);
   if (!elder) return null;
   // Solo apariencia: la rutina la define el administrador (docs/DECISIONS.md, V4).
-  const look = (patch: Partial<Pick<typeof elder.screen, 'textScale' | 'appearance'>>) => elderActions.update(elder.id, { screen: { ...elder.screen, ...patch } });
+  const look = (patch: Partial<Pick<typeof elder.screen, 'textScale' | 'appearance'>>) => elderActions.setLook(elder.id, patch);
   return (
     <ScreenContainer header={<ScreenHeader title={strings.adminAccess.title} fallback="/elder" />}>
       <View style={s.stack}>

@@ -10,7 +10,7 @@ import { db } from '@/infrastructure/local/db';
 import { doseActions, doseDelivered, evaluateAlerts, notifyLog } from '@/state/care';
 import { elderActions } from '@/state/actions';
 import { computeFeed, feedActions } from '@/state/feed';
-import { seedRenderData, testUser } from '@/testing/render-fixtures';
+import { handPhoneTo, seedRenderData, testUser } from '@/testing/render-fixtures';
 
 const DAY = '2026-10-20';
 const at = (h: number, m = 0) => new Date(2026, 9, 20, h, m);
@@ -58,18 +58,20 @@ describe('etapas de una toma (programada ≠ entregada ≠ respondida)', () => {
   });
 
   it('respondida en cualquier momento, deja de escalar (pospuse, tomé y no tomé por separado)', () => {
+    handPhoneTo(elderId); // responde el adulto mayor en el teléfono que le entregaron
     jest.setSystemTime(at(8, 12));
-    doseActions.snooze(doseId, 'elder'); // a las 8:22
+    doseActions.snooze(doseId); // a las 8:22
     expect(doseStage(dose(), at(8, 15), escalationOf(), true)).toMatchObject({ answer: 'snoozed' });
     // La toma pospuesta vuelve a escalar desde su nueva hora.
     expect(doseStage(dose(), at(8, 52), escalationOf(), true).stage).toBe('unconfirmed');
-    doseActions.confirm(doseId, 'elder');
+    doseActions.confirm(doseId);
     expect(doseStage(dose(), at(9, 0), escalationOf(), true)).toEqual({ stage: 'answered', answer: 'taken', by: 'elder' });
     // V4 (R8): corregir deja la toma retenida; no se pide otra dosis (ni se pospone) hasta una respuesta explícita.
+    db.setHandoff(null); // el administrador recupera el teléfono: corregir una toma es suyo
     doseActions.reset(doseId);
     expect(dose().safetyHold).toBe(true);
-    expect(doseActions.snooze(doseId, 'elder')).toBeUndefined();
-    doseActions.skip(doseId, 'elder');
+    expect(doseActions.snooze(doseId)).toBeUndefined();
+    doseActions.skip(doseId);
     expect(doseStage(dose(), at(9, 0), escalationOf(), true)).toMatchObject({ answer: 'skipped' });
   });
 
@@ -112,7 +114,7 @@ describe('alerta de seguimiento al administrador', () => {
 
   it('la confirmación del adulto mayor antes de T+30 evita la alerta', () => {
     jest.setSystemTime(at(8, 11));
-    doseActions.confirm(doseId, 'elder');
+    doseActions.confirm(doseId);
     jest.setSystemTime(at(10, 0));
     evaluateAlerts(elderId, new Date());
     expect(unconfirmedCards()).toHaveLength(0);
@@ -127,14 +129,14 @@ describe('avisos al adulto mayor (planificador)', () => {
 
   it('programa el aviso a la hora y el segundo aviso; al confirmar se cancelan los dos', () => {
     expect(keys()).toEqual([`med-${medId}-${DAY}-08:00`, `med-${medId}-${DAY}-08:00-r`]);
-    doseActions.confirm(doseId, 'elder');
+    doseActions.confirm(doseId);
     expect(keys()).toEqual([]);
   });
 
   it('a las 8:05 solo queda pendiente el segundo aviso; confirmado a las 8:05, ninguno', () => {
     jest.setSystemTime(at(8, 5));
     expect(keys()).toEqual([`med-${medId}-${DAY}-08:00-r`]);
-    doseActions.confirm(doseId, 'elder');
+    doseActions.confirm(doseId);
     expect(keys()).toEqual([]);
   });
 });

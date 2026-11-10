@@ -16,9 +16,12 @@ import { cancelDoseNotifications } from '@/infrastructure/notifications';
 import { atClock, formatClock, toISODate } from '@/utils/dates';
 
 import { actor, activeElderId } from './actions';
-import { currentAuthorId, currentUserId } from './session';
+import { actingRole, allowed, currentAuthorId, currentUserId } from './session';
 
 const AK = strings.alertKinds;
+
+/** Cierre de un aviso por el propio sistema (se resolvió su causa). No pasa por la matriz de roles. */
+const closeAlert = (id: string) => db.update('alerts', id, { status: 'attended' });
 
 function elderOrActive(elderId?: string | null) {
   const id = elderId ?? activeElderId();
@@ -40,9 +43,11 @@ export const alertActions = {
     if (dup) return dup;
     return db.insert('alerts', { kind, title, detail, refId, status: 'pending', snoozedUntil: null }, { userId, elderId });
   },
-  attend: (id: string) => db.update('alerts', id, { status: 'attended' }),
-  reopen: (id: string) => db.update('alerts', id, { status: 'pending' }),
+  // Atender, reabrir y posponer son del administrador o la enfermera (matriz `can`): el adulto mayor no oculta avisos.
+  attend: (id: string) => (allowed('manage_alerts', db.get('alerts', id)?.elderId) ? closeAlert(id) : undefined),
+  reopen: (id: string) => (allowed('manage_alerts', db.get('alerts', id)?.elderId) ? db.update('alerts', id, { status: 'pending' }) : undefined),
   snooze(id: string, hours = 24) {
+    if (!allowed('manage_alerts', db.get('alerts', id)?.elderId)) return undefined;
     return db.update('alerts', id, { snoozedUntil: new Date(Date.now() + hours * 3_600_000).toISOString() });
   },
 };
@@ -63,6 +68,8 @@ function runReview(med: Medication): ReviewFinding[] {
 export const medicationActions = {
   add(input: MedicationInput, elderId?: string): { med: Medication; findings: ReviewFinding[] } {
     const id = elderOrActive(elderId);
+    // Tipo de retorno no opcional: sin permiso se lanza (el asistente y las pantallas lo comprueban antes).
+    if (!allowed('add_medication', id)) throw new Error('BUDDY: solo el administrador agrega medicamentos.');
     const med = db.insert('medications', input, actor(id));
     doseActions.sync(id, new Date());
     // Si ya llega con pocas unidades, se avisa de una vez (antes esperaba a la primera toma confirmada).
@@ -71,7 +78,8 @@ export const medicationActions = {
   },
   update(id: string, patch: Partial<MedicationInput>): { med: Medication | undefined; findings: ReviewFinding[] } {
     const before = db.get('medications', id);
-    if (!before || before.deletedAt) return { med: undefined, findings: [] };
+    // SEC-03: la rutina la cambia el administrador; ni el adulto mayor ni la enfermera, aunque lleguen a esta función.
+    if (!before || before.deletedAt || !allowed('update_medication', before.elderId)) return { med: undefined, findings: [] };
     const now = new Date();
     if (before.elderId) doseActions.sync(before.elderId, now);
     const med = db.update('medications', id, patch)!;
@@ -116,18 +124,20 @@ export const medicationActions = {
   },
   pause: (id: string, paused: boolean) => medicationActions.update(id, { paused }),
   remove(id: string) {
+    if (!allowed('remove_medication', db.get('medications', id)?.elderId)) return undefined;
     const med = db.remove('medications', id);
     if (med) {
       const today = toISODate(new Date());
       const related = db.list('doses', med.ownerUserId, med.elderId).filter(d => d.medicationId === id);
       related.filter(d => d.date >= today && d.status !== 'taken' && d.status !== 'skipped' && !d.cancelledAt).forEach(d => cancelDose(d, 'caregiver'));
       const refs = new Set([id, ...related.map(d => d.id)]);
-      db.list('alerts', med.ownerUserId, med.elderId).filter(a => a.status === 'pending' && a.refId && refs.has(a.refId)).forEach(a => alertActions.attend(a.id));
+      db.list('alerts', med.ownerUserId, med.elderId).filter(a => a.status === 'pending' && a.refId && refs.has(a.refId)).forEach(a => closeAlert(a.id));
       void cancelDoseNotifications(id).catch(() => recordCancellationFailure(med.elderId));
     }
     return med;
   },
   restore(id: string) {
+    if (!allowed('remove_medication', db.get('medications', id)?.elderId)) return undefined;
     const med = db.restore('medications', id);
     if (med?.elderId) doseActions.sync(med.elderId, new Date());
     return med;
@@ -135,19 +145,21 @@ export const medicationActions = {
   /** Suma una compra (cajas × unidades por caja + sueltas) y cierra los avisos de existencias. */
   registerPurchase(id: string, input: { packages?: number; units?: number }) {
     const med = db.get('medications', id);
-    if (!med) return undefined;
+    // Existencias: administrador o enfermera (matriz `can`); nunca sobre un medicamento de otra cuenta (SEC-02).
+    if (!med || !allowed('update_stock', med.elderId)) return undefined;
     const unitsOnHand = afterPurchase(med.unitsOnHand, { ...input, unitsPerPackage: med.unitsPerPackage });
     const added = unitsOnHand - (med.unitsOnHand ?? 0);
-    db.insert('stock', { medicationId: id, units: added, note: 'Compra' }, { userId: med.ownerUserId, elderId: med.elderId });
+    db.insert('stock', { medicationId: id, units: added, note: 'Compra' }, actor(med.elderId));
     db.list('alerts', med.ownerUserId, med.elderId)
       .filter((a) => (a.kind === 'stock_low' || a.kind === 'stock_out') && a.refId === id && a.status === 'pending')
-      .forEach((a) => alertActions.attend(a.id));
+      .forEach((a) => closeAlert(a.id));
     const next = db.update('medications', id, { unitsOnHand });
     if (next) checkStock(next);
     return next;
   },
   /** Corrección manual de existencias. */
   setStock(id: string, unitsOnHand: number | null) {
+    if (!allowed('update_stock', db.get('medications', id)?.elderId)) return undefined;
     const med = db.update('medications', id, { unitsOnHand });
     if (med) checkStock(med);
     return med;
@@ -164,7 +176,7 @@ function checkStock(med: Medication) {
   const est = estimateStock(med, toISODate(new Date()));
   db.list('alerts', med.ownerUserId, med.elderId)
     .filter(a => a.refId === med.id && a.status === 'pending' && ((a.kind === 'stock_out' && est.level !== 'out') || (a.kind === 'stock_low' && (est.level === 'ok' || est.level === 'none'))))
-    .forEach(a => alertActions.attend(a.id));
+    .forEach(a => closeAlert(a.id));
   const done = [...(med.stockAlerted ?? [])];
   if (est.level === 'ok' || est.level === 'none') {
     if (done.length) db.update('medications', med.id, { stockAlerted: [] });
@@ -189,7 +201,7 @@ function writeDose(dose: DoseEvent, patch: Partial<DoseEvent>, action: string, r
   return db.update('doses', dose.id, { ...patch, history: [...history, { at: new Date().toISOString(), by: currentAuthorId(), role, action, from: snapshot(dose), to: snapshot({ ...dose, ...patch }) }] });
 }
 function closeDoseAlerts(dose: DoseEvent) {
-  db.list('alerts', dose.ownerUserId, dose.elderId).filter(a => a.kind === 'dose_unconfirmed' && a.refId === dose.id && a.status === 'pending').forEach(a => alertActions.attend(a.id));
+  db.list('alerts', dose.ownerUserId, dose.elderId).filter(a => a.kind === 'dose_unconfirmed' && a.refId === dose.id && a.status === 'pending').forEach(a => closeAlert(a.id));
 }
 function recordCancellationFailure(elderId: string | null) {
   if (elderId) db.setDraft(currentUserId(), `doseSafety.cancellationFailed.${elderId}`, true);
@@ -223,11 +235,13 @@ function reconcileStock(dose: DoseEvent, taken: boolean): number | null {
   }
   return applied;
 }
-function answerDose(doseId: string, status: 'taken' | 'skipped', by: Role) {
+function answerDose(doseId: string, status: 'taken' | 'skipped') {
   const dose = db.get('doses', doseId);
   if (!dose || dose.deletedAt || dose.cancelledAt) return undefined;
   const med = db.get('medications', dose.medicationId);
   if (!med || med.deletedAt) return undefined;
+  // Quién responde sale de la sesión y de la entrega del teléfono, no de quien llama (SEC-04).
+  const by = actingRole(dose.elderId);
   if (by === 'elder' && dose.elderId) beat(dose.elderId, 'answer');
   const stockApplied = reconcileStock(dose, status === 'taken');
   closeDoseAlerts(dose);
@@ -244,34 +258,39 @@ export const doseActions = {
     const doses = db.list('doses', userId, elderId);
     for (const d of missingDoses(meds, doses, date)) db.insert('doses', { ...d, history: [{ at: now.toISOString(), by: currentAuthorId(), action: 'created', to: { date: d.date, time: d.time, status: d.status } }] }, actor(elderId));
   },
-  confirm(doseId: string, by: Role) {
-    return answerDose(doseId, 'taken', by);
+  /**
+   * Confirmar, posponer y "no lo tomé" quedan a nombre del rol efectivo (adulto mayor, enfermera o administrador): la
+   * pantalla no lo elige. Así una toma "confirmada por el adulto mayor" siempre lo es de verdad.
+   */
+  confirm(doseId: string) {
+    return answerDose(doseId, 'taken');
   },
-  snooze(doseId: string, by: Role) {
+  snooze(doseId: string) {
     const dose = db.get('doses', doseId);
     if (!dose || dose.deletedAt || dose.cancelledAt || dose.safetyHold || dose.status === 'taken' || dose.status === 'skipped') return undefined;
+    const by = actingRole(dose.elderId);
     if (by === 'elder' && dose.elderId) beat(dose.elderId, 'answer');
     closeDoseAlerts(dose);
     cancelNotices(dose);
     return writeDose(dose, { status: 'snoozed', snoozedTo: snoozeTarget(new Date()), snoozeCount: dose.snoozeCount + 1, answeredBy: by, respondedAt: new Date().toISOString() }, 'snooze', by);
   },
-  skip(doseId: string, by: Role) {
-    return answerDose(doseId, 'skipped', by);
+  skip(doseId: string) {
+    return answerDose(doseId, 'skipped');
   },
-  /** Una corrección conserva el historial y requiere verificar antes de pedir otra dosis. */
+  /** Una corrección conserva el historial y requiere verificar antes de pedir otra dosis. Solo el administrador. */
   reset(doseId: string) {
     const dose = db.get('doses', doseId);
-    if (!dose || dose.deletedAt || dose.cancelledAt) return undefined;
+    if (!dose || dose.deletedAt || dose.cancelledAt || !allowed('update_medication', dose.elderId)) return undefined;
     const stockApplied = reconcileStock(dose, false);
     closeDoseAlerts(dose);
     cancelNotices(dose);
     return writeDose(dose, { status: 'pending', respondedAt: null, snoozedTo: null, answeredBy: null, stockApplied, safetyHold: true }, 'reset', 'caregiver');
   },
   /** Cancelación de una ocurrencia: conserva su posición para que sync no la vuelva a crear. */
-  remove(doseId: string, by: Role = 'caregiver') {
+  remove(doseId: string) {
     const dose = db.get('doses', doseId);
-    if (!dose || dose.deletedAt || dose.cancelledAt) return undefined;
-    return cancelDose(dose, by);
+    if (!dose || dose.deletedAt || dose.cancelledAt || !allowed('update_medication', dose.elderId)) return undefined;
+    return cancelDose(dose, 'caregiver');
   },
 };
 
@@ -334,14 +353,26 @@ export const elderAnswers = {
     if (!reminder?.automation || reminder.elderId !== id) return;
     const date = toISODate(new Date());
     const prev = db.list('checkins', currentUserId(), id).find((c) => c.date === date);
-    const automationAnswers = { ...(prev?.automationAnswers ?? {}), [reminderId]: { answer, respondedAt: new Date().toISOString() } };
+    const raw = answer.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    // FUN-01: la respuesta a un recordatorio en un d\u00eda es UNA ocurrencia. Su efecto sobre el agua se guarda con ella:
+    // repetir "S\u00ed" no suma otro vaso, cambiar a "No" retira el que sum\u00f3 y, si el vaso se deshizo a mano, "S\u00ed" lo repone.
+    let waterEntryId = prev?.automationAnswers?.[reminderId]?.waterEntryId ?? null;
+    if (reminder.automation.kind === 'water') {
+      const entry = waterEntryId ? db.get('water', waterEntryId) : undefined;
+      const counted = !!entry && !entry.deletedAt;
+      const yes = /si|ya/.test(raw);
+      if (yes && !counted) waterEntryId = this.addWater(id).id;
+      if (!yes && counted) {
+        this.undoWater(waterEntryId!);
+        waterEntryId = null;
+      }
+    }
+    const automationAnswers = { ...(prev?.automationAnswers ?? {}), [reminderId]: { answer, respondedAt: new Date().toISOString(), ...(waterEntryId ? { waterEntryId } : {}) } };
     if (prev) db.update('checkins', prev.id, { automationAnswers });
     else db.insert('checkins', { date, mood: null, sleep: null, unwell: null, automationAnswers }, actor(id));
-    const raw = answer.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (reminder.automation.kind === 'mood') this.checkin({ mood: raw === 'mal' ? 'bad' : raw === 'regular' ? 'regular' : 'good' }, id);
     if (reminder.automation.kind === 'sleep') this.checkin({ sleep: raw === 'mal' ? 'bad' : raw === 'regular' ? 'regular' : 'good' }, id);
     if (reminder.automation.kind === 'emotional') this.checkin({ unwell: /si|mal/.test(raw) && !/no/.test(raw) }, id);
-    if (reminder.automation.kind === 'water' && /si|ya/.test(raw)) this.addWater(id);
     if (reminder.automation.kind === 'meal') {
       const meals = db.list('meals', currentUserId(), id).slice().sort((a, b) => Math.abs(toMinutes(a.time) - toMinutes(reminder.time)) - Math.abs(toMinutes(b.time) - toMinutes(reminder.time)));
       if (meals[0]) this.meal(meals[0].id, /si|ya/.test(raw) ? 'yes' : 'no', id);
