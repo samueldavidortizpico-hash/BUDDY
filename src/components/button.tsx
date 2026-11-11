@@ -106,7 +106,6 @@ export interface ButtonProps {
   accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
-  children?: ReactNode;
 }
 
 export function Button({
@@ -139,7 +138,8 @@ export function Button({
       testID={testID}
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ busy: loading, disabled: disabled || loading }}
+      // Lo que se anuncia sale del mismo estado que bloquea el toque (también durante el check de éxito).
+      accessibilityState={{ busy: loading, disabled: disabled || busy }}
       disabled={disabled || busy}
       haptic={haptic ?? (variant === 'primary' || variant === 'mint' ? 'light' : false)}
       dim={v.dim}
@@ -162,7 +162,7 @@ export function Button({
       <View style={[s.content, stacked && s.stackedContent, busy && s.hidden]}>
         {icon ? <Icon name={icon} color={v.text} size={size === 'elder' ? 26 : compact ? 18 : 20} /> : null}
         <AppText
-          variant={stacked || compact ? 'secondaryStrong' : size === 'elder' || variant === 'mint' ? 'h3' : 'button'}
+          variant={stacked || compact ? 'secondaryStrong' : size === 'elder' ? 'h3' : 'button'}
           color={v.text}
           align="center"
           style={s.grow}

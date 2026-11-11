@@ -3,7 +3,7 @@
  * ConfirmDialog (confirmación de acciones destructivas) y SuccessBurst (éxito animado).
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -140,6 +140,9 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel = strings.common.cancel,
   destructive = false,
+  loading = false,
+  error,
+  children,
   onConfirm,
   onCancel,
 }: {
@@ -149,30 +152,48 @@ export function ConfirmDialog({
   confirmLabel: string;
   cancelLabel?: string;
   destructive?: boolean;
+  /** Mientras se espera la respuesta: spinner en "confirmar" y los dos botones bloqueados (sin doble envío). */
+  loading?: boolean;
+  /** Error de la operación, DENTRO del diálogo (antes quedaba detrás, en la pantalla de fondo). */
+  error?: string | null;
+  /** Lo que el diálogo necesita pedir antes de confirmar (por ejemplo, la contraseña para eliminar la cuenta). */
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const s = useStyles();
   const t = useTheme();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
-      <View style={s.dialogRoot}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={loading ? undefined : onCancel} statusBarTranslucent>
+      {/* El teclado empuja el diálogo; con letra muy grande o poco alto, el cuerpo se desplaza y los botones siguen a la vista. */}
+      <KeyboardAvoidingView style={s.dialogRoot} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.scrimAbs} />
         <View style={s.dialog} accessibilityViewIsModal accessibilityRole="alert">
-          <AppText variant="h2" accessibilityRole="header">
-            {title}
-          </AppText>
-          {body ? (
-            <AppText variant="secondary" color={t.c.muted}>
-              {body}
+          <ScrollView style={s.dialogScroll} contentContainerStyle={s.dialogBody} keyboardShouldPersistTaps="handled" bounces={false} showsVerticalScrollIndicator={false}>
+            <AppText variant="h2" accessibilityRole="header">
+              {title}
             </AppText>
-          ) : null}
+            {body ? (
+              <AppText variant="secondary" color={t.c.muted}>
+                {body}
+              </AppText>
+            ) : null}
+            {children}
+            {error ? (
+              <View style={s.dialogError} accessibilityRole="alert" accessibilityLiveRegion="polite">
+                <Icon name="warning" size={18} color={t.ink.danger} />
+                <AppText variant="secondaryStrong" color={t.ink.danger} style={s.flex}>
+                  {error}
+                </AppText>
+              </View>
+            ) : null}
+          </ScrollView>
           <View style={s.dialogActions}>
-            <Button label={confirmLabel} variant={destructive ? 'danger' : 'primary'} size="md" onPress={onConfirm} />
-            <Button label={cancelLabel} variant="ghost" size="md" onPress={onCancel} />
+            <Button label={confirmLabel} variant={destructive ? 'danger' : 'primary'} size="md" loading={loading} onPress={onConfirm} />
+            <Button label={cancelLabel} variant="ghost" size="md" disabled={loading} onPress={onCancel} />
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -260,7 +281,10 @@ const useStyles = makeStyles((t) =>
     sheetHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     close: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.surface, ...t.hairline },
     dialogRoot: { flex: 1, justifyContent: 'center', padding: spacing.xl },
-    dialog: { backgroundColor: t.c.surface, borderRadius: radius.modal, padding: spacing.xl, gap: spacing.sm, ...t.shadow.sheet, ...t.hairline },
+    dialog: { backgroundColor: t.c.surface, borderRadius: radius.modal, padding: spacing.xl, gap: spacing.sm, maxHeight: '100%', ...t.shadow.sheet, ...t.hairline },
+    dialogScroll: { flexGrow: 0, flexShrink: 1 },
+    dialogBody: { gap: spacing.sm },
+    dialogError: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
     dialogActions: { gap: spacing.sm, marginTop: spacing.sm },
     success: { alignItems: 'center', gap: spacing.md, paddingVertical: spacing.xl },
     burst: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },

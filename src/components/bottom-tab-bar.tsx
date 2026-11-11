@@ -206,7 +206,8 @@ export function BottomTabBar({
                   style={s.item}
                 >
                   <TabIcon name={icons[route.name] ?? 'home'} focused={focused} />
-                  <AppText variant="tab" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.label}>
+                  {/* Nunca por debajo de 12 px (antes podía encogerse hasta 10,4): si no cabe, se corta con "…". */}
+                  <AppText variant="tab" color={focused ? t.c.text : t.c.muted} numberOfLines={1} maxScale={1} adjustsFontSizeToFit minimumFontScale={0.93} style={styles.label}>
                     {label}
                   </AppText>
                 </Pressable>

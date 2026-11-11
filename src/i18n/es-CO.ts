@@ -631,6 +631,8 @@ export const esCO = {
     empty: 'Nada nuevo por ahora',
     emptyBody: 'Cuando BUDDY vea algo que valga la pena contarte, aparecerá aquí.',
     severity: { info: 'Información', attention: 'Atención', alarm: 'Señal de alarma' } as Record<string, string>,
+    /** Nombre de cada escalón al configurar los umbrales: dice qué pasa al llegar a esos días. */
+    thresholdLevels: { first: 'Primer aviso', strong: 'Aviso reforzado', alarm: 'Señal de alarma', consult: 'Sugerir hablar con su médico' },
     help: 'Pidió ayuda',
     actions: {
       call: 'Llamar',

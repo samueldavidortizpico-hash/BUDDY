@@ -116,7 +116,8 @@ export function Field({ label, error, hint, icon, secure, optional, inputRef, ri
       {error ? (
         <View style={s.errorRow} accessibilityLiveRegion="polite">
           <Icon name="warning" size={16} color={t.ink.danger} />
-          <AppText variant="caption" color={t.ink.danger} style={[s.flex, s.errorText]}>
+          {/* El error es texto esencial: sigue el tamaño de letra elegido (antes quedaba fijo en 14). */}
+          <AppText variant="secondary" color={t.ink.danger} style={s.flex}>
             {error}
           </AppText>
         </View>
@@ -496,7 +497,6 @@ const useStyles = makeStyles((t) =>
     knob: { width: 26, height: 26, borderRadius: 13, backgroundColor: t.hc ? t.c.bg : '#FFFFFF', ...(t.hc ? t.hairline : { boxShadow: '0px 1px 3px rgba(16, 42, 51, 0.25)' }) },
     valid: { width: 32, alignItems: 'center', justifyContent: 'center' },
     label: { fontFamily: 'Manrope_600SemiBold' },
-    errorText: { fontSize: 14, lineHeight: 20 },
     wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
     chip: {
       minHeight: touch.chip,

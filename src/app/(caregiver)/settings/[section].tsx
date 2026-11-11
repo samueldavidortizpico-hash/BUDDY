@@ -26,7 +26,6 @@ import { ALERT_KINDS, type ElderAppearance } from '@/domain/types';
 import { DEFAULT_THRESHOLDS, type Thresholds as RecoThresholds } from '@/domain/recommendations/engine';
 import { planActions, useEntitlementPlan } from '@/state/entitlements';
 import { feedActions } from '@/state/feed';
-import { isHiddenToday, useLauncherStore } from '@/state/launcher';
 import { notificationPermission, sendTestNotification } from '@/infrastructure/notifications';
 import { TimeField } from '@/components/time-picker';
 import { db, useDb } from '@/infrastructure/local/db';
@@ -92,6 +91,13 @@ function Account() {
   const [out, setOut] = useState(false);
   const [delPass, setDelPass] = useState('');
   const [delErr, setDelErr] = useState<string | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
+  const [passBusy, setPassBusy] = useState(false);
+  const closeDelete = () => {
+    setDel(false);
+    setDelPass('');
+    setDelErr(null);
+  };
   return (
     <View style={s.stack}>
       <Card style={s.stack}>
@@ -107,7 +113,9 @@ function Account() {
         label={S.changePassword}
         variant="ghost"
         size="md"
+        loading={passBusy}
         onPress={async () => {
+          setPassBusy(true);
           try {
             await sessionActions.updatePassword(current, next);
             setCurrent('');
@@ -116,6 +124,8 @@ function Account() {
             toast(S.passwordChanged);
           } catch (e) {
             setErr(e instanceof AuthError ? e.message : strings.auth.errors.unknown);
+          } finally {
+            setPassBusy(false);
           }
         }}
       />
@@ -127,19 +137,26 @@ function Account() {
         onConfirm={async () => { setOut(false); await sessionActions.signOut(); router.replace('/'); }}
       />
       <Button label={S.deleteAccount} icon="trash" variant="danger" size="md" onPress={() => setDel(true)} />
-      <ConfirmDialog visible={del} title={S.deleteTitle} body={S.deleteBody} confirmLabel={S.deleteAccount} destructive onCancel={() => setDel(false)}
+      {/* La contraseña, el error y la espera viven DENTRO del diálogo: antes el campo quedaba detrás, en la pantalla. */}
+      <ConfirmDialog visible={del} title={S.deleteTitle} body={S.deleteBody} confirmLabel={S.deleteAccount} destructive loading={delBusy} error={delErr} onCancel={closeDelete}
         onConfirm={async () => {
+          if (!delPass) return setDelErr(strings.auth.errors.required);
+          setDelBusy(true);
+          setDelErr(null);
           try {
             await sessionActions.deleteAccount(delPass);
-            setDel(false);
+            closeDelete();
             toast(S.deleted);
             router.replace('/');
           } catch (e) {
             setDelErr(e instanceof AuthError ? e.message : strings.auth.errors.unknown);
+          } finally {
+            setDelBusy(false);
           }
         }}
-      />
-      {del ? <Field label={S.deleteConfirm} value={delPass} onChangeText={setDelPass} secure error={delErr} /> : null}
+      >
+        <Field label={S.deleteConfirm} value={delPass} onChangeText={(v) => { setDelPass(v); setDelErr(null); }} secure autoCapitalize="none" />
+      </ConfirmDialog>
     </View>
   );
 }
@@ -159,7 +176,6 @@ function Appearance() {
         <IconTile icon="sun" domain="activity" size={64} />
         <View style={s.flex}>
           <AppText variant="h3" color={t.domains.activity.text}>{S.previewText}</AppText>
-          <Button label={strings.welcome.createAccount} size="sm" />
         </View>
       </Card>
       <AppText variant="secondaryStrong">{S.mode}</AppText>
@@ -172,24 +188,6 @@ function Appearance() {
         ))}
       </View>
       <Row label={S.barGestures} hint={S.barGesturesHint} value={barGestures} onChange={(v) => set({ barGestures: v })} />
-      <RobotPrefs />
-    </View>
-  );
-}
-
-/** El robot flotante: imán a los bordes, restablecer su posición y ocultarlo por hoy. */
-function RobotPrefs() {
-  const s = useStyles();
-  const toast = useToast();
-  const magnet = useLauncherStore((x) => x.magnet);
-  const hidden = isHiddenToday(useLauncherStore((x) => x.hiddenOn));
-  const L = useLauncherStore.getState();
-  return (
-    <View style={s.stack}>
-      <AppText variant="h3">{S.robot}</AppText>
-      <Row label={S.robotMagnet} hint={S.robotMagnetHint} value={magnet} onChange={(v) => L.setMagnet(v)} />
-      <Button label={S.robotReset} icon="arrow" variant="ghost" onPress={() => { L.reset(); toast({ message: S.robotResetDone, icon: 'check' }); }} />
-      <Button label={hidden ? S.robotShow : S.robotHide} icon={hidden ? 'eye' : 'eyeOff'} variant="ghost" onPress={() => (hidden ? L.show() : L.hideToday())} />
     </View>
   );
 }
@@ -289,13 +287,13 @@ function Thresholds() {
       <AppText variant="h3">{F.thresholds}</AppText>
       <AppText variant="caption" color={t.c.muted}>{F.thresholdsNote}</AppText>
       <AppText variant="secondaryStrong">{F.moodDays}</AppText>
-      <Stepper label={F.severity.attention} value={th.moodDays[0]} min={1} max={th.moodDays[1]} onChange={(v) => set({ moodDays: [v, th.moodDays[1], th.moodDays[2]] })} format={days} />
-      <Stepper label={F.severity.attention} value={th.moodDays[1]} min={th.moodDays[0]} max={th.moodDays[2]} onChange={(v) => set({ moodDays: [th.moodDays[0], v, th.moodDays[2]] })} format={days} />
-      <Stepper label={F.severity.alarm} value={th.moodDays[2]} min={th.moodDays[1]} max={60} onChange={(v) => set({ moodDays: [th.moodDays[0], th.moodDays[1], v] })} format={days} />
+      <Stepper label={F.thresholdLevels.first} value={th.moodDays[0]} min={1} max={th.moodDays[1]} onChange={(v) => set({ moodDays: [v, th.moodDays[1], th.moodDays[2]] })} format={days} />
+      <Stepper label={F.thresholdLevels.strong} value={th.moodDays[1]} min={th.moodDays[0]} max={th.moodDays[2]} onChange={(v) => set({ moodDays: [th.moodDays[0], v, th.moodDays[2]] })} format={days} />
+      <Stepper label={F.thresholdLevels.alarm} value={th.moodDays[2]} min={th.moodDays[1]} max={60} onChange={(v) => set({ moodDays: [th.moodDays[0], th.moodDays[1], v] })} format={days} />
       <AppText variant="secondaryStrong">{F.sleepDays}</AppText>
-      <Stepper label={F.severity.attention} value={th.sleepDays[0]} min={1} max={th.sleepDays[1]} onChange={(v) => set({ sleepDays: [v, th.sleepDays[1], th.sleepDays[2]] })} format={days} />
-      <Stepper label={F.severity.alarm} value={th.sleepDays[1]} min={th.sleepDays[0]} max={th.sleepDays[2]} onChange={(v) => set({ sleepDays: [th.sleepDays[0], v, th.sleepDays[2]] })} format={days} />
-      <Stepper label={F.thresholds} value={th.sleepDays[2]} min={th.sleepDays[1]} max={60} onChange={(v) => set({ sleepDays: [th.sleepDays[0], th.sleepDays[1], v] })} format={days} />
+      <Stepper label={F.thresholdLevels.first} value={th.sleepDays[0]} min={1} max={th.sleepDays[1]} onChange={(v) => set({ sleepDays: [v, th.sleepDays[1], th.sleepDays[2]] })} format={days} />
+      <Stepper label={F.thresholdLevels.alarm} value={th.sleepDays[1]} min={th.sleepDays[0]} max={th.sleepDays[2]} onChange={(v) => set({ sleepDays: [th.sleepDays[0], v, th.sleepDays[2]] })} format={days} />
+      <Stepper label={F.thresholdLevels.consult} value={th.sleepDays[2]} min={th.sleepDays[1]} max={60} onChange={(v) => set({ sleepDays: [th.sleepDays[0], th.sleepDays[1], v] })} format={days} />
       <Stepper label={F.adherence} value={Math.round(th.adherence * 100)} min={50} max={100} step={5} onChange={(v) => set({ adherence: v / 100 })} format={(v) => `${v} %`} />
       <Stepper label={F.waterDays} value={th.waterDays} min={1} max={7} onChange={(v) => set({ waterDays: v })} format={days} />
       <Stepper label={F.checkinDays} value={th.checkinDays} min={1} max={7} onChange={(v) => set({ checkinDays: v })} format={days} />
