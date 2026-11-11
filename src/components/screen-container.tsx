@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { gradients as legacyGradients, spacing, type GradientName } from '@/theme';
 import { useTheme } from '@/theme/provider';
 
+import { Appear } from './appear';
 import { tabBarSpace } from './bottom-tab-bar';
 
 export const SCREEN_PADDING = spacing.screen;
@@ -76,7 +77,8 @@ export function ScreenContainer({
 
   const inner = (
     <>
-      {body}
+      {/* V5: toda pantalla entra igual (aparece y sube 12 px). Se anima el contenedor, no cada hijo: no altera el layout. */}
+      <Appear style={styles.flex}>{body}</Appear>
       {footer ? <View style={[styles.footer, { paddingBottom: insideTabs ? tabBarSpace(insets.bottom) + spacing.sm : insets.bottom + spacing.sm }]}>{footer}</View> : null}
     </>
   );
