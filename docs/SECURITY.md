@@ -67,8 +67,11 @@ opcional no hace nada; los que deben devolver el registro creado lanzan un error
   (AES-GCM, migración con respaldo), pero nunca se probó en un teléfono; activarlo a ciegas puede dejar a alguien sin sus
   datos. Falta validar en dispositivo la migración y la recuperación.
 - **FUN-05.** El estado `key_lost` / `tampered` del almacén cifrado todavía no se muestra al usuario.
-- **SEC-09 · contraseñas y PIN.** Siguen con SHA-256 iterado (1.000 y 300 rondas). Una derivación estándar (Argon2id o
-  PBKDF2 con coste alto) necesita una dependencia nativa: requiere autorización para instalarla y un plan de migración.
+- **SEC-09 · contraseñas (hecho) y PIN (pendiente).** Las contraseñas usan scrypt (`@noble/hashes`, JavaScript puro, funciona en
+  Expo Go; N=2^14, 16 MiB) y las cuentas antiguas se migran al iniciar sesión. N está por debajo de la recomendación de
+  OWASP porque el JavaScript de un teléfono de gama media no soporta más: medir en un celular real antes de subirlo.
+  El PIN de 4 cifras sigue con SHA-256 iterado: con solo 10.000 combinaciones ninguna derivación lo protege de un
+  ataque sobre una copia; su defensa real es el bloqueo por intentos y el secure store.
 - **FUN-03 (resto).** El error de sincronización se sigue descartando al iniciar sesión; el reloj del cliente marca la
   marca de agua; las políticas RLS y los borrados en el servidor no se han probado contra un proyecto real.
 - **Hallazgo nuevo.** El ChangeLog local nunca descarta entradas pendientes: sin servidor crece sin límite y el almacén

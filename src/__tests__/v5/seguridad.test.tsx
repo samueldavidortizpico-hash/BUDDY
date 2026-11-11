@@ -7,7 +7,10 @@ import { renderHook } from '@testing-library/react-native';
 
 import type { AuthUser } from '@/domain/auth';
 import { EntitlementService } from '@/domain/entitlements';
-import { createLocalAuthProvider } from '@/infrastructure/local/auth';
+import * as Crypto from 'expo-crypto';
+
+import { createLocalAuthProvider, hashSecret, newSalt } from '@/infrastructure/local/auth';
+import { secureStorage } from '@/infrastructure/secure-storage';
 import { db, useDb } from '@/infrastructure/local/db';
 import { applyPlan } from '@/infrastructure/notifications';
 import { createSupabaseAuthProvider, toUser } from '@/infrastructure/supabase/auth';
@@ -221,6 +224,27 @@ describe('SEC-06 · los accesos vinculados no sobreviven a su administrador', ()
     await auth.signIn({ email: 'elder-3@example.test', password });
     await expect(auth.deleteAccount(password)).rejects.toMatchObject({ code: 'forbidden' });
     await expect(auth.signIn({ email: 'owner-3@example.test', password })).resolves.toMatchObject({ id: owner.id });
+  });
+});
+
+describe('SEC-09 · contraseñas con scrypt', () => {
+  it('una cuenta con SHA-256 iterado sigue entrando y se migra a scrypt con sal nueva', async () => {
+    const auth = createLocalAuthProvider();
+    const email = 'legacy@example.test';
+    const password = 'AuditPassword123!';
+    const user = await auth.signUp({ name: 'Antigua [PRUEBA]', email, password });
+    await auth.signOut();
+    const key = `buddy.account.${await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, email)}`;
+    const stored = JSON.parse((await secureStorage.get(key))!);
+    expect(stored.kdf).toBe('scrypt');
+    const salt = await newSalt();
+    await secureStorage.set(key, JSON.stringify({ ...stored, kdf: undefined, salt, hash: await hashSecret(password, salt) }));
+    await expect(auth.signIn({ email, password: 'otra-clave-1A!' })).rejects.toMatchObject({ code: 'invalid_credentials' });
+    await expect(auth.signIn({ email, password })).resolves.toMatchObject({ id: user.id });
+    const migrated = JSON.parse((await secureStorage.get(key))!);
+    expect(migrated).toMatchObject({ kdf: 'scrypt' });
+    expect(migrated.salt).not.toBe(salt);
+    await expect(auth.signIn({ email, password })).resolves.toMatchObject({ id: user.id });
   });
 });
 

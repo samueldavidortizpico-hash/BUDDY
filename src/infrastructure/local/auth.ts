@@ -10,6 +10,7 @@
  * - Cuentas del adulto mayor (rol `elder`): las crea su administrador con `createManagedAccount`, quedan vinculadas a
  *   su `elderId` (índice `buddy.managed.<elderId>`) y el administrador puede restablecerlas o revocarlas.
  */
+import { scryptAsync } from '@noble/hashes/scrypt.js';
 import * as Crypto from 'expo-crypto';
 
 import { AuthError, roleOf, type AuthService, type AuthUser, type ManagedRole } from '@/domain/auth';
@@ -20,6 +21,8 @@ import { strings } from '@/i18n';
 import { secureStorage } from '../secure-storage';
 
 export const ITERATIONS = 1000;
+/** scrypt (auditoría SEC-09): 16 MiB de memoria por intento. Subir N si un teléfono de gama media lo soporta (medir antes). */
+const SCRYPT = { N: 2 ** 14, r: 8, p: 1, dkLen: 32 } as const;
 const MAX_ATTEMPTS = 5;
 const BASE_LOCK_MS = 30_000;
 const MAX_LOCK_MS = 15 * 60_000;
@@ -31,6 +34,8 @@ interface StoredAccount extends AuthUser {
   salt: string;
   hash: string;
   iterations: number;
+  /** Sin valor = SHA-256 iterado (cuentas anteriores a V5.1): se migra a scrypt al iniciar sesión. */
+  kdf?: 'scrypt';
   failedAttempts: number;
   lockedUntil: number | null;
   recoverySalt?: string;
@@ -49,6 +54,12 @@ export async function hashSecret(secret: string, salt: string, iterations = ITER
     h = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${salt}${h}`);
   }
   return h;
+}
+
+/** Contraseña de una cuenta: scrypt con sal propia. El PIN y los códigos de recuperación usan `hashSecret`. */
+export async function hashPassword(password: string, salt: string): Promise<string> {
+  const enc = new TextEncoder();
+  return toHex(await scryptAsync(enc.encode(password), enc.encode(salt), SCRYPT));
 }
 
 export async function newSalt(): Promise<string> {
@@ -101,8 +112,9 @@ async function newStored(input: { name: string; email: string; password: string 
     ownerId: input.ownerId ?? null,
     elderId: input.elderId ?? null,
     salt,
-    hash: await hashSecret(input.password, salt),
+    hash: await hashPassword(input.password, salt),
     iterations: ITERATIONS,
+    kdf: 'scrypt',
     failedAttempts: 0,
     lockedUntil: null,
   };
@@ -123,7 +135,8 @@ export function createLocalAuthProvider(): AuthService {
     const acc = await readAccount(email);
     // Con o sin cuenta se calcula un hash, para no revelar por el tiempo de respuesta si el correo existe.
     const salt = (recovery ? acc?.recoverySalt : acc?.salt) ?? 'buddy-no-account';
-    const hash = await hashSecret(password, salt, acc?.iterations ?? ITERATIONS);
+    const useScrypt = !recovery && (acc ? acc.kdf === 'scrypt' : true);
+    const hash = useScrypt ? await hashPassword(password, salt) : await hashSecret(password, salt, acc?.iterations ?? ITERATIONS);
     if (!acc) throw new AuthError('invalid_credentials', e.invalid);
     if (acc.lockedUntil && acc.lockedUntil > Date.now()) {
       throw new AuthError('locked', e.locked(Math.ceil((acc.lockedUntil - Date.now()) / 1000)), acc.lockedUntil - Date.now());
@@ -135,6 +148,13 @@ export function createLocalAuthProvider(): AuthService {
       await writeAccount({ ...acc, failedAttempts: failed, lockedUntil: lockMs ? Date.now() + lockMs : null });
       if (lockMs) throw new AuthError('locked', e.locked(Math.ceil(lockMs / 1000)), lockMs);
       throw new AuthError('invalid_credentials', e.invalid);
+    }
+    // Migración: una contraseña correcta de una cuenta antigua se vuelve a guardar con scrypt y sal nueva.
+    if (!recovery && acc.kdf !== 'scrypt') {
+      const salt2 = await newSalt();
+      const migrated = { ...acc, salt: salt2, hash: await hashPassword(password, salt2), kdf: 'scrypt' as const, iterations: ITERATIONS, failedAttempts: 0, lockedUntil: null };
+      await writeAccount(migrated);
+      return migrated;
     }
     if (acc.failedAttempts || acc.lockedUntil) await writeAccount({ ...acc, failedAttempts: 0, lockedUntil: null });
     return { ...acc, failedAttempts: 0, lockedUntil: null };
@@ -181,7 +201,7 @@ export function createLocalAuthProvider(): AuthService {
       const acc = await verify(email, code.replace(/[\s-]/g, '').toUpperCase(), true);
       if (roleOf(acc) !== 'caregiver') throw new AuthError('forbidden', e.forbidden);
       const salt = await newSalt();
-      await writeAccount({ ...acc, salt, hash: await hashSecret(next, salt), recoverySalt: undefined, recoveryHash: undefined, failedAttempts: 0, lockedUntil: null });
+      await writeAccount({ ...acc, salt, hash: await hashPassword(next, salt), kdf: 'scrypt', recoverySalt: undefined, recoveryHash: undefined, failedAttempts: 0, lockedUntil: null });
       // A password reset must not retain an authenticated session on a shared phone.
       await setSession(null);
     },
@@ -229,7 +249,7 @@ export function createLocalAuthProvider(): AuthService {
       if (!isAcceptablePassword(next)) throw new AuthError('weak_password', e.weak);
       const acc = await verify(session.email, current);
       const salt = await newSalt();
-      await writeAccount({ ...acc, salt, hash: await hashSecret(next, salt), iterations: ITERATIONS });
+      await writeAccount({ ...acc, salt, hash: await hashPassword(next, salt), kdf: 'scrypt', iterations: ITERATIONS });
     },
 
     async deleteAccount(password, linked) {
@@ -269,7 +289,7 @@ export function createLocalAuthProvider(): AuthService {
       const acc = await managed(ownerId, elderId, role);
       if (!isAcceptablePassword(password)) throw new AuthError('weak_password', e.weak);
       const salt = await newSalt();
-      await writeAccount({ ...acc, salt, hash: await hashSecret(password, salt), iterations: ITERATIONS, revoked: false, failedAttempts: 0, lockedUntil: null });
+      await writeAccount({ ...acc, salt, hash: await hashPassword(password, salt), kdf: 'scrypt', iterations: ITERATIONS, revoked: false, failedAttempts: 0, lockedUntil: null });
     },
 
     async revokeManagedAccount({ ownerId, elderId, role }) {

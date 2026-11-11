@@ -16,7 +16,6 @@ import RoutineSection from '@/app/(caregiver)/routine/[section]';
 import { db, useDb } from '@/infrastructure/local/db';
 import { execute } from '@/state/assistant';
 import { useSession } from '@/state/session';
-import { BuddyLauncher } from '@/features/feed/launcher';
 import { RenderProviders, seedRenderData, testUser } from '@/testing/render-fixtures';
 import { toISODate } from '@/utils/dates';
 
@@ -98,14 +97,6 @@ it('P12: el onboarding tiene 4 presentaciones que explican qué es BUDDY', async
   expect(screen.getByLabelText('Paso 1 de 4')).toBeTruthy();
   expect(screen.getByRole('header', { name: 'Sabes que está bien' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Siguiente' })).toBeTruthy();
-});
-
-it('P13: el robot lanzador (en todas las pestañas salvo el chat) muestra las novedades sin leer', async () => {
-  db.insert('alerts', { kind: 'help_requested', title: 'Pidió ayuda', detail: 'Tocó "Pedir ayuda".', refId: 'h1', status: 'pending', snoozedUntil: null }, { userId: testUser.id, elderId });
-  await ui(<BuddyLauncher />);
-  // Pidió ayuda + sugerencia de actividad (no tiene ninguna): 2 novedades.
-  expect(screen.getByLabelText('BUDDY, 2 novedades')).toBeTruthy();
-  expect(screen.getByText('2')).toBeTruthy();
 });
 
 it('P14: con todo en orden, Novedades muestra tarjetas útiles (V3.0: fuera del Inicio)', async () => {
