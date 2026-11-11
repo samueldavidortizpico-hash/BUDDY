@@ -223,3 +223,18 @@ Si el inventario registrado era menor que la dosis, la compensación devuelve el
 | V43-4 | Rol `nurse` (plan Salud): confirma tomas que administra (quedan firmadas como enfermera), responde el chequeo diario, lleva existencias, pide ayuda y llama a contactos. No crea ni cambia medicamentos, horarios ni accesos, no usa el chat y no decide sobre la ubicación. El administrador crea su acceso con consentimiento obligatorio. | Mínimo privilegio; la ubicación es decisión del adulto mayor. |
 | V43-5 | "La enfermera recibe los avisos en su celular" requiere servidor: hoy las notificaciones son locales y la enfermera ve los avisos pendientes al abrir BUDDY. | No prometer entrega a otro celular sin backend (como V3.1 Hito 5). |
 | V43-6 | Plan Familiar: integrantes con su rol, turnos por día de la semana y notas compartidas (máx. 500 caracteres) guardados en este teléfono; compartirlos entre celulares llega con el servidor, como las invitaciones. | Lógica pura probada (`src/domain/family.ts`) lista para sincronizar. |
+
+## Ronda V5.1 (2026-11-11): auditorías de seguridad e interfaz
+
+- **Autorización en un solo lugar.** La base local comprueba cuenta y persona en cada lectura y escritura; los casos de
+  uso comprueban el rol efectivo. Ya no se pasa el rol como argumento (`doseActions.confirm(id)`, `locationActions.decide`).
+- **Entrega del teléfono = rol del adulto mayor.** Mientras el teléfono está entregado, el administrador no administra:
+  corregir una toma o cambiar la rutina vuelve a ser posible al recuperarlo con el PIN.
+- **Robot flotante.** Se retiraron de Ajustes los controles del robot flotante (imán, restablecer, ocultar): el
+  componente ya no se monta y los controles no hacían nada. El componente y sus pruebas se conservan hasta decidir si
+  vuelve o se elimina.
+- **Carrusel.** Pasa a pantallas inmersivas a todo color con escenas en capas (`features/onboarding/hero.tsx`). Se aparta
+  a propósito de las maquetas de `docs/referencias/primera-apertura/` (baja resolución). La página activa tiene una sola
+  fuente de verdad: la página centrada según el desplazamiento real.
+- **Diálogos.** `ConfirmDialog` contiene lo que pide (contraseña), su error y su estado de espera; el cuerpo se desplaza
+  y el teclado lo empuja.

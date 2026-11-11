@@ -38,6 +38,23 @@ precio y botón del color de cada plan) y la escena 3 del carrusel (confeti al c
 
 **Sin probar en celular:** todo lo anterior se revisó en la exportación web; faltan hápticos, FPS y lector de pantalla.
 
+## V5.1 · Carrusel inmersivo y entrada de pantallas
+
+Capturas: `docs/capturas/v5/carrusel/` (390 px; claro, alto contraste y letra máxima).
+
+- **Carrusel** (`features/onboarding/hero.tsx`): un degradado vivo por paso que se funde con el siguiente (turquesa
+  `#22B8A9→#0F8A8C→#0A4660`, coral `#FF9E7A→#E4573F→#8E2B4E`, azul `#63B5FA→#3A72E0→#232F86`, violeta
+  `#B49BFF→#6C56E0→#2A2168`; paradas en 0 · 0,34 · 0,76). Texto blanco ≥ 5,5:1 en el título y ≥ 6,7:1 en la frase.
+  Botón blanco con el texto del tono profundo del paso (≥ 8:1). Igual en claro y oscuro; en alto contraste no hay
+  degradados.
+- **Escenas en capas:** BUDDY sobre su plataforma con los datos del día en órbita (delante y detrás del robot), un
+  teléfono que gira en 3D con el dedo, confeti al confirmar y el aviso que llega a la familia. Tres profundidades de
+  paralaje (0,12 · 0,3 · 0,6 del ancho).
+- **Texto:** el título entra palabra por palabra (640 ms) cuando la página queda centrada; la frase aparece 420 ms después.
+- **Reducir movimiento:** sin paralaje, giro ni bucles; el botón cambia de página sin animación y el texto ya está visible.
+- **Entrada de pantallas:** `ScreenContainer` envuelve su cuerpo en `Appear` (aparece y sube 12 px, 320 ms).
+- **Sin probar en celular:** fluidez del giro 3D y de la órbita, y lector de pantalla.
+
 ## V4.3 · Nivel profesional (reemplazado por V5 donde difiera; reemplaza las medidas de "Tokens V4")
 
 Galería con todos los estados: `/dev/gallery` (capturas en `docs/capturas/v4_3/galeria/`). Capturas antes y después:
