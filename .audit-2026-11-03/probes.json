@@ -1,0 +1,37 @@
+{
+  "errors": [],
+  "checks": [
+    {
+      "name": "cross-account-medication-read",
+      "originalOwner": "cap-user",
+      "sessionOwner": "audit-other-caregiver",
+      "exposed": true,
+      "text": "Medicamento\nEditar\nLosartán [PRUEBA]\nTableta · 1 tableta\nConcentración: 50 mg\nHoras\n8:00 a. m. · 8:00 p. m.\nDías\nTodos los días\nInstrucciones\nCon comida\nPara qué sirve\nPara la presión\nHoy\nHoy no tiene tomas programadas.\nExistencias\n4 tabletas\nAlcanza para unos 2 días (estimado), hasta el 5/11.\nRegistrar compra\nCorregir existencias\nInteracciones, contraindicaciones y componentes\nDisponible cuando se conecte la base de datos farmacológica verificada.\nPausar\nEliminar"
+    },
+    {
+      "name": "summary-360-hc-max",
+      "url": "http://localhost:62853/summary",
+      "text": "Hola, Laura\n3\nE\nElis\nVer su pantalla\nAtención\nSe está acabando Losartán [PRUEBA]: alcanza para 2 días.\n3\n3 novedades\nSe están acabando las pastillas de Losartán [PRUEBA]: alcanzan para 2 días\nHoy\n0 de 2\nMedicinas\n0 de 8\nAgua\nBien\nÁnimo\nPróximo: Losartán [PRUEBA] a las 8:00 a. m.\nAún no hay señal del celular de Elis\nPrimeros pasos\nCompleta esto para que BUDDY pueda cuidar bien.\n5/8\nRegistrar a tu familiar\nAgregar un medicamento\nContactos de emergencia\nElegir la hora del chequeo\nSalud: alergias y condiciones\nAgua y actividades\nAcceso de Elis en su celular\nInvitar a un familiar\nInicio\nSalud\nBUDDY\nUbicación\nRutina"
+    },
+    {
+      "name": "elder-360-hc-max",
+      "url": "http://localhost:62853/elder",
+      "text": "Buenos días, Elis\nmartes, 3 de noviembre\nOpciones\nHora de tu Losartán [PRUEBA]\n8:00 a. m.\n1 tableta\nCon comida\nYa lo tomé\nMás tarde\nNo lo tomé\nMás tarde hoy\n7:30 a. m.\nDesayuno\n10:00 a. m.\nPreguntas de BUDDY\n8:00 p. m.\nLosartán [PRUEBA]\nLlamar a Juan\nPedir ayuda"
+    },
+    {
+      "name": "routine-360-hc-max",
+      "url": "http://localhost:62853/routine",
+      "text": "Rutina\nCuidando a Elis\nMedicamentos\nAgua\nPreguntas\nCitas\nContactos de emergencia\nLosartán [PRUEBA]\n1 tableta\n8:00 a. m.\n8:00 p. m.\nAgregar medicamento\nInicio\nSalud\nBUDDY\nUbicación\nRutina"
+    },
+    {
+      "name": "sign-in-360-hc-max",
+      "url": "http://localhost:62853/sign-in?role=caregiver",
+      "text": "BUDDY\nCuida a tu familia desde donde estés\nIniciar sesión\nAdministrador\nCambiar\nCorreo electrónico\nContraseña\n¿Olvidaste tu contraseña?\nEntrar\no\nCrear cuenta\nAl continuar aceptas los Términos y la Privacidad."
+    },
+    {
+      "name": "welcome-360-hc-max",
+      "url": "http://localhost:62853/",
+      "text": "Bienvenido\n¿Quién va a usar BUDDY en este celular?\nSoy administrador\nFamiliar o cuidador: registras y cuidas a distancia\nSoy adulto mayor\nTu familiar ya creó tu acceso\nSoy enfermera o cuidadora\nTe invitaron a cuidar a una persona\nCrear cuenta\nIniciar sesión"
+    }
+  ]
+}
