@@ -92,10 +92,10 @@ it('P10/P11: la Vista de [nombre] tiene flecha atrás, banner y "Cambiar a la cu
   expect(mockPush).toHaveBeenCalledWith('/account-switch');
 });
 
-it('P12: el onboarding tiene 4 presentaciones que explican qué es BUDDY', async () => {
+it('P12 (V5.2): el onboarding tiene 6 presentaciones que recorren el ciclo de BUDDY', async () => {
   await ui(<Onboarding />);
-  expect(screen.getByLabelText('Paso 1 de 4')).toBeTruthy();
-  expect(screen.getByRole('header', { name: 'Sabes que está bien' })).toBeTruthy();
+  expect(screen.getByLabelText('Paso 1 de 6')).toBeTruthy();
+  expect(screen.getByRole('header', { name: 'Hola, soy BUDDY' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Siguiente' })).toBeTruthy();
 });
 

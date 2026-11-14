@@ -3,7 +3,8 @@
  * quien tenga el teléfono desbloqueado y herramientas de depuración podría leer los datos locales.
  * La seguridad real llega con SupabaseAuthProvider (docs/SUPABASE_PLAN.md).
  *
- * - Contraseña: sal aleatoria de 16 bytes + SHA-256 iterado (`ITERATIONS` rondas).
+ * - Contraseña: sal aleatoria de 16 bytes + scrypt (N=2^14, r=8). Las cuentas antiguas (SHA-256 iterado) se migran
+ *   a scrypt al iniciar sesión con la contraseña correcta. Códigos de recuperación y PIN: SHA-256 iterado (`hashSecret`).
  * - Cada cuenta en su propia clave `buddy.account.<sha256(correo)>`; varias cuentas por dispositivo.
  * - Bloqueo tras 5 intentos fallidos: 30 s, y se duplica hasta 15 min.
  * - Los mensajes de error no revelan si el correo existe.
@@ -66,8 +67,8 @@ export async function newSalt(): Promise<string> {
   return toHex(await Crypto.getRandomBytesAsync(16));
 }
 
-/** Comparación en tiempo constante. */
-function same(a: string, b: string) {
+/** Comparación en tiempo constante (contraseñas, códigos y PIN). */
+export function same(a: string, b: string) {
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);

@@ -7,6 +7,7 @@ import { FEATURE_PLAN, PLANS, type Feature } from '@/config/plans';
 import { radius, spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 
+import { Appear } from './appear';
 import { AppText } from './app-text';
 import { Button } from './button';
 import { Card } from './card';
@@ -53,24 +54,27 @@ export function LockedPreview({ feature, title, body, children }: { feature: Fea
       ) : (
         <BlurView intensity={t.dark ? 36 : 28} tint={t.dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
       )}
-      <View style={s.overlay}>
-        <View style={s.panel} accessible accessibilityRole="summary" accessibilityLabel={`${title}. Incluido en el plan ${plan.name}.`}>
-          <IconTile icon="lock" domain={plan.domain} size={56} />
-          <AppText variant="h2" align="center">
-            {title}
-          </AppText>
-          {body ? (
-            <AppText variant="secondary" color={t.c.muted} align="center">
-              {body}
+      {/* El mensaje va en una tarjeta sólida: sobre el velo, la vista previa se colaba detrás del texto y no se leía. */}
+      <Appear style={s.overlay}>
+        <View style={s.panel}>
+          <View style={s.message} accessible accessibilityRole="summary" accessibilityLabel={`${title}. Incluido en el plan ${plan.name}.`}>
+            <IconTile icon="lock" domain={plan.domain} size={56} />
+            <AppText variant="h2" align="center">
+              {title}
             </AppText>
-          ) : null}
-          <View style={s.badge}>
-            <Icon name={plan.icon} size={16} color={t.hc ? t.c.text : t.ink.info} />
-            <AppText variant="captionStrong" color={t.hc ? t.c.text : t.ink.info}>{`Incluido en ${plan.name}`}</AppText>
+            {body ? (
+              <AppText variant="secondary" color={t.c.muted} align="center">
+                {body}
+              </AppText>
+            ) : null}
+            <View style={s.badge}>
+              <Icon name={plan.icon} size={16} color={t.hc ? t.c.text : t.ink.info} />
+              <AppText variant="captionStrong" color={t.hc ? t.c.text : t.ink.info}>{`Incluido en ${plan.name}`}</AppText>
+            </View>
           </View>
+          <Button label="Ver planes" icon="sparkle" onPress={() => router.push(plansHref(feature))} style={s.cta} />
         </View>
-        <Button label="Ver planes" icon="sparkle" onPress={() => router.push(plansHref(feature))} style={s.cta} />
-      </View>
+      </Appear>
     </View>
   );
 }
@@ -81,8 +85,19 @@ const useStyles = makeStyles((t) =>
     row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 64 },
     wrap: { borderRadius: radius.cardLg, overflow: 'hidden', minHeight: 360 },
     preview: { opacity: 0.55 },
-    overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, gap: spacing.md },
-    panel: { alignItems: 'center', gap: spacing.xs, maxWidth: 320 },
+    overlay: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', padding: spacing.md },
+    panel: {
+      alignItems: 'center',
+      gap: spacing.xs,
+      width: '100%',
+      maxWidth: 340,
+      padding: spacing.lg,
+      borderRadius: radius.cardLg,
+      backgroundColor: t.c.surface,
+      ...t.hairline,
+      ...(t.hc ? null : t.shadow.elevated),
+    },
+    message: { alignItems: 'center', gap: spacing.xs, alignSelf: 'stretch' },
     badge: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -94,6 +109,6 @@ const useStyles = makeStyles((t) =>
       backgroundColor: t.hc ? t.c.bg : t.c.surface,
       ...(t.hc ? t.hairline : t.shadow.soft),
     },
-    cta: { alignSelf: 'stretch', maxWidth: 320 },
+    cta: { alignSelf: 'stretch', marginTop: spacing.sm },
   }),
 );

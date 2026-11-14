@@ -50,12 +50,14 @@ export const esCO = {
     modes: { auto: 'automática', light: 'clara', dark: 'oscura' } as Record<string, string>,
   },
   onboarding: {
-    // V4.4: la promesa contada en cuatro pasos (tranquilizar → recordar → confirmar → avisar), una línea cada uno.
+    // V5.2: el ciclo completo en seis pasos (presentar → configurar → recordar → confirmar → avisar → tranquilizar).
     slides: [
-      { title: 'Sabes que está bien', body: 'Su día entero, de un vistazo, aunque estés lejos.' },
+      { title: 'Hola, soy BUDDY', body: 'Acompaño a tu familiar en casa y te cuento cómo va su día.' },
+      { title: 'Lo configuras en minutos', body: 'Escribe los medicamentos que le recetó su médico y sus horarios.' },
       { title: 'BUDDY le recuerda cada toma', body: 'A la hora exacta, con voz clara y letra grande.' },
       { title: 'Confirma con un solo toque', body: 'Un botón grande. Nada que aprender.' },
       { title: 'Si algo falla, te enteras a tiempo', body: 'Te avisamos a ti y a quien tú elijas.' },
+      { title: 'Sabes que está bien', body: 'Cada noche, un resumen claro del día. Y un registro útil para su médico.' },
     ],
     /** Escenas de ejemplo (decorativas, ocultas al lector de pantalla). */
     demo: {
@@ -72,6 +74,10 @@ export const esCO = {
       alert: 'Rosa no ha confirmado la toma de las 8:00 a. m.',
       call: 'Llamar',
       view: 'Ver',
+      hello: '¡Hola!',
+      added: 'Agregado',
+      routineReady: 'Rutina lista',
+      summary: 'Resumen de hoy',
     },
     begin: 'Empezar',
     scanKey: 'BUDDY advierte posibles contradicciones y NUNCA receta. Por mayor seguridad, consulta siempre con un médico.',

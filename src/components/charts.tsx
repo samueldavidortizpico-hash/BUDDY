@@ -1,7 +1,7 @@
 /** Gráficos ligeros en SVG/Reanimated: anillo y barra de progreso, agua con ondas, barras, pulso y caras de ánimo. */
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -20,6 +20,9 @@ import { motion, spacing } from '@/theme';
 import { useTheme } from '@/theme/provider';
 
 import { AppText } from './app-text';
+
+/** Svg decorativo: en web `<svg>` no entiende las props nativas de accesibilidad (llegaban al DOM y React avisaba). */
+const SVG_HIDDEN = Platform.OS === 'web' ? { 'aria-hidden': true } : { accessibilityElementsHidden: true, importantForAccessibility: 'no' as const };
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -190,7 +193,7 @@ export function Face({ kind, size = 96, color }: { kind: Answer3; size?: number;
   const fg = color ?? t.c.text;
   const mouth = kind === 'good' ? 'M30 60 Q50 78 70 60' : kind === 'regular' ? 'M32 64 L68 64' : 'M30 70 Q50 54 70 70';
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100" accessibilityElementsHidden importantForAccessibility="no">
+    <Svg width={size} height={size} viewBox="0 0 100 100" {...SVG_HIDDEN}>
       <Circle cx="35" cy="40" r="6" fill={fg} />
       <Circle cx="65" cy="40" r="6" fill={fg} />
       {kind === 'bad' ? <Path d="M26 28 L42 33 M74 28 L58 33" stroke={fg} strokeWidth="5" strokeLinecap="round" /> : null}

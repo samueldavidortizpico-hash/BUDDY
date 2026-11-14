@@ -1,17 +1,16 @@
 /**
- * BUDDY (V4.2): el robot es SIEMPRE la imagen real de `assets/branding/` (nunca un dibujo en código) y nunca va sobre
- * blanco puro: vive dentro de un círculo o cuadro con degradado menta muy claro → turquesa claro (azul noche en oscuro).
- * Solo aparece donde lo muestra el diseño: ícono, carga, presentación 1, botón central de BUDDY y encabezado del chat.
+ * BUDDY con marco (V5.2): el mismo personaje de `assets/branding/buddy-robot.png`, ahora como vector animado
+ * (`./buddy.tsx`): el PNG traía un borde de recorte claro que se veía pegado sobre fondos de color, y no podía
+ * parpadear. Aquí solo parpadea (sin flotar ni saludar): vive en lugares pequeños como el botón central y el chat.
+ * Nunca va sobre blanco puro: va dentro de un círculo o cuadro con degradado menta claro (azul noche en oscuro).
+ * El PNG sigue siendo la fuente del ícono y la carga (app.json).
  */
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme/provider';
 
-export const ROBOT_IMAGE = require('../../../assets/branding/buddy-robot.png');
-/** Proporción ancho / alto del PNG recortado (792 × 887). */
-export const ROBOT_RATIO = 792 / 887;
+import { Buddy } from './buddy';
 
 export const robotFrame = { light: ['#EFFCF7', '#B9EEE4'] as const, dark: ['#1B3A4E', '#12283A'] as const };
 
@@ -40,9 +39,10 @@ export function BuddyRobot({
       importantForAccessibility={accessibilityLabel ? 'auto' : 'no-hide-descendants'}
     >
       {t.hc ? null : <LinearGradient colors={t.dark ? robotFrame.dark : robotFrame.light} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
-      <Image source={ROBOT_IMAGE} contentFit="contain" style={{ width: h * ROBOT_RATIO, height: h }} accessible={false} />
+      <Buddy size={h} float={false} style={styles.robot} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({ frame: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' } });
+// El vector tiene la antena arriba: bajarlo un poco lo centra a la vista dentro del círculo.
+const styles = StyleSheet.create({ frame: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, robot: { marginTop: '6%' } });

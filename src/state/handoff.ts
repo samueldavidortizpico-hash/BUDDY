@@ -3,7 +3,7 @@
  * PIN de 4 dígitos con sal + hash; 5 intentos y bloqueo creciente (30 s, 60 s, …, máx. 15 min).
  */
 import { db } from '@/infrastructure/local/db';
-import { hashSecret, newSalt } from '@/infrastructure/local/auth';
+import { hashSecret, newSalt, same } from '@/infrastructure/local/auth';
 
 import { FEATURES } from '@/config/features';
 
@@ -77,7 +77,7 @@ export const handoffActions = {
       if (h.lockedUntil && Date.parse(h.lockedUntil) > Date.now()) {
         return { result: 'locked', seconds: Math.ceil((Date.parse(h.lockedUntil) - Date.now()) / 1000) };
       }
-      const matches = /^\d{4}$/.test(pin) && (await hashSecret(pin, acc.pinSalt, PIN_ITERATIONS)) === acc.pinHash;
+      const matches = /^\d{4}$/.test(pin) && same(await hashSecret(pin, acc.pinSalt, PIN_ITERATIONS), acc.pinHash);
       if (currentUserId() !== userId || db.draftHandoff() !== h || account()?.pinHash !== acc.pinHash || account()?.pinSalt !== acc.pinSalt) {
         throw new Error('La entrega o la sesión cambió durante la verificación.');
       }
@@ -112,7 +112,7 @@ export const handoffActions = {
       if (guard.lockedUntil && Date.parse(guard.lockedUntil) > Date.now()) {
         return { result: 'locked', seconds: Math.ceil((Date.parse(guard.lockedUntil) - Date.now()) / 1000) };
       }
-      const matches = /^\d{4}$/.test(pin) && (await hashSecret(pin, acc.pinSalt, PIN_ITERATIONS)) === acc.pinHash;
+      const matches = /^\d{4}$/.test(pin) && same(await hashSecret(pin, acc.pinSalt, PIN_ITERATIONS), acc.pinHash);
       if (matches) {
         db.setDraft(owner, GUARD_KEY, undefined);
         return { result: 'ok' };

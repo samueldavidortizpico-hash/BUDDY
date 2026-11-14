@@ -1,14 +1,14 @@
 /**
- * Presentaciones de la primera apertura (V5.1) — "Un día con BUDDY".
+ * Presentaciones de la primera apertura (V5.2) — "Un día con BUDDY", en seis pasos que recorren el ciclo del producto:
+ * presentar → configurar → recordar → confirmar → avisar → tranquilizar.
  *
- * Cada paso es una pantalla inmersiva a todo color (un degradado vivo de la marca que se funde con el siguiente al
- * deslizar) con una escena en capas: BUDDY grande con los datos del día girando a su alrededor, y un teléfono que gira
- * en 3D con el dedo mientras muestra lo que pasa de verdad en la app (recordar, confirmar, avisar). Todo es vectorial o
- * la imagen oficial del robot: nítido en cualquier pantalla.
+ * Cada paso es una pantalla inmersiva a todo color (un degradado de la marca que se funde con el siguiente al deslizar)
+ * con una escena en capas. BUDDY es el vector animado de `components/robot/buddy.tsx` (parpadea, saluda, duerme):
+ * el PNG anterior traía un borde de recorte que sobre estos fondos se veía pegado.
  *
  * Movimiento (solo transform y opacidad, en el hilo de UI):
  *  - cada escena corre su línea de tiempo SOLO mientras es la página activa; fuera de pantalla queda en su estado final;
- *  - al deslizar, las capas se mueven a distinta velocidad (profundidad) y el teléfono gira;
+ *  - al deslizar, las capas se mueven a distinta velocidad (profundidad), la escena se encoge un poco y el teléfono gira;
  *  - el título entra palabra por palabra cuando la página queda centrada.
  * Con "reducir movimiento": sin paralaje, sin giro, sin bucles; cada escena quieta y el texto ya visible.
  */
@@ -36,12 +36,13 @@ import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg'
 import { AppText } from '@/components/app-text';
 import { Icon, type IconName } from '@/components/icon';
 import { IconTile } from '@/components/icon-tile';
-import { ROBOT_IMAGE, ROBOT_RATIO } from '@/components/robot';
+import { Buddy } from '@/components/robot/buddy';
 import { strings } from '@/i18n';
 import type { Domain, Theme, Tone } from '@/theme';
 import { useTheme } from '@/theme/provider';
 
 const D = strings.onboarding.demo;
+const FAMILY = strings.onboarding.familyCards;
 const APP_ICON = require('../../../assets/branding/buddy-splash.png');
 /** Lienzo de diseño de cada escena; se escala para caber en el alto disponible. */
 const CANVAS = { w: 320, h: 340 };
@@ -51,20 +52,22 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /**
  * Color de cada paso: degradado de arriba abajo (vivo → profundo) y el tono profundo para el texto del botón. El texto
- * blanco da ≥ 5,5:1 donde va el título y ≥ 6,7:1 donde va la frase (medido con las paradas en 0 · 0,34 · 0,76).
+ * blanco va sobre la mitad baja (paradas 0,34 · 0,76), donde todos los pasos dan ≥ 5,5:1.
  */
 export const SLIDES = [
   { colors: ['#22B8A9', '#0F8A8C', '#0A4660'], deep: '#0A4660' },
+  { colors: ['#4FCB8E', '#168363', '#0A4A3E'], deep: '#0A4A3E' },
   { colors: ['#FF9E7A', '#E4573F', '#8E2B4E'], deep: '#8E2B4E' },
   { colors: ['#63B5FA', '#3A72E0', '#232F86'], deep: '#232F86' },
   { colors: ['#B49BFF', '#6C56E0', '#2A2168'], deep: '#2A2168' },
+  { colors: ['#4A5BA8', '#252E72', '#0E1236'], deep: '#0E1236' },
 ] as const;
 
 /** Colores de las piezas de las escenas. En alto contraste todo sale del tema (sin transparencias ni degradados). */
 function look(t: Theme) {
   return t.hc
-    ? { screen: t.c.bg, card: t.c.bg, ink: t.c.text, muted: t.c.text, bezel: t.c.text, glass: t.c.bg, edge: t.c.text, onGlass: t.c.text, night: t.c.bg, onNight: t.c.text }
-    : { screen: '#F4F8F7', card: '#FFFFFF', ink: '#102A33', muted: '#5B6B73', bezel: '#0A1A24', glass: 'rgba(255,255,255,0.2)', edge: 'rgba(255,255,255,0.5)', onGlass: '#FFFFFF', night: '#1B1640', onNight: '#FFFFFF' };
+    ? { screen: t.c.bg, card: t.c.bg, ink: t.c.text, muted: t.c.text, bezel: t.c.text, glass: t.c.bg, edge: t.c.text, onGlass: t.c.text, night: t.c.bg, onNight: t.c.text, mint: t.c.text, onMint: t.c.bg }
+    : { screen: '#F4F8F7', card: '#FFFFFF', ink: '#102A33', muted: '#5B6B73', bezel: '#0A1A24', glass: 'rgba(255,255,255,0.2)', edge: 'rgba(255,255,255,0.5)', onGlass: '#FFFFFF', night: '#1B1640', onNight: '#FFFFFF', mint: '#DDF6EF', onMint: '#0B5A4A' };
 }
 type Look = ReturnType<typeof look>;
 
@@ -88,6 +91,12 @@ function backOut(v: number) {
 function outro(p: number) {
   'worklet';
   return 1 - seg(p, 0.93, 0.995);
+}
+/** Entra con rebote entre `a` y `b` (escala 0,6 → 1 y 10 px hacia arriba) y se va en el cierre. */
+function pop(p: number, a: number, b: number) {
+  'worklet';
+  const v = backOut(seg(p, a, b));
+  return { opacity: seg(p, a, a + (b - a) * 0.4) * outro(p), transform: [{ translateY: 10 * (1 - v) }, { scale: 0.6 + 0.4 * v }] };
 }
 
 /** 0 → 1 en bucle mientras la página está activa; quieta en `still` (estado final) si no. */
@@ -209,14 +218,14 @@ function Tint({ index, x, width, colors }: { index: number; x: SharedValue<numbe
 }
 
 /** Luz difusa (degradado radial, sin blur). */
-function Orb({ size }: { size: number }) {
+function Orb({ size, color = '#FFFFFF', opacity = 0.26 }: { size: number; color?: string; opacity?: number }) {
   const id = `o${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <Svg width={size} height={size} viewBox="0 0 100 100">
       <Defs>
         <RadialGradient id={id} cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.26} />
-          <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+          <Stop offset="0" stopColor={color} stopOpacity={opacity} />
+          <Stop offset="1" stopColor={color} stopOpacity={0} />
         </RadialGradient>
       </Defs>
       <Circle cx="50" cy="50" r="50" fill={`url(#${id})`} />
@@ -232,7 +241,7 @@ export function Words({ text, active, color }: { text: string; active: boolean; 
   const v = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
     if (reduce) return v.set(1);
-    v.set(active ? withDelay(140, withTiming(1, { duration: 640, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 120 }));
+    v.set(active ? withDelay(140, withTiming(1, { duration: 720, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 120 }));
   }, [active, reduce, v]);
   const words = text.split(' ');
   return (
@@ -246,8 +255,10 @@ export function Words({ text, active, color }: { text: string; active: boolean; 
 
 function Word({ v, at, text, color }: { v: SharedValue<number>; at: number; text: string; color: string }) {
   const style = useAnimatedStyle(() => {
-    const k = easeOut(interpolate(v.get(), [at, at + 0.45], [0, 1], Extrapolation.CLAMP));
-    return { opacity: k, transform: [{ translateY: 20 * (1 - k) }] };
+    const k = interpolate(v.get(), [at, at + 0.45], [0, 1], Extrapolation.CLAMP);
+    const b = backOut(k);
+    // Cada palabra sube con un rebote corto y se endereza (entra un poco inclinada).
+    return { opacity: easeOut(k), transform: [{ translateY: 22 * (1 - b) }, { rotate: `${6 * (1 - b)}deg` }, { scale: 0.9 + 0.1 * b }] };
   });
   return (
     <Animated.View style={style}>
@@ -264,7 +275,7 @@ export function Reveal({ active, delay = 0, children }: { active: boolean; delay
   const v = useSharedValue(reduce ? 1 : 0);
   useEffect(() => {
     if (reduce) return v.set(1);
-    v.set(active ? withDelay(delay, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 120 }));
+    v.set(active ? withDelay(delay, withTiming(1, { duration: 460, easing: Easing.out(Easing.cubic) })) : withTiming(0, { duration: 120 }));
   }, [active, reduce, delay, v]);
   const style = useAnimatedStyle(() => ({ opacity: v.get(), transform: [{ translateY: 12 * (1 - v.get()) }] }));
   return <Animated.View style={style}>{children}</Animated.View>;
@@ -272,18 +283,19 @@ export function Reveal({ active, delay = 0, children }: { active: boolean; delay
 
 // ── Escena ───────────────────────────────────────────────────
 
-/** Escena de la página `index`: se escala al alto disponible y se desvanece al alejarse del centro. */
+/** Escena de la página `index`: se escala al alto disponible y, al alejarse del centro, se encoge y se desvanece. */
 export function Scene({ index, x, width, height, active }: { index: number; x: SharedValue<number>; width: number; height: number; active: boolean }) {
   const t = useTheme();
   const reduce = useReducedMotion();
   const scale = Math.min(height / CANVAS.h, (width - 16) / CANVAS.w);
-  const fade = useAnimatedStyle(() => ({
-    opacity: reduce ? 1 : interpolate(Math.abs(x.get() / Math.max(1, width) - index), [0, 0.9], [1, 0], Extrapolation.CLAMP),
-  }));
+  const fit = useAnimatedStyle(() => {
+    const d = reduce ? 0 : Math.abs(x.get() / Math.max(1, width) - index);
+    return { opacity: interpolate(d, [0, 0.9], [1, 0], Extrapolation.CLAMP), transform: [{ scale: scale * interpolate(d, [0, 1], [1, 0.86], Extrapolation.CLAMP) }] };
+  });
   const Body = SCENES[index];
   return (
     <View style={[styles.stage, { width, height }]} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Animated.View style={[styles.canvas, { transform: [{ scale }] }, fade]}>
+      <Animated.View style={[styles.canvas, fit]}>
         <Body active={active} t={t} L={look(t)} x={x} width={width} index={index} reduce={reduce} />
       </Animated.View>
     </View>
@@ -319,21 +331,21 @@ function Avatar({ letter, tone, t, size = 46 }: { letter: string; tone: Tone; t:
 const STAR = 'M12 0 C12.8 8 16 11.2 24 12 C16 12.8 12.8 16 12 24 C11.2 16 8 12.8 0 12 C8 11.2 11.2 8 12 0Z';
 
 /** Destello de cuatro puntas que titila con la línea de tiempo. */
-function Star({ p, x, y, size, phase }: { p: SharedValue<number>; x: number; y: number; size: number; phase: number }) {
+function Star({ p, x, y, size, phase, color = '#FFFFFF' }: { p: SharedValue<number>; x: number; y: number; size: number; phase: number; color?: string }) {
   const style = useAnimatedStyle(() => {
-    const v = Math.abs((((p.get() * 3 + phase) % 1) + 1) % 1 * 2 - 1);
+    const v = Math.abs(((((p.get() * 3 + phase) % 1) + 1) % 1) * 2 - 1);
     return { opacity: 0.25 + 0.75 * v, transform: [{ scale: 0.6 + 0.5 * v }, { rotate: `${v * 24}deg` }] };
   });
   return (
     <Animated.View style={[styles.abs, { left: x - size / 2, top: y - size / 2 }, style]}>
       <Svg width={size} height={size} viewBox="0 0 24 24">
-        <Path d={STAR} fill="#FFFFFF" />
+        <Path d={STAR} fill={color} />
       </Svg>
     </Animated.View>
   );
 }
 
-/** Anillo que sale de un punto y se desvanece (dos por vuelta de la línea de tiempo). */
+/** Anillo que sale de un punto y se desvanece. */
 function Ping({ p, x, y, size, color, from, to }: { p: SharedValue<number>; x: number; y: number; size: number; color: string; from: number; to: number }) {
   const style = useAnimatedStyle(() => {
     const v = seg(p.get(), from, to);
@@ -342,7 +354,42 @@ function Ping({ p, x, y, size, color, from, to }: { p: SharedValue<number>; x: n
   return <Animated.View style={[styles.abs, { left: x - size / 2, top: y - size / 2, width: size, height: size, borderRadius: size / 2, borderWidth: 2.5, borderColor: color }, style]} />;
 }
 
-// 1 · Sabes que está bien: BUDDY flota sobre su plataforma, los datos del día giran a su alrededor y llega el estado.
+/** Plataforma bajo BUDDY: sombra que respira con el flotar y un halo que se expande. */
+function Platform({ p, f, L, left, top, size }: { p: SharedValue<number>; f: SharedValue<number>; L: Look; left: number; top: number; size: number }) {
+  const shadow = useAnimatedStyle(() => ({ opacity: 0.5 - 0.18 * f.get(), transform: [{ scaleY: 0.22 }, { scale: 1 - 0.1 * f.get() }] }));
+  const halo = useAnimatedStyle(() => {
+    const v = (p.get() * 2) % 1;
+    return { opacity: 0.7 * (1 - v), transform: [{ scaleY: 0.22 }, { scale: 0.7 + 0.75 * v }] };
+  });
+  const box = { left, top, width: size, height: size, borderRadius: size / 2 };
+  return (
+    <>
+      <Animated.View style={[styles.abs, box, { borderWidth: 4, borderColor: L.edge }, halo]} />
+      <Animated.View style={[styles.abs, box, styles.platformFill, shadow]} />
+    </>
+  );
+}
+
+/** Tres puntos que saltan: "BUDDY está escribiendo". */
+function Typing({ p, from, to, color }: { p: SharedValue<number>; from: number; to: number; color: string }) {
+  const box = useAnimatedStyle(() => ({ opacity: seg(p.get(), from, from + 0.03) * (1 - seg(p.get(), to - 0.03, to)) }));
+  return (
+    <Animated.View style={[styles.typing, { backgroundColor: color }, box]}>
+      {[0, 1, 2].map((i) => (
+        <Dot key={i} p={p} i={i} />
+      ))}
+    </Animated.View>
+  );
+}
+function Dot({ p, i }: { p: SharedValue<number>; i: number }) {
+  const style = useAnimatedStyle(() => {
+    const v = Math.sin(((p.get() * 14 - i * 0.18) % 1) * Math.PI * 2);
+    return { transform: [{ translateY: -3 * Math.max(0, v) }], opacity: 0.5 + 0.5 * Math.max(0, v) };
+  });
+  return <Animated.View style={[styles.dot, style]} />;
+}
+
+// 1 · Hola, soy BUDDY: saluda sobre su plataforma, los datos del día giran a sus pies y aparece su globo.
 const ORBIT: { icon: IconName; domain: Domain }[] = [
   { icon: 'meds', domain: 'medication' },
   { icon: 'drop', domain: 'water' },
@@ -357,84 +404,168 @@ function Orbiter({ spin, i, front, icon, domain }: { spin: SharedValue<number>; 
     const s = Math.sin(angle);
     const depth = (s + 1) / 2;
     return {
-      opacity: (front ? s >= 0 : s < 0) ? 0.6 + 0.4 * depth : 0,
-      transform: [{ translateX: Math.cos(angle) * 136 }, { translateY: s * 30 }, { scale: 0.62 + 0.36 * depth }],
+      opacity: (front ? s >= 0 : s < 0) ? 0.55 + 0.45 * depth : 0,
+      transform: [{ translateX: Math.cos(angle) * 132 }, { translateY: s * 26 }, { scale: 0.6 + 0.4 * depth }],
     };
   });
   return (
     <Animated.View style={[styles.orbiter, style]}>
-      <IconTile icon={icon} domain={domain} size={46} />
+      <IconTile icon={icon} domain={domain} size={42} />
     </Animated.View>
   );
 }
 
-function HeroScene(c: Ctx) {
-  const { active, L } = c;
+function HelloScene(c: Ctx) {
+  const { active, t, L } = c;
   const p = useTimeline(active, 5600);
-  const f = useFloat(active);
-  const spin = useSpin(active, 15000);
+  const f = useFloat(active, 1900);
+  const spin = useSpin(active, 16000);
   const far = useDepth(c, 0.12);
   const mid = useDepth(c, 0.3);
   const near = useDepth(c, 0.6);
-  const robot = useAnimatedStyle(() => ({ transform: [{ translateY: -9 * f.get() }] }));
-  const shadow = useAnimatedStyle(() => ({ opacity: 0.55 - 0.2 * f.get(), transform: [{ scaleY: 0.22 }, { scale: 1 - 0.08 * f.get() }] }));
-  const halo = useAnimatedStyle(() => {
-    const v = (p.get() * 2) % 1;
-    return { opacity: 0.7 * (1 - v), transform: [{ scaleY: 0.22 }, { scale: 0.7 + 0.75 * v }] };
-  });
-  const chip = useAnimatedStyle(() => {
-    const v = backOut(seg(p.get(), 0.06, 0.2));
-    return { opacity: seg(p.get(), 0.06, 0.12) * outro(p.get()), transform: [{ translateY: 26 * (1 - v) }, { scale: 0.86 + 0.14 * v }] };
-  });
-  const ring = useAnimatedProps(() => ({ strokeDashoffset: RING * (1 - easeOut(seg(p.get(), 0.18, 0.34))) }));
-  const tick = useAnimatedStyle(() => {
-    const v = Math.max(0, backOut(seg(p.get(), 0.3, 0.42)));
-    return { opacity: Math.min(1, v), transform: [{ scale: v }] };
-  });
+  const bubble = useAnimatedStyle(() => pop(p.get(), 0.08, 0.22));
+  const hearts = [0, 1, 2];
   return (
     <>
       <Animated.View style={[StyleSheet.absoluteFill, far]}>
-        <Star p={p} x={44} y={50} size={26} phase={0} />
-        <Star p={p} x={282} y={34} size={16} phase={0.4} />
-        <Star p={p} x={296} y={206} size={12} phase={0.7} />
-        <Star p={p} x={22} y={212} size={14} phase={0.2} />
+        <Star p={p} x={40} y={46} size={26} phase={0} />
+        <Star p={p} x={286} y={40} size={16} phase={0.4} />
+        <Star p={p} x={300} y={196} size={12} phase={0.7} />
+        <Star p={p} x={20} y={206} size={14} phase={0.2} />
       </Animated.View>
       <Animated.View style={[StyleSheet.absoluteFill, mid]}>
-        <Animated.View style={[styles.platform, { borderColor: L.edge }, halo]} />
-        <Animated.View style={[styles.platform, styles.platformFill, shadow]} />
+        <Platform p={p} f={f} L={L} left={50} top={150} size={220} />
         {ORBIT.map((o, i) => (
           <Orbiter key={`b${o.domain}`} spin={spin} i={i} front={false} icon={o.icon} domain={o.domain} />
         ))}
-        <Animated.View style={[styles.heroRobot, robot]}>
-          <Image source={ROBOT_IMAGE} style={{ width: 196 * ROBOT_RATIO, height: 196 }} contentFit="contain" accessible={false} />
-        </Animated.View>
+        <View style={styles.helloRobot}>
+          <Buddy size={226} wave active={active} />
+        </View>
+        {hearts.map((i) => (
+          <FloatHeart key={i} p={p} i={i} />
+        ))}
         {ORBIT.map((o, i) => (
           <Orbiter key={`f${o.domain}`} spin={spin} i={i} front icon={o.icon} domain={o.domain} />
         ))}
       </Animated.View>
-      <Animated.View style={[styles.heroChipRow, near]}>
-        <Animated.View style={chip}>
-          <Glass L={L} style={styles.statusChip}>
-            <View style={styles.ring}>
-              <Svg width={36} height={36} style={[StyleSheet.absoluteFill, styles.ccw]}>
-                <Circle cx={18} cy={18} r={15} stroke={L.edge} strokeWidth={3.5} fill="none" />
-                <AnimatedCircle cx={18} cy={18} r={15} stroke={L.onGlass} strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={RING} animatedProps={ring} />
-              </Svg>
-              <Animated.View style={tick}>
-                <Icon name="check" color={L.onGlass} size={18} strokeWidth={3.2} />
-              </Animated.View>
-            </View>
-            <AppText variant="bodyStrong" color={L.onGlass} maxScale={1}>
-              {D.ok}
-            </AppText>
-          </Glass>
+      <Animated.View style={[StyleSheet.absoluteFill, near]}>
+        <Animated.View style={[styles.helloBubble, { backgroundColor: L.card }, t.hc && t.hairline, bubble]}>
+          <AppText variant="bodyStrong" color={L.ink} maxScale={1}>
+            {D.hello}
+          </AppText>
         </Animated.View>
       </Animated.View>
     </>
   );
 }
 
-// 2 · BUDDY le recuerda: el teléfono muestra la toma, BUDDY habla, suena la campana y sale el recordatorio.
+/** Corazoncito que sube desde el pecho de BUDDY y se desvanece. */
+function FloatHeart({ p, i }: { p: SharedValue<number>; i: number }) {
+  const style = useAnimatedStyle(() => {
+    const v = seg(p.get(), 0.3 + i * 0.16, 0.62 + i * 0.16);
+    return { opacity: v > 0 && v < 1 ? Math.sin(v * Math.PI) : 0, transform: [{ translateY: -70 * v }, { translateX: (i - 1) * 26 * v + Math.sin(v * 6) * 6 }, { scale: 0.6 + 0.5 * v }] };
+  });
+  return (
+    <Animated.View style={[styles.heart, style]}>
+      <Svg width={18} height={18} viewBox="0 0 24 24">
+        <Path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11Z" fill="#FF8C82" />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+// 2 · Lo configuras en minutos: escribes la toma, BUDDY la entiende, la confirmas y queda en la rutina.
+function SetupScene(c: Ctx) {
+  const { active, t, L } = c;
+  const p = useTimeline(active, 6000);
+  const f = useFloat(active, 2200);
+  const far = useDepth(c, 0.14);
+  const near = useDepth(c, 0.62);
+  const turn = usePhoneTurn(c, 4);
+  const mine = useAnimatedStyle(() => {
+    const v = easeOut(seg(p.get(), 0.04, 0.14));
+    return { opacity: v * outro(p.get()), transform: [{ translateX: 40 * (1 - v) }] };
+  });
+  const card = useAnimatedStyle(() => pop(p.get(), 0.34, 0.46));
+  const tap = useAnimatedStyle(() => {
+    const v = seg(p.get(), 0.54, 0.6) - seg(p.get(), 0.6, 0.66);
+    return { transform: [{ scale: 1 - 0.06 * v }] };
+  });
+  const added = useAnimatedStyle(() => ({ opacity: seg(p.get(), 0.6, 0.66) * outro(p.get()) }));
+  const finger = useAnimatedStyle(() => {
+    const inV = easeOut(seg(p.get(), 0.46, 0.56));
+    const outV = seg(p.get(), 0.66, 0.76);
+    const press = seg(p.get(), 0.56, 0.59) - seg(p.get(), 0.6, 0.64);
+    return { opacity: Math.min(1, inV * 1.5) * (1 - outV), transform: [{ translateX: 60 * (1 - inV) + 30 * outV }, { translateY: 60 * (1 - inV) + 40 * outV }, { scale: 1 - 0.18 * press }] };
+  });
+  const chip = useAnimatedStyle(() => pop(p.get(), 0.68, 0.8));
+  const tiles = useAnimatedStyle(() => ({ transform: [{ translateY: -6 * f.get() }] }));
+  return (
+    <>
+      <Animated.View style={[StyleSheet.absoluteFill, far]}>
+        <Animated.View style={[styles.setupTileA, tiles]}>
+          <IconTile icon="clock" domain="followUp" size={44} />
+        </Animated.View>
+        <Animated.View style={[styles.setupTileB, tiles]}>
+          <IconTile icon="calendar" domain="water" size={38} />
+        </Animated.View>
+      </Animated.View>
+      <Phone L={L} style={[styles.phoneRight, turn]}>
+        <View style={styles.chat}>
+          <View style={styles.chatHead}>
+            <View style={[styles.chatAvatar, { backgroundColor: L.mint }]}>
+              <Buddy size={24} float={false} active={active} />
+            </View>
+            <AppText variant="captionStrong" color={L.ink} maxScale={1}>
+              BUDDY
+            </AppText>
+          </View>
+          <Animated.View style={[styles.mine, { backgroundColor: t.hc ? t.c.text : '#1E9C86' }, mine]}>
+            <AppText variant="caption" color={t.hc ? t.c.bg : '#FFFFFF'} maxScale={1}>
+              {strings.onboarding.chatExample}
+            </AppText>
+          </Animated.View>
+          <Typing p={p} from={0.16} to={0.34} color={t.hc ? t.c.bg : '#E6EEF0'} />
+          <Animated.View style={[styles.medCard, { backgroundColor: L.card }, t.hc && t.hairline, card]}>
+            <View style={styles.medRow}>
+              <IconTile icon="meds" domain="medication" size={30} />
+              <AppText variant="captionStrong" color={L.ink} maxScale={1} style={styles.flex} numberOfLines={2}>
+                {strings.onboarding.chatCardTitle}
+              </AppText>
+            </View>
+            <Animated.View style={[styles.cardButton, { backgroundColor: t.hc ? t.c.text : '#139AA0' }, tap]}>
+              <AppText variant="meta" color={t.hc ? t.c.bg : '#FFFFFF'} maxScale={1} numberOfLines={1}>
+                {strings.onboarding.chatCardBody}
+              </AppText>
+              <Animated.View style={[styles.center, styles.row, { backgroundColor: t.hc ? t.c.text : '#2FB57A' }, added]}>
+                <Icon name="check" color={t.hc ? t.c.bg : '#FFFFFF'} size={14} strokeWidth={3} />
+                <AppText variant="meta" color={t.hc ? t.c.bg : '#FFFFFF'} maxScale={1}>
+                  {D.added}
+                </AppText>
+              </Animated.View>
+            </Animated.View>
+          </Animated.View>
+        </View>
+      </Phone>
+      <Animated.View style={[StyleSheet.absoluteFill, near]}>
+        <View style={styles.setupRobot}>
+          <Buddy size={130} mood="open" active={active} />
+        </View>
+        <Animated.View style={[styles.setupFinger, { backgroundColor: 'rgba(255,255,255,0.4)' }, finger]} />
+        <Animated.View style={[styles.setupChip, chip]}>
+          <View style={[styles.smallChip, { backgroundColor: L.card }, t.hc && t.hairline]}>
+            <Icon name="check" color={L.onMint} size={16} strokeWidth={3} />
+            <AppText variant="captionStrong" color={L.onMint} maxScale={1}>
+              {D.routineReady}
+            </AppText>
+          </View>
+        </Animated.View>
+      </Animated.View>
+    </>
+  );
+}
+
+// 3 · BUDDY le recuerda: el teléfono muestra la toma, BUDDY habla, suena la campana y sale el recordatorio.
 function Wave({ i, p, color }: { i: number; p: SharedValue<number>; color: string }) {
   const r = 12 + i * 11;
   const style = useAnimatedStyle(() => {
@@ -481,15 +612,11 @@ function ReminderScene(c: Ctx) {
   const far = useDepth(c, 0.14);
   const near = useDepth(c, 0.62);
   const turn = usePhoneTurn(c, 5);
-  const robot = useAnimatedStyle(() => ({ transform: [{ translateY: -6 * f.get() }, { rotate: `${-4 + 4 * f.get()}deg` }] }));
   const bell = useAnimatedStyle(() => {
     const v = seg(p.get(), 0.1, 0.42);
     return { transform: [{ rotate: `${Math.sin(v * Math.PI * 8) * 18 * (1 - v)}deg` }, { translateY: -4 * f.get() }] };
   });
-  const bubble = useAnimatedStyle(() => {
-    const v = backOut(seg(p.get(), 0.2, 0.36));
-    return { opacity: seg(p.get(), 0.2, 0.26) * outro(p.get()), transform: [{ scale: 0.6 + 0.4 * v }, { translateY: 10 * (1 - v) }] };
-  });
+  const bubble = useAnimatedStyle(() => pop(p.get(), 0.2, 0.36));
   return (
     <>
       <Animated.View style={[StyleSheet.absoluteFill, far]}>
@@ -503,12 +630,12 @@ function ReminderScene(c: Ctx) {
         <DoseScreen t={t} L={L} />
       </Phone>
       <Animated.View style={[StyleSheet.absoluteFill, near]}>
-        <Animated.View style={[styles.robotPeek, robot]}>
-          <Image source={ROBOT_IMAGE} style={{ width: 150 * ROBOT_RATIO, height: 150 }} contentFit="contain" accessible={false} />
-        </Animated.View>
+        <View style={styles.robotPeek}>
+          <Buddy size={150} mood="open" active={active} />
+        </View>
         <View style={styles.waves}>
           {[0, 1, 2].map((i) => (
-            <Wave key={i} i={i} p={p} color={t.hc ? t.c.text : '#12807F'} />
+            <Wave key={i} i={i} p={p} color={t.hc ? t.c.text : '#FFFFFF'} />
           ))}
         </View>
         {/* Globo sólido (no de vidrio): cruza sobre el teléfono y debe leerse encima de su pantalla. */}
@@ -522,7 +649,7 @@ function ReminderScene(c: Ctx) {
   );
 }
 
-// 3 · Confirma con un toque: el dedo presiona, el botón pasa a "Tomada", sale confeti y el aviso llega a la familia.
+// 4 · Confirma con un toque: el dedo presiona, el botón pasa a "Tomada", sale confeti y el aviso llega a la familia.
 const BURST: { a: number; r: number; s: number; tone: Tone }[] = Array.from({ length: 14 }, (_, i) => ({
   a: (i / 14) * Math.PI * 2 + 0.2,
   r: 70 + (i % 4) * 22,
@@ -575,6 +702,11 @@ function ConfirmScene(c: Ctx) {
     const v = backOut(seg(p.get(), 0.72, 0.84));
     return { transform: [{ scale: 1 + 0.16 * (v - seg(p.get(), 0.84, 0.92)) }] };
   });
+  // BUDDY celebra: salta una vez cuando la toma queda confirmada.
+  const hop = useAnimatedStyle(() => {
+    const v = seg(p.get(), 0.36, 0.5);
+    return { transform: [{ translateY: -22 * Math.sin(v * Math.PI) }, { rotate: `${-8 * Math.sin(v * Math.PI)}deg` }] };
+  });
   const success = t.hc ? ([t.c.text, t.c.text] as const) : (['#2FB57A', '#1F8A57'] as const);
   const onSuccess = t.hc ? t.c.bg : '#FFFFFF';
   return (
@@ -582,6 +714,9 @@ function ConfirmScene(c: Ctx) {
       <Animated.View style={[StyleSheet.absoluteFill, far]}>
         <Animated.View style={[styles.familyAvatar, family]}>
           <Avatar letter="L" tone="yellow" t={t} size={52} />
+        </Animated.View>
+        <Animated.View style={[styles.confirmRobot, hop]}>
+          <Buddy size={96} active={active} />
         </Animated.View>
       </Animated.View>
       <Phone L={L} style={[styles.phoneCenter, turn]}>
@@ -622,7 +757,7 @@ function ConfirmScene(c: Ctx) {
   );
 }
 
-// 4 · Te enteras a tiempo: el aviso llega al teléfono del hijo (vibra), y también a quien él elija.
+// 5 · Te enteras a tiempo: el aviso llega al teléfono del hijo (vibra), y también a quien él elija.
 function AlertScene(c: Ctx) {
   const { active, t, L } = c;
   const p = useTimeline(active, 5000);
@@ -649,6 +784,7 @@ function AlertScene(c: Ctx) {
   return (
     <>
       <Animated.View style={[StyleSheet.absoluteFill, far]}>
+        <Ping p={p} x={160} y={150} size={120} color={L.onGlass} from={0.18} to={0.5} />
         <Animated.View style={[styles.avatarLeft, left]}>
           <Avatar letter="L" tone="yellow" t={t} />
           <Animated.View style={[styles.badge, { backgroundColor: t.hc ? t.c.text : '#FF6B5E' }, badgeA]}>
@@ -688,8 +824,8 @@ function AlertScene(c: Ctx) {
       <Animated.View style={[styles.actionsRow, near]}>
         <Animated.View style={[styles.row, actions]}>
           <View style={[styles.action, { backgroundColor: L.card }, t.hc && t.hairline]}>
-            <Icon name="phone" color={t.hc ? t.c.text : SLIDES[3].deep} size={18} strokeWidth={2.6} />
-            <AppText variant="secondaryStrong" color={t.hc ? t.c.text : SLIDES[3].deep} maxScale={1}>
+            <Icon name="phone" color={t.hc ? t.c.text : SLIDES[4].deep} size={18} strokeWidth={2.6} />
+            <AppText variant="secondaryStrong" color={t.hc ? t.c.text : SLIDES[4].deep} maxScale={1}>
               {D.call}
             </AppText>
           </View>
@@ -704,7 +840,125 @@ function AlertScene(c: Ctx) {
   );
 }
 
-const SCENES: ComponentType<Ctx>[] = [HeroScene, ReminderScene, ConfirmScene, AlertScene];
+// 6 · Sabes que está bien: de noche, BUDDY duerme y el resumen del día se llena con lo que pasó, renglón a renglón.
+const SUMMARY: { icon: IconName; domain: Domain; text: string }[] = [
+  { icon: 'smile', domain: 'mood', text: FAMILY[0] },
+  { icon: 'moon', domain: 'sleep', text: FAMILY[1] },
+  { icon: 'meds', domain: 'medication', text: FAMILY[2] },
+];
+const MOON = 'M40 4 A30 30 0 1 0 60 52 A24 24 0 1 1 40 4 Z';
+
+function NightScene(c: Ctx) {
+  const { active, t, L } = c;
+  const p = useTimeline(active, 6000);
+  const f = useFloat(active, 2600);
+  const far = useDepth(c, 0.12);
+  const mid = useDepth(c, 0.3);
+  const near = useDepth(c, 0.6);
+  const moon = useAnimatedStyle(() => ({ transform: [{ translateY: -4 * f.get() }, { rotate: `${-6 + 6 * f.get()}deg` }] }));
+  const card = useAnimatedStyle(() => {
+    const v = backOut(seg(p.get(), 0.04, 0.18));
+    return { opacity: seg(p.get(), 0.04, 0.1) * outro(p.get()), transform: [{ translateY: 30 * (1 - v) }] };
+  });
+  const chip = useAnimatedStyle(() => pop(p.get(), 0.6, 0.72));
+  const ring = useAnimatedProps(() => ({ strokeDashoffset: RING * (1 - easeOut(seg(p.get(), 0.62, 0.78))) }));
+  const tick = useAnimatedStyle(() => {
+    const v = Math.max(0, backOut(seg(p.get(), 0.74, 0.84)));
+    return { opacity: Math.min(1, v), transform: [{ scale: v }] };
+  });
+  return (
+    <>
+      <Animated.View style={[StyleSheet.absoluteFill, far]}>
+        <Star p={p} x={28} y={30} size={14} phase={0.1} />
+        <Star p={p} x={150} y={14} size={10} phase={0.5} />
+        <Star p={p} x={300} y={150} size={12} phase={0.8} />
+        <Star p={p} x={20} y={150} size={18} phase={0.3} color="#FFE9A8" />
+        <Animated.View style={[styles.moon, moon]}>
+          <View style={styles.moonGlow}>
+            <Orb size={130} color="#FFE9A8" opacity={0.4} />
+          </View>
+          <Svg width={64} height={64} viewBox="0 0 64 64">
+            <Path d={MOON} fill={t.hc ? t.c.text : '#FFE9A8'} />
+          </Svg>
+        </Animated.View>
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, mid]}>
+        <Animated.View style={[styles.summary, { backgroundColor: L.card }, t.hc && t.hairline, card]}>
+          <AppText variant="captionStrong" color={L.muted} maxScale={1}>
+            {D.summary}
+          </AppText>
+          {SUMMARY.map((r, i) => (
+            <SummaryRow key={r.text} p={p} i={i} row={r} L={L} t={t} />
+          ))}
+        </Animated.View>
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, near]}>
+        <View style={styles.nightRobot}>
+          <Buddy size={124} mood="sleep" active={active} />
+        </View>
+        {[0, 1, 2].map((i) => (
+          <Zzz key={i} p={p} i={i} color={L.onGlass} />
+        ))}
+        <Animated.View style={[styles.nightChip, chip]}>
+          <Glass L={L} style={styles.statusChip}>
+            <View style={styles.ring}>
+              <Svg width={36} height={36} style={[StyleSheet.absoluteFill, styles.ccw]}>
+                <Circle cx={18} cy={18} r={15} stroke={L.edge} strokeWidth={3.5} fill="none" />
+                <AnimatedCircle cx={18} cy={18} r={15} stroke={L.onGlass} strokeWidth={3.5} fill="none" strokeLinecap="round" strokeDasharray={RING} animatedProps={ring} />
+              </Svg>
+              <Animated.View style={tick}>
+                <Icon name="check" color={L.onGlass} size={18} strokeWidth={3.2} />
+              </Animated.View>
+            </View>
+            <AppText variant="bodyStrong" color={L.onGlass} maxScale={1}>
+              {D.ok}
+            </AppText>
+          </Glass>
+        </Animated.View>
+      </Animated.View>
+    </>
+  );
+}
+
+function SummaryRow({ p, i, row, L, t }: { p: SharedValue<number>; i: number; row: (typeof SUMMARY)[number]; L: Look; t: Theme }) {
+  const a = 0.2 + i * 0.1;
+  const style = useAnimatedStyle(() => {
+    const v = easeOut(seg(p.get(), a, a + 0.1));
+    return { opacity: v, transform: [{ translateX: -18 * (1 - v) }] };
+  });
+  const check = useAnimatedStyle(() => {
+    const v = Math.max(0, backOut(seg(p.get(), a + 0.06, a + 0.14)));
+    return { opacity: Math.min(1, v), transform: [{ scale: v }] };
+  });
+  return (
+    <Animated.View style={[styles.summaryRow, style]}>
+      <IconTile icon={row.icon} domain={row.domain} size={28} />
+      <AppText variant="captionStrong" color={L.ink} maxScale={1} style={styles.flex} numberOfLines={1}>
+        {row.text}
+      </AppText>
+      <Animated.View style={[styles.summaryCheck, { backgroundColor: t.hc ? t.c.text : '#2FB57A' }, check]}>
+        <Icon name="check" color={t.hc ? t.c.bg : '#FFFFFF'} size={12} strokeWidth={3.4} />
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+/** "Z" que sube desde BUDDY dormido, crece y se desvanece. */
+function Zzz({ p, i, color }: { p: SharedValue<number>; i: number; color: string }) {
+  const style = useAnimatedStyle(() => {
+    const v = (((p.get() * 2 - i * 0.33) % 1) + 1) % 1;
+    return { opacity: Math.sin(v * Math.PI), transform: [{ translateX: 22 * v + Math.sin(v * 5) * 4 }, { translateY: -48 * v }, { scale: 0.6 + 0.7 * v }] };
+  });
+  return (
+    <Animated.View style={[styles.zzz, style]}>
+      <AppText variant="bodyStrong" color={color} maxScale={1}>
+        z
+      </AppText>
+    </Animated.View>
+  );
+}
+
+const SCENES: ComponentType<Ctx>[] = [HelloScene, SetupScene, ReminderScene, ConfirmScene, AlertScene, NightScene];
 
 const PX = (CANVAS.w - PHONE.w) / 2;
 const styles = StyleSheet.create({
@@ -712,7 +966,7 @@ const styles = StyleSheet.create({
   canvas: { width: CANVAS.w, height: CANVAS.h },
   abs: { position: 'absolute' },
   flex: { flex: 1, minWidth: 0 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   center: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   ccw: { transform: [{ rotate: '-90deg' }] },
   // Fondo
@@ -728,31 +982,47 @@ const styles = StyleSheet.create({
   glass: { borderWidth: 1.5, borderRadius: 22 },
   avatar: { alignItems: 'center', justifyContent: 'center', borderWidth: 3, boxShadow: '0px 8px 18px rgba(0, 0, 0, 0.22)' },
   badge: { position: 'absolute', top: -4, right: -4, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFFFFF' },
-  // 1
-  platform: { position: 'absolute', left: 50, top: 126, width: 220, height: 220, borderRadius: 110, borderWidth: 4 },
-  platformFill: { borderWidth: 0, backgroundColor: 'rgba(4, 24, 36, 0.5)' },
-  heroRobot: { position: 'absolute', top: 30, left: (CANVAS.w - 196 * ROBOT_RATIO) / 2 },
-  orbiter: { position: 'absolute', left: CANVAS.w / 2 - 23, top: 150 },
-  heroChipRow: { position: 'absolute', left: 0, right: 0, top: 268, alignItems: 'center' },
+  platformFill: { backgroundColor: 'rgba(4, 24, 36, 0.5)' },
   statusChip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, paddingLeft: 8, paddingRight: 18, borderRadius: 999 },
   ring: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  smallChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999 },
+  // 1 (plataforma centrada en y 260; órbita a sus pies)
+  helloRobot: { position: 'absolute', top: 26, left: (CANVAS.w - 226 * (200 / 220)) / 2 },
+  orbiter: { position: 'absolute', left: CANVAS.w / 2 - 21, top: 240 },
+  helloBubble: { position: 'absolute', right: 12, top: 18, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, borderBottomLeftRadius: 6, transformOrigin: 'bottom left', boxShadow: '0px 10px 22px rgba(0, 0, 0, 0.22)' },
+  heart: { position: 'absolute', left: 151, top: 190 },
   // 2
+  setupTileA: { position: 'absolute', left: 22, top: 26 },
+  setupTileB: { position: 'absolute', left: 74, top: 90 },
+  chat: { flex: 1, paddingTop: 30, paddingHorizontal: 8, gap: 8 },
+  chatHead: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 6 },
+  chatAvatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  mine: { alignSelf: 'flex-end', maxWidth: '90%', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 14, borderBottomRightRadius: 4 },
+  typing: { position: 'absolute', left: 8, top: 112, flexDirection: 'row', gap: 4, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 14, borderBottomLeftRadius: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7A8B92' },
+  medCard: { borderRadius: 14, padding: 8, gap: 8, transformOrigin: 'top left', boxShadow: '0px 6px 14px rgba(0, 0, 0, 0.14)' },
+  medRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cardButton: { height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', paddingHorizontal: 6 },
+  setupRobot: { position: 'absolute', left: -4, top: 200 },
+  setupFinger: { position: 'absolute', left: 196, top: 210, width: 42, height: 42, borderRadius: 21, borderWidth: 2.5, borderColor: '#FFFFFF' },
+  setupChip: { position: 'absolute', left: 6, top: 150, transformOrigin: 'bottom left' },
+  // 3
   bellTile: { position: 'absolute', left: 26, top: 30 },
   phoneRight: { left: PX + 34, top: 18 },
   doseScreen: { flex: 1, alignItems: 'center', paddingTop: 34, paddingHorizontal: 8, paddingBottom: 10, gap: 8 },
   bigButton: { marginTop: 'auto', alignSelf: 'stretch', height: 54, borderRadius: 18, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  robotPeek: { position: 'absolute', left: 0, top: 176 },
-  waves: { position: 'absolute', left: 124, top: 178, width: 48, height: 80 },
+  robotPeek: { position: 'absolute', left: -6, top: 186 },
+  waves: { position: 'absolute', left: 124, top: 196, width: 48, height: 80 },
   bubble: { position: 'absolute', left: 4, top: 86, width: 126, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 18, borderBottomLeftRadius: 6, transformOrigin: 'bottom left', boxShadow: '0px 10px 22px rgba(0, 0, 0, 0.24)' },
-  // 3 (botón centrado en x 160, y 281 del lienzo)
+  // 4 (botón centrado en x 160, y 281 del lienzo)
   phoneCenter: { left: PX, top: 14 },
   familyAvatar: { position: 'absolute', right: 14, top: 22 },
+  confirmRobot: { position: 'absolute', left: 0, top: 18 },
   ripple: { position: 'absolute', left: 140, top: 261, width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: '#FFFFFF' },
   confetti: { position: 'absolute', left: 156, top: 276 },
   finger: { position: 'absolute', left: 150, top: 268, width: 46, height: 46, borderRadius: 23, borderWidth: 2.5, borderColor: '#FFFFFF' },
   flyChip: { position: 'absolute', left: 162, top: 214 },
-  smallChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999 },
-  // 4
+  // 5
   phoneCenterWrap: { position: 'absolute', left: PX, top: 6, width: PHONE.w, height: PHONE.h },
   phoneStatic: { left: 0, top: 0 },
   lock: { flex: 1, paddingTop: 40, paddingHorizontal: 8, gap: 12 },
@@ -763,4 +1033,13 @@ const styles = StyleSheet.create({
   avatarRight: { position: 'absolute', right: 14, top: 150 },
   actionsRow: { position: 'absolute', left: 0, right: 0, top: 286, alignItems: 'center' },
   action: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minWidth: 112, height: 46, paddingHorizontal: 18, borderRadius: 999 },
+  // 6
+  moon: { position: 'absolute', right: 18, top: 10, width: 64, height: 64 },
+  moonGlow: { position: 'absolute', left: -33, top: -33 },
+  summary: { position: 'absolute', left: 14, top: 54, width: 246, borderRadius: 22, padding: 14, gap: 10, boxShadow: '0px 16px 32px rgba(0, 0, 0, 0.3)' },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  summaryCheck: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  nightRobot: { position: 'absolute', left: 4, top: 210 },
+  zzz: { position: 'absolute', left: 92, top: 206 },
+  nightChip: { position: 'absolute', right: 10, top: 270, transformOrigin: 'bottom right' },
 });
