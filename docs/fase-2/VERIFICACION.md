@@ -37,8 +37,8 @@ Faltan (cada uno debe fallar si se rompe la lógica):
 
 - [ ] Un medicamento de **un solo día por semana** siempre tiene su aviso dentro del plan de avisos (hallazgo Q-02 de
       `docs/AUDITORIA_BMAD.md`: la prueba actual solo valida el tope, no los días cubiertos).
-- [ ] Cerrar sesión como administrador nunca lleva a la pantalla del adulto mayor.
-- [ ] Al reabrir la app, cada rol (administrador, adulto mayor, enfermera) vuelve a su pantalla.
+- [ ] Cerrar sesión como administrador nunca lleva a la pantalla del adulto mayor. **(Laura, PR `test/sesion-y-roles`)**
+- [ ] Al reabrir la app, cada rol (administrador, adulto mayor, enfermera) vuelve a su pantalla. **(Laura, PR `test/sesion-y-roles`)**
 - [ ] La contraseña temporal del adulto mayor solo se puede ver una vez.
 
 ## C. Prueba inestable
