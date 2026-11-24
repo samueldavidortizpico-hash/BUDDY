@@ -1,0 +1,63 @@
+name: Error
+description: Algo de BUDDY no funciona como debería.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Un issue por error. Título: qué falla y dónde, en una línea (ej.: "Confirmar toma descuenta dos pastillas").
+        Nunca pegues claves, contraseñas ni datos de salud reales.
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos
+      description: Lista numerada para repetirlo desde la app recién abierta.
+      placeholder: |
+        1. Abrir la app como administrador
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Esperado
+      description: Qué debería pasar.
+    validations:
+      required: true
+  - type: textarea
+    id: paso
+    attributes:
+      label: Qué pasó
+      description: Qué pasó en realidad.
+    validations:
+      required: true
+  - type: input
+    id: dispositivo
+    attributes:
+      label: Dispositivo
+      description: Marca, modelo, versión de Android o iOS, tamaño de letra y tema.
+      placeholder: Samsung A14, Android 14, letra máxima, modo oscuro
+    validations:
+      required: true
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidencia
+      description: Arrastra aquí una captura o un video corto.
+  - type: dropdown
+    id: severidad
+    attributes:
+      label: Severidad
+      options:
+        - "P0 · Puede hacer daño a una persona o perder datos de salud (se arregla ya)"
+        - "P1 · Una función principal no sirve"
+        - "P2 · Funciona, pero mal o confuso"
+        - "P3 · Detalle menor"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Dónde
+      multiple: true
+      options: [app, diseño, android, ios, tablet, servidor]
