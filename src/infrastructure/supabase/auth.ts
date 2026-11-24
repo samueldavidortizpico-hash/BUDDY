@@ -5,7 +5,8 @@
  * Eliminar cuenta requiere la Edge Function `delete-account` (docs/SUPABASE_PLAN.md): el cliente no puede borrar
  * usuarios de auth sin la clave de servicio.
  */
-import { AuthError, roleOf, type AuthService, type AuthUser } from '@/domain/auth';
+import { AuthError, isValidSessionUser, roleOf, type AuthService, type AuthUser } from '@/domain/auth';
+import { ROLES, type FamilyLevel, type Role } from '@/domain/types';
 import { isAcceptablePassword, isValidEmail, normalizeEmail } from '@/domain/validation';
 import { strings } from '@/i18n';
 
@@ -13,7 +14,7 @@ import { getSupabase, supabaseConfigured } from './client';
 
 const e = strings.auth.errors;
 
-type Link = { role?: 'caregiver' | 'elder' | 'nurse'; owner_id?: string; elder_id?: string };
+type Link = { role?: string; level?: string; owner_id?: string; elder_id?: string };
 type SbUser = { id: string; email?: string; created_at: string; user_metadata?: { name?: string }; app_metadata?: Link };
 
 /**
@@ -24,16 +25,32 @@ type SbUser = { id: string; email?: string; created_at: string; user_metadata?: 
  */
 export const toUser = (u: SbUser): AuthUser => {
   const link = u.app_metadata ?? {};
-  const linked = (link.role === 'elder' || link.role === 'nurse') && !!link.owner_id && !!link.elder_id;
-  return {
+  // V5.3 (spec "Rol desconocido"): un rol que la app no conoce rechaza la sesión; nunca se convierte en titular.
+  if (link.role !== undefined && !ROLES.includes(link.role as Role)) throw new AuthError('forbidden', e.forbidden);
+  const role = link.role as Role | undefined;
+  const linked = (role === 'elder' || role === 'nurse' || role === 'family') && !!link.owner_id && !!link.elder_id;
+  const user: AuthUser = {
     id: u.id,
     email: u.email ?? '',
     name: u.user_metadata?.name ?? '',
     createdAt: u.created_at,
-    role: linked ? link.role : 'caregiver',
+    role: linked ? role : 'caregiver',
     ownerId: linked ? link.owner_id! : null,
     elderId: linked ? link.elder_id! : null,
   };
+  if (linked && role === 'family') user.level = link.level as FamilyLevel;
+  if (!isValidSessionUser(user)) throw new AuthError('forbidden', e.forbidden);
+  return user;
+};
+
+/** Para leer la sesión guardada: una sesión con rol desconocido se descarta (no se muestra ningún dato). */
+const toUserOrNull = (u: SbUser | undefined | null): AuthUser | null => {
+  if (!u) return null;
+  try {
+    return toUser(u);
+  } catch {
+    return null;
+  }
 };
 
 function guard() {
@@ -84,12 +101,12 @@ export function createSupabaseAuthProvider(): AuthService {
     async getSession() {
       if (!supabaseConfigured) return null;
       const { data } = await getSupabase().auth.getSession();
-      return data.session?.user ? toUser(data.session.user as SbUser) : null;
+      return toUserOrNull(data.session?.user as SbUser | undefined);
     },
 
     onAuthStateChange(listener) {
       if (!supabaseConfigured) return () => undefined;
-      const { data } = getSupabase().auth.onAuthStateChange((_event, session) => listener(session?.user ? toUser(session.user as SbUser) : null));
+      const { data } = getSupabase().auth.onAuthStateChange((_event, session) => listener(toUserOrNull(session?.user as SbUser | undefined)));
       return () => data.subscription.unsubscribe();
     },
 

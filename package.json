@@ -70,7 +70,9 @@
     "lint": "expo lint",
     "test": "jest",
     "check:headers": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-headers.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:release": "node scripts/check-release.mjs",
+    "eas-build-pre-install": "node scripts/check-release.mjs"
   },
   "private": true,
   "jest": {

@@ -292,6 +292,14 @@ export const esCO = {
     cancelledTest: 'Volviste a Gratis. Lo esencial sigue igual.',
     testPlanLabel: 'Plan de prueba (desarrollo)',
     testPlanHint: 'Solo cambia este teléfono. No compra ni cobra.',
+    // V5.3 (auditoría de venta V-03): solo se cobra lo que se entrega.
+    included: 'Incluido',
+    soon: 'Próximamente',
+    soonPlans: 'Próximamente',
+    soonPlanBody: 'Llega cuando BUDDY conecte los teléfonos de toda la familia. No se cobra nada hasta entonces.',
+    soonSuffix: ' (próximamente)',
+    noPlanYet: 'Aún no hay planes para comprar',
+    autoRenew: 'Se renueva sola cada mes hasta que la canceles en App Store o Google Play.',
   },
   answers: { good: 'Bien', regular: 'Regular', bad: 'Mal' } as Record<'good' | 'regular' | 'bad', string>,
   tabs: { summary: 'Inicio', health: 'Salud', location: 'Ubicación', routine: 'Rutina', settings: 'Ajustes' },
@@ -1293,12 +1301,15 @@ export const esCO = {
     },
     privacy: {
       title: 'Política de privacidad',
+      // V5.3 (auditoría de venta V-10, spec release/store-readiness): debe coincidir con docs/DECLARACIONES_TIENDAS.md.
       body: [
-        'Los datos de salud son sensibles (Ley 1581 de 2012 en Colombia). Hoy BUDDY los guarda solo en este teléfono, separados por cuenta.',
-        'No se envían a ningún servidor propio ni a servicios de inteligencia artificial. Cuando se conecte el servidor se pedirá tu consentimiento y se explicará dónde se guardan.',
-        'Para mostrar información general de un medicamento, BUDDY consulta servicios públicos de la Biblioteca Nacional de Medicina de EE. UU. (RxNorm y MedlinePlus) enviando SOLO el nombre o el código del medicamento, nunca datos de la persona ni de su perfil.',
-        'Puedes exportar o eliminar tus datos en Ajustes > Legal y permisos, y eliminar tu cuenta en Ajustes > Cuenta.',
-        'Las fotos de envases se guardan en la memoria de la app y se borran al eliminar el medicamento o la cuenta.',
+        'Responsable y autorización. Los datos de salud son datos sensibles (Ley 1581 de 2012 en Colombia). Quien crea la cuenta declara que la persona que cuida le autorizó registrar sus datos, de forma libre e informada. La decisión de compartir la ubicación es solo del adulto mayor.',
+        'Qué datos guarda BUDDY. Cuenta: nombre, correo y contraseña (guardada como huella con scrypt, nunca en texto). Perfil del adulto mayor: nombre, sexo, fecha de nacimiento o edad, peso y estatura, parentesco, celular, alergias, enfermedades, cirugías, restricciones de comida, aseguradora y médico. Cuidado diario: medicamentos con dosis y horarios, tomas confirmadas o sin confirmar, existencias, agua, comidas, actividades, citas, recordatorios, respuestas del chequeo diario (ánimo y sueño), novedades y mensajes del chat de BUDDY. Ubicación: solo si el adulto mayor la acepta, y solo mientras la app está abierta. Fotos: solo las de envases de medicamentos que tú eliges tomar.',
+        'Dónde se guardan. En esta versión, todo se guarda en este teléfono, separado por cuenta. La protección es la del propio teléfono (su bloqueo y su cifrado); BUDDY todavía no agrega un cifrado propio. No hay servidor de BUDDY: nada de lo anterior sale del teléfono.',
+        'Con quién se comparte. Con nadie fuera del teléfono. En el mismo teléfono, las cuentas que tú creas (adulto mayor o enfermera) ven solo los datos de su persona. Para mostrar información general de un medicamento, BUDDY consulta servicios públicos de la Biblioteca Nacional de Medicina de EE. UU. (RxNorm y MedlinePlus) enviando SOLO el nombre o el código del medicamento, nunca datos de la persona. Si compras un plan, la tienda (App Store o Google Play) y el procesador de suscripciones (RevenueCat) reciben el identificador de tu cuenta y la compra, nunca datos de salud. No se venden datos ni se usan para publicidad, y no se envían a servicios de inteligencia artificial.',
+        'Cuánto tiempo se conservan. Mientras exista la cuenta. Lo que borras se oculta de inmediato y se elimina del todo al eliminar la cuenta. Las fotos de envases se borran al eliminar el medicamento o la cuenta.',
+        'Cómo ver, exportar y borrar tus datos. Puedes exportarlos o eliminarlos en Ajustes > Legal y permisos, y eliminar tu cuenta (con las cuentas que creaste para tu familiar y su enfermera) en Ajustes > Cuenta. También puedes revocar en cualquier momento los permisos de cámara, notificaciones y ubicación desde los ajustes del teléfono.',
+        'Cambios. Cuando BUDDY conecte un servidor para avisar en otros teléfonos, te pediremos tu autorización antes y esta política dirá dónde se guardan los datos y quién los trata.',
       ],
     },
     sources: {

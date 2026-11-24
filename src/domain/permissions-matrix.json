@@ -1,0 +1,165 @@
+{
+  "$comment": "Matriz rol x acción de BUDDY (spec access/roles-permissions). Una sola fuente para la app (can) y el servidor (tabla permission_matrix). Lo que no está aquí se niega. family:viewer solo lee: no tiene acciones.",
+  "version": 1,
+  "roles": [
+    "caregiver",
+    "family:admin",
+    "family:viewer",
+    "elder",
+    "nurse"
+  ],
+  "actions": {
+    "add_medication": [
+      "caregiver",
+      "family:admin"
+    ],
+    "update_medication": [
+      "caregiver",
+      "family:admin"
+    ],
+    "remove_medication": [
+      "caregiver",
+      "family:admin"
+    ],
+    "update_stock": [
+      "caregiver",
+      "family:admin",
+      "nurse"
+    ],
+    "set_water_goal": [
+      "caregiver",
+      "family:admin"
+    ],
+    "add_activity_goal": [
+      "caregiver",
+      "family:admin"
+    ],
+    "set_steps_goal": [
+      "caregiver",
+      "family:admin"
+    ],
+    "add_emergency_contact": [
+      "caregiver",
+      "family:admin"
+    ],
+    "update_emergency_contact": [
+      "caregiver",
+      "family:admin"
+    ],
+    "set_checkin_time": [
+      "caregiver",
+      "family:admin"
+    ],
+    "add_meal_reminder": [
+      "caregiver",
+      "family:admin"
+    ],
+    "add_appointment": [
+      "caregiver",
+      "family:admin"
+    ],
+    "add_note_for_elder": [
+      "caregiver",
+      "family:admin"
+    ],
+    "send_message": [
+      "caregiver",
+      "family:admin"
+    ],
+    "query_summary": [
+      "caregiver",
+      "family:admin"
+    ],
+    "suggest_routine": [
+      "caregiver",
+      "family:admin"
+    ],
+    "open_scan": [
+      "caregiver",
+      "family:admin"
+    ],
+    "show_menu": [
+      "caregiver",
+      "family:admin"
+    ],
+    "medication_info": [
+      "caregiver",
+      "family:admin"
+    ],
+    "emergency": [
+      "caregiver",
+      "family:admin"
+    ],
+    "answer_question": [
+      "caregiver",
+      "family:admin",
+      "elder",
+      "nurse"
+    ],
+    "confirm_dose": [
+      "caregiver",
+      "family:admin",
+      "elder",
+      "nurse"
+    ],
+    "request_help": [
+      "caregiver",
+      "family:admin",
+      "elder",
+      "nurse"
+    ],
+    "call_contact": [
+      "caregiver",
+      "family:admin",
+      "elder",
+      "nurse"
+    ],
+    "location_consent": [
+      "elder"
+    ],
+    "share_location": [
+      "elder"
+    ],
+    "edit_profile": [
+      "caregiver",
+      "family:admin"
+    ],
+    "manage_access": [
+      "caregiver"
+    ],
+    "request_location": [
+      "caregiver",
+      "family:admin"
+    ],
+    "settings": [
+      "caregiver",
+      "family:admin"
+    ],
+    "use_assistant": [
+      "caregiver",
+      "family:admin"
+    ],
+    "handoff": [
+      "caregiver",
+      "family:admin"
+    ],
+    "edit_routine": [
+      "caregiver",
+      "family:admin"
+    ],
+    "manage_alerts": [
+      "caregiver",
+      "family:admin",
+      "nurse"
+    ],
+    "manage_members": [
+      "caregiver"
+    ],
+    "manage_plan": [
+      "caregiver"
+    ],
+    "delete_account": [
+      "caregiver"
+    ]
+  }
+}

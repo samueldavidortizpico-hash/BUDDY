@@ -1,5 +1,5 @@
 /** Contrato de autenticación. Implementaciones: LocalAuthProvider (dispositivo) y SupabaseAuthProvider (servidor). */
-import type { Role } from './types';
+import { FAMILY_LEVELS, ROLES, type FamilyLevel, type Role } from './types';
 
 export interface AuthUser {
   id: string;
@@ -8,17 +8,33 @@ export interface AuthUser {
   createdAt: string;
   /** Administrador (familiar o cuidador) o adulto mayor. Sin valor = administrador (cuentas anteriores a v2.2). */
   role?: Role;
-  /** Cuenta del adulto mayor: administrador que la creó y persona a la que pertenece. */
+  /** Solo para `family`: `viewer` (solo ve) o `admin`. Lo asigna el titular; nunca el propio usuario. */
+  level?: FamilyLevel;
+  /** Cuenta vinculada (adulto mayor, enfermera o familiar): titular que la creó y persona a la que pertenece. */
   ownerId?: string | null;
   elderId?: string | null;
 }
 
-/** Cuenta dueña de los datos: el administrador, también cuando entra el adulto mayor con su acceso. */
+/** Cuentas que actúan sobre los datos de su titular, solo los de la persona compartida. */
+export const LINKED_ROLES: readonly Role[] = ['elder', 'nurse', 'family'];
+
+/** Cuenta dueña de los datos: el administrador, también cuando entra una cuenta vinculada con su acceso. */
 export function dataOwnerId(user: AuthUser): string {
-  return (user.role === 'elder' || user.role === 'nurse') && user.ownerId ? user.ownerId : user.id;
+  return user.role && LINKED_ROLES.includes(user.role) && user.ownerId ? user.ownerId : user.id;
 }
 
 export const roleOf = (user: AuthUser | null | undefined): Role => user?.role ?? 'caregiver';
+
+/**
+ * ¿La sesión trae un rol que la app conoce? (spec: "Rol desconocido: la sesión se rechaza y no se muestra ningún
+ * dato"). Sin rol = cuenta anterior al campo: titular. `family` exige un nivel válido; nunca se adivina el nivel.
+ */
+export function isValidSessionUser(user: AuthUser): boolean {
+  if (user.role === undefined) return true;
+  if (!ROLES.includes(user.role)) return false;
+  if (user.role === 'family') return !!user.level && FAMILY_LEVELS.includes(user.level);
+  return true;
+}
 
 /** Cuentas que crea el administrador: la del adulto mayor y la de su enfermera. */
 export type ManagedRole = 'elder' | 'nurse';

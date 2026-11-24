@@ -10,7 +10,7 @@ import { Icon } from '@/components/icon';
 import { IconTile } from '@/components/icon-tile';
 import { FEATURES } from '@/config/features';
 import { PLANS } from '@/config/plans';
-import { hasRevenueCatPublicKey, revenueCatProvider } from '@/domain/entitlements';
+import { hasRevenueCatPublicKey, revenueCatProvider, splitBenefits } from '@/domain/entitlements';
 import { strings } from '@/i18n';
 import { planActions, useEntitlementPlan, useRenewalDate } from '@/state/entitlements';
 import { spacing } from '@/theme';
@@ -31,6 +31,7 @@ export function PlanSettings() {
   const [cancel, setCancel] = useState(false);
   const [busy, setBusy] = useState(false);
   const plan = PLANS[current];
+  const { included, soon } = splitBenefits(plan);
   const paid = current !== 'free';
 
   const restore = async () => {
@@ -60,10 +61,17 @@ export function PlanSettings() {
           {!paid ? P.freeForever : renewal ? P.renewsOn(formatLongDate(renewal), FEATURES.devTools) : P.activePlan}
         </AppText>
         <View style={s.benefits}>
-          {plan.benefits.map((b) => (
-            <View key={b} style={s.benefit}>
+          {included.map((b) => (
+            <View key={b.text} style={s.benefit}>
               <Icon name="check" size={18} color={t.hc ? t.c.text : t.ink.success} strokeWidth={2.6} />
-              <AppText variant="secondary" style={s.flex}>{b}</AppText>
+              <AppText variant="secondary" style={s.flex}>{b.text}</AppText>
+            </View>
+          ))}
+          {/* V5.3: lo que el plan aún no entrega se nombra como pendiente, nunca como incluido. */}
+          {soon.map((b) => (
+            <View key={b.text} style={s.benefit} accessible accessibilityLabel={`${b.text}${P.soonSuffix}`}>
+              <Icon name="clock" size={18} color={t.c.muted} strokeWidth={2.4} />
+              <AppText variant="secondary" color={t.c.muted} style={s.flex}>{`${b.text}${P.soonSuffix}`}</AppText>
             </View>
           ))}
         </View>

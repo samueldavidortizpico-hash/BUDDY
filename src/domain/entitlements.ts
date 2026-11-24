@@ -1,7 +1,8 @@
 import { Platform } from 'react-native';
 
+import { CAPABILITIES, type Capabilities, type Capability } from '@/config/capabilities';
 import { FEATURES } from '@/config/features';
-import { ENTITLEMENT_IDS, FEATURE_PLAN, PLAN_ORDER, PRODUCT_IDS, type BillingPeriod, type Feature, type PaidPlanId, type PlanId } from '@/config/plans';
+import { ENTITLEMENT_IDS, FEATURE_PLAN, PLAN_ORDER, PRODUCT_IDS, type Benefit, type BillingPeriod, type Feature, type PaidPlanId, type PlanId, type PlanInfo } from '@/config/plans';
 
 export type { Feature, PlanId } from '@/config/plans';
 /** Compatibilidad: el plan del usuario. */
@@ -20,6 +21,30 @@ export function featureAvailable(plan: PlanId, feature: Feature): boolean {
 
 export function canUseFreeFeature(feature: string): boolean {
   return (FREE_FEATURES as readonly string[]).includes(feature);
+}
+
+// ── Solo se cobra lo que se entrega (V5.3, auditoría de venta V-03) ──
+
+/** ¿Existe el beneficio en esta compilación? Sin `requires`, ya existe. */
+export function benefitAvailable(requires: Capability | undefined, caps: Capabilities = CAPABILITIES): boolean {
+  return !requires || caps[requires];
+}
+
+/** Separa lo que el plan entrega hoy ("Incluido") de lo que todavía no existe ("Próximamente"). */
+export function splitBenefits(plan: PlanInfo, caps: Capabilities = CAPABILITIES): { included: Benefit[]; soon: Benefit[] } {
+  return {
+    included: plan.benefits.filter((b) => benefitAvailable(b.requires, caps)),
+    soon: plan.benefits.filter((b) => !benefitAvailable(b.requires, caps)),
+  };
+}
+
+/**
+ * ¿Se puede comprar? Solo un plan de pago con al menos UN beneficio propio disponible ("Todo lo de Plus" no cuenta:
+ * nadie paga Salud por lo que ya trae Plus).
+ */
+export function planPurchasable(plan: PlanInfo, caps: Capabilities = CAPABILITIES): boolean {
+  if (plan.monthly === 0) return false;
+  return plan.benefits.some((b) => !b.inherited && benefitAvailable(b.requires, caps));
 }
 
 /** El plan mayor entre los activos (para RevenueCat, que puede tener varios entitlements). */

@@ -3,7 +3,7 @@
     "name": "BUDDY",
     "slug": "buddy",
     "version": "1.0.0",
-    "description": "BUDDY, siempre contigo: acompañamiento, bienestar y recordatorios de medicamentos para adultos mayores y sus familias. Versión de demostración con datos de ejemplo.",
+    "description": "BUDDY, siempre contigo: recordatorios de medicamentos para un adulto mayor, confirmación de cada toma con un toque y un resumen claro del día para su familia. BUDDY acompaña y recuerda; no diagnostica, no receta ni atiende emergencias. Consulta siempre a tu médico.",
     "orientation": "portrait",
     "icon": "./assets/branding/buddy-icon-source.png",
     "scheme": "buddy",
@@ -36,7 +36,7 @@
       "lang": "es",
       "themeColor": "#174A59",
       "backgroundColor": "#F8FAF8",
-      "description": "BUDDY, siempre contigo. Versión de demostración con datos de ejemplo.",
+      "description": "BUDDY, siempre contigo: recordatorios de medicamentos y acompañamiento para adultos mayores y sus familias.",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

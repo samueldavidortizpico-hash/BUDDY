@@ -17,7 +17,7 @@ import { PressableScale } from '@/components/pressable-scale';
 import { BuddyRobot } from '@/components/robot';
 import { FEATURES } from '@/config/features';
 import { COMPARISON, formatCOP, PLAN_ORDER, PLANS, RECOMMENDED_PLAN, yearlySavings, type BillingPeriod, type PaidPlanId, type PlanId } from '@/config/plans';
-import { hasRevenueCatPublicKey, revenueCatProvider } from '@/domain/entitlements';
+import { benefitAvailable, hasRevenueCatPublicKey, planPurchasable, revenueCatProvider, splitBenefits } from '@/domain/entitlements';
 import { strings } from '@/i18n';
 import { planActions, useEntitlementPlan } from '@/state/entitlements';
 import { motion, radius, spacing, touch } from '@/theme';
@@ -26,12 +26,23 @@ import { successHaptic } from '@/utils/haptics';
 
 const PAID: PaidPlanId[] = ['plus', 'health', 'family'];
 const P = strings.plus;
+/** Planes que se pueden comprar con lo que trae esta compilación; los demás van en "Próximamente" (V5.3, V-03). */
+const BUYABLE = PAID.filter((p) => planPurchasable(PLANS[p]));
+const SOON = PAID.filter((p) => !BUYABLE.includes(p));
+/** El recomendado solo si se puede comprar; si no, el primero que sí. */
+const FEATURED: PaidPlanId | null = BUYABLE.includes(RECOMMENDED_PLAN) ? RECOMMENDED_PLAN : (BUYABLE[0] ?? null);
+/** La opción anual solo se ofrece si algún plan comprable tiene precio anual definido. */
+const YEARLY_OFFERED = BUYABLE.some((p) => PLANS[p].yearly !== null);
 
 /**
  * BUDDY Plus (V4.3): invita a elegir un plan sin presión engañosa (sin contadores ni precios tachados inventados).
- * Encabezado con el degradado Plus, Mensual o Anual, tres planes con el recomendado destacado, comparación, confianza y
- * un botón fijo con el plan y su precio. No cobra: en desarrollo activa un plan de prueba; con RevenueCat configurado
- * compra por la tienda; sin él lo dice.
+ * Encabezado con el degradado Plus, los planes que se pueden comprar con el recomendado destacado, comparación,
+ * confianza y un botón fijo con el plan y su precio. No cobra: en desarrollo activa un plan de prueba; con RevenueCat
+ * configurado compra por la tienda; sin él lo dice.
+ *
+ * V5.3 (auditoría de venta V-03): solo se cobra lo que se entrega. Cada tarjeta separa "Incluido" de "Próximamente";
+ * un plan sin beneficios propios disponibles va aparte, sin precio ni botón de compra. "Mensual o Anual" solo aparece
+ * cuando hay un precio anual definido, y el ahorro solo si se puede calcular.
  */
 export default function BuddyPlus() {
   const router = useRouter();
@@ -41,9 +52,10 @@ export default function BuddyPlus() {
   const toast = useToast();
   const params = useLocalSearchParams<{ plan?: string }>();
   const current = useEntitlementPlan();
-  const initial = (PAID as string[]).includes(params.plan ?? '') ? (params.plan as PaidPlanId) : RECOMMENDED_PLAN;
+  const initial = (BUYABLE as string[]).includes(params.plan ?? '') ? (params.plan as PaidPlanId) : (FEATURED ?? 'plus');
   const [selected, setSelected] = useState<PaidPlanId>(initial);
-  const [period, setPeriod] = useState<BillingPeriod>('monthly');
+  const [chosenPeriod, setPeriod] = useState<BillingPeriod>('monthly');
+  const period: BillingPeriod = YEARLY_OFFERED ? chosenPeriod : 'monthly';
   const [compare, setCompare] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -52,7 +64,8 @@ export default function BuddyPlus() {
   const plan = PLANS[selected];
   const price = period === 'monthly' ? plan.monthly : plan.yearly;
   const isCurrent = current === selected;
-  const ctaLabel = isCurrent ? P.isCurrent : price === null ? P.yearlyTbd : P.continueWith(plan.name, formatCOP(price), period === 'monthly' ? P.perMonth : P.perYear);
+  const buyable = BUYABLE.includes(selected);
+  const ctaLabel = !buyable ? P.noPlanYet : isCurrent ? P.isCurrent : price === null ? P.yearlyTbd : P.continueWith(plan.name, formatCOP(price), period === 'monthly' ? P.perMonth : P.perYear);
 
   // Plan de prueba: el check del botón se ve 700 ms y luego el aviso; se cancela si la pantalla se cierra antes.
   const planName = plan.name;
@@ -67,6 +80,7 @@ export default function BuddyPlus() {
 
   const choose = async () => {
     setMessage(null);
+    if (!buyable) return;
     if (FEATURES.devTools) {
       planActions.setTestPlan(selected);
       successHaptic();
@@ -96,7 +110,7 @@ export default function BuddyPlus() {
     }
   };
 
-  const savings = PAID.map((p) => yearlySavings(PLANS[p])).find((x) => x !== null) ?? null;
+  const savings = BUYABLE.map((p) => yearlySavings(PLANS[p])).find((x) => x !== null) ?? null;
 
   return (
     <View style={s.root}>
@@ -121,24 +135,44 @@ export default function BuddyPlus() {
         </View>
 
         <View style={s.content}>
-          <View style={s.periodRow}>
-            <View style={s.flex}>
-              <Segmented label={P.period} value={period} onChange={setPeriod} options={[{ key: 'monthly', label: P.monthly }, { key: 'yearly', label: P.yearly }]} />
+          {YEARLY_OFFERED ? (
+            <View style={s.periodRow}>
+              <View style={s.flex}>
+                <Segmented label={P.period} value={period} onChange={setPeriod} options={[{ key: 'monthly', label: P.monthly }, { key: 'yearly', label: P.yearly }]} />
+              </View>
+              {savings ? (
+                <View style={s.saveTag}>
+                  <AppText variant="captionStrong" color={t.hc ? t.c.text : t.ink.success}>
+                    {P.saveUpTo(formatCOP(savings))}
+                  </AppText>
+                </View>
+              ) : null}
             </View>
-            <View style={s.saveTag}>
-              <AppText variant="captionStrong" color={t.hc ? t.c.text : t.ink.success}>
-                {savings ? P.saveUpTo(formatCOP(savings)) : P.yearlySoon}
-              </AppText>
-            </View>
-          </View>
+          ) : null}
 
-          <View style={s.cards} accessibilityRole="radiogroup" accessibilityLabel={P.choose}>
-            {PAID.map((id, i) => (
-              <Appear key={id} index={i}>
-                <PlanCard id={id} period={period} selected={selected === id} current={current === id} onSelect={() => setSelected(id)} />
-              </Appear>
-            ))}
-          </View>
+          {BUYABLE.length ? (
+            <View style={s.cards} accessibilityRole="radiogroup" accessibilityLabel={P.choose}>
+              {BUYABLE.map((id, i) => (
+                <Appear key={id} index={i}>
+                  <PlanCard id={id} period={period} selected={selected === id} current={current === id} onSelect={() => setSelected(id)} />
+                </Appear>
+              ))}
+            </View>
+          ) : null}
+
+          {SOON.length ? (
+            <View style={s.cards}>
+              <AppText variant="h3" accessibilityRole="header">
+                {P.soonPlans}
+              </AppText>
+              <AppText variant="secondary" color={t.c.muted}>
+                {P.soonPlanBody}
+              </AppText>
+              {SOON.map((id) => (
+                <SoonCard key={id} id={id} />
+              ))}
+            </View>
+          ) : null}
 
           <View style={s.compare}>
             <Pressable
@@ -157,6 +191,7 @@ export default function BuddyPlus() {
           </View>
 
           <View style={s.trust}>
+            <TrustRow icon="check" text={P.autoRenew} />
             <TrustRow icon="check" text={P.cancelAnytime} />
             <TrustRow icon="lock" text={P.securePay} />
             <TrustRow icon="shield" text={P.essentialFree} />
@@ -182,7 +217,7 @@ export default function BuddyPlus() {
             {message}
           </AppText>
         ) : null}
-        <Button label={ctaLabel} loading={busy} success={done} disabled={isCurrent || price === null} onPress={choose} />
+        <Button label={ctaLabel} loading={busy} success={done} disabled={!buyable || isCurrent || price === null} onPress={choose} />
       </View>
     </View>
   );
@@ -194,7 +229,8 @@ function PlanCard({ id, period, selected, current, onSelect }: { id: PaidPlanId;
   const s = useStyles();
   const reduce = useReducedMotion();
   const plan = PLANS[id];
-  const recommended = id === RECOMMENDED_PLAN;
+  const recommended = id === FEATURED;
+  const { included, soon } = splitBenefits(plan);
   const price = period === 'monthly' ? plan.monthly : plan.yearly;
   const lift = useSharedValue(selected ? 1 : 0);
   useEffect(() => {
@@ -245,17 +281,21 @@ function PlanCard({ id, period, selected, current, onSelect }: { id: PaidPlanId;
         )}
       </Animated.View>
       <View style={s.benefits}>
-        {plan.benefits.map((b) => (
-          <View key={b} style={s.benefit}>
+        <AppText variant="captionStrong" color={t.c.muted}>
+          {P.included}
+        </AppText>
+        {included.map((b) => (
+          <View key={b.text} style={s.benefit}>
             <View style={[s.check, { backgroundColor: tile.bg }]}>
               <Icon name="check" size={14} color={tile.fg} strokeWidth={3} />
             </View>
             <AppText variant="secondary" style={s.flex}>
-              {b}
+              {b.text}
             </AppText>
           </View>
         ))}
       </View>
+      {soon.length ? <SoonList items={soon.map((b) => b.text)} /> : null}
       <Button label={selected ? P.chosen(plan.name) : P.choosePlan(plan.name)} icon={selected ? 'check' : undefined} variant={selected ? 'solid' : 'tonal'} tone={dom.tone} onPress={onSelect} />
     </View>
   );
@@ -267,7 +307,7 @@ function PlanCard({ id, period, selected, current, onSelect }: { id: PaidPlanId;
         scaleTo={motion.pressScaleCard}
         accessibilityRole="radio"
         accessibilityState={{ checked: selected }}
-        accessibilityLabel={`${plan.name}. ${plan.audience}. ${price === null ? P.yearlyTbdShort : `${formatCOP(price)} ${period === 'monthly' ? P.perMonth : P.perYear}`}${recommended ? `. ${P.recommended}` : ''}`}
+        accessibilityLabel={`${plan.name}. ${plan.audience}. ${price === null ? P.yearlyTbdShort : `${formatCOP(price)} ${period === 'monthly' ? P.perMonth : P.perYear}`}${recommended ? `. ${P.recommended}` : ''}. ${P.included}: ${included.map((b) => b.text).join(', ')}${soon.length ? `. ${P.soon}: ${soon.map((b) => b.text).join(', ')}` : ''}`}
         style={s.cardPress}
       >
         {recommended && !t.hc ? (
@@ -279,6 +319,53 @@ function PlanCard({ id, period, selected, current, onSelect }: { id: PaidPlanId;
         )}
       </PressableScale>
     </Animated.View>
+  );
+}
+
+/** Lo que el plan aún no entrega: aparte, atenuado y marcado "Próximamente" (nunca como incluido en el precio). */
+function SoonList({ items }: { items: string[] }) {
+  const t = useTheme();
+  const s = useStyles();
+  return (
+    <View style={s.benefits}>
+      <View style={s.soonTag}>
+        <AppText variant="captionStrong" color={t.c.text}>
+          {P.soon}
+        </AppText>
+      </View>
+      {items.map((text) => (
+        <View key={text} style={s.benefit}>
+          <View style={[s.check, { backgroundColor: t.c.surface2 }, t.hc && t.hairline]}>
+            <Icon name="clock" size={13} color={t.c.muted} strokeWidth={2.4} />
+          </View>
+          <AppText variant="secondary" color={t.c.muted} style={s.flex}>
+            {text}
+          </AppText>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Plan que todavía no se puede comprar: sin precio, sin botón de compra y sin poder elegirlo. */
+function SoonCard({ id }: { id: PaidPlanId }) {
+  const t = useTheme();
+  const s = useStyles();
+  const plan = PLANS[id];
+  const items = plan.benefits.filter((b) => !b.inherited).map((b) => b.text);
+  return (
+    <View style={[s.card, t.shadow.soft]} accessible accessibilityLabel={`${plan.name}. ${plan.audience}. ${P.soon}: ${items.join(', ')}`} testID={`soon-${id}`}>
+      <View style={s.cardHead}>
+        <IconTile icon={plan.icon} domain={plan.domain} size={44} />
+        <View style={s.flex}>
+          <AppText variant="h2">{plan.name}</AppText>
+          <AppText variant="secondary" color={t.c.muted}>
+            {plan.audience}
+          </AppText>
+        </View>
+      </View>
+      <SoonList items={items} />
+    </View>
   );
 }
 
@@ -317,10 +404,15 @@ function Comparison() {
         ))}
       </View>
       {COMPARISON.map((row) => (
-        <View key={row.label} style={s.tr} accessible accessibilityLabel={`${row.label}: ${PLAN_ORDER.filter((p) => PLAN_ORDER.indexOf(p) >= PLAN_ORDER.indexOf(row.from)).map((p) => PLANS[p].name).join(', ')}`}>
-          <AppText variant="caption" style={s.tdLabel}>
-            {row.label}
-          </AppText>
+        <View key={row.label} style={s.tr} accessible accessibilityLabel={`${row.label}${benefitAvailable(row.requires) ? '' : P.soonSuffix}: ${PLAN_ORDER.filter((p) => PLAN_ORDER.indexOf(p) >= PLAN_ORDER.indexOf(row.from)).map((p) => PLANS[p].name).join(', ')}`}>
+          <View style={s.tdLabel}>
+            <AppText variant="caption">{row.label}</AppText>
+            {benefitAvailable(row.requires) ? null : (
+              <AppText variant="meta" color={t.c.muted}>
+                {P.soon}
+              </AppText>
+            )}
+          </View>
           {PLAN_ORDER.map((p: PlanId) => (
             <View key={p} style={s.td}>
               {PLAN_ORDER.indexOf(p) >= PLAN_ORDER.indexOf(row.from) ? (
@@ -371,6 +463,7 @@ const useStyles = makeStyles((t) =>
     cardOn: { borderColor: t.hc ? t.c.text : t.c.accent, borderWidth: 2 },
     cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     recommended: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: t.hc ? t.c.text : '#174A59' },
+    soonTag: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.pill, backgroundColor: t.c.surface2, ...(t.hc ? t.hairline : {}) },
     currentTag: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.pill, backgroundColor: t.c.surface2, ...(t.hc ? t.hairline : {}) },
     priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' },
     benefits: { gap: spacing.xs },

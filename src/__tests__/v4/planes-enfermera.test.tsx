@@ -107,27 +107,45 @@ describe('pantalla de planes', () => {
     setPlan('free');
   });
 
-  it('muestra los tres planes con su precio y el recomendado, y el botón con el plan elegido', async () => {
+  // V5.3 (auditoría de venta V-03, spec commerce/plan-offering): solo se cobra lo que se entrega.
+  it('Plan con parte disponible: Plus se compra y separa lo incluido de lo que llega después', async () => {
     await ui(<Plus />);
     expect(screen.getByText('$7.000')).toBeTruthy();
-    expect(screen.getByText('$11.000')).toBeTruthy();
-    expect(screen.getByText('$13.000')).toBeTruthy();
-    expect(screen.getByText(strings.plus.recommended)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Continuar con Familiar · $13.000/mes' })).toBeTruthy();
-    await fireEvent.press(screen.getByRole('radio', { name: /^Plus\./ }));
     expect(screen.getByRole('button', { name: 'Continuar con Plus · $7.000/mes' })).toBeTruthy();
+    // El recomendado solo puede ser un plan que se pueda comprar.
+    expect(screen.getByText(strings.plus.recommended)).toBeTruthy();
+    const plus = screen.getByRole('radio', { name: /^Plus\./ });
+    expect(plus.props.accessibilityLabel).toMatch(/Incluido: Chat con BUDDY.*Ve cómo durmió.*Salud con gráficas/);
+    expect(plus.props.accessibilityLabel).toMatch(/Próximamente: Reloj inteligente.*Reporte en PDF/);
   });
 
-  it('Anual no inventa precios: dice que está por definir y no deja continuar', async () => {
+  it('Plan con beneficios pendientes: Salud y Familiar salen como "Próximamente", sin precio ni botón de compra', async () => {
     await ui(<Plus />);
-    await fireEvent.press(screen.getByRole('tab', { name: strings.plus.yearly }));
-    const cta = screen.getByRole('button', { name: strings.plus.yearlyTbd });
-    expect(cta.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.queryByText('$11.000')).toBeNull();
+    expect(screen.queryByText('$13.000')).toBeNull();
+    expect(screen.queryByRole('radio', { name: /^Familiar\./ })).toBeNull();
+    expect(screen.queryByRole('radio', { name: /^Salud\./ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Familiar|Salud/ })).toBeNull();
+    expect(screen.getByTestId('soon-family')).toBeTruthy();
+    expect(screen.getByTestId('soon-health')).toBeTruthy();
+  });
+
+  it('Precio anual sin definir: no se ofrece la opción anual ni ningún ahorro', async () => {
+    await ui(<Plus />);
+    expect(screen.queryByRole('tab', { name: strings.plus.yearly })).toBeNull();
+    expect(screen.queryByText(/%|Ahorra/)).toBeNull();
+    expect(screen.queryByText(strings.plus.yearlyTbd)).toBeNull();
+  });
+
+  it('antes de comprar dice que se renueva sola y cómo cancelar', async () => {
+    await ui(<Plus />);
+    expect(screen.getByText(strings.plus.autoRenew)).toBeTruthy();
+    expect(screen.getByText(strings.plus.cancelAnytime)).toBeTruthy();
   });
 
   it('en desarrollo, continuar activa un plan de prueba sin cobrar', async () => {
     await ui(<Plus />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Continuar con Familiar · $13.000/mes' }));
-    await waitFor(() => expect(db.draft(testUser.id, 'buddyPlan')).toBe('family'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continuar con Plus · $7.000/mes' }));
+    await waitFor(() => expect(db.draft(testUser.id, 'buddyPlan')).toBe('plus'));
   });
 });

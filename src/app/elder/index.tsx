@@ -43,7 +43,11 @@ export default function ElderHome() {
   return user?.role === 'elder' ? <NoDataYet /> : null;
 }
 
-function NotificationIntro({ elderId, onContinue }: { elderId: string; onContinue: () => void }) {
+/**
+ * Permiso de avisos EN CONTEXTO (spec store-readiness "Permiso de avisos"): se pide solo cuando la persona toca
+ * "Activar avisos", después de explicar para qué sirve. Nunca al abrir la app.
+ */
+export function NotificationIntro({ elderId, onContinue }: { elderId: string; onContinue: () => void }) {
   const t = useTheme();
   const ownerId = useUserId();
   const complete = () => { if (ownerId) db.setDraft(ownerId, `permissions.introDone.${elderId}`, true); onContinue(); };
@@ -51,7 +55,7 @@ function NotificationIntro({ elderId, onContinue }: { elderId: string; onContinu
     <View style={styles.body}>
       <IconTile icon="bell" domain="followUp" size={88} />
       <AppText variant="h1" align="center">Para que BUDDY te avise, permite las notificaciones</AppText>
-      <AppText variant="body" color={t.c.muted} align="center">Así podrás recibir los recordatorios que tu familia preparó para ti.</AppText>
+      <AppText variant="body" color={t.c.muted} align="center">Así BUDDY te avisa a la hora de cada toma de tus medicamentos y de los recordatorios que tu familia preparó para ti. Puedes cambiarlo cuando quieras.</AppText>
       <Button label="Activar avisos" size="elder" icon="bell" onPress={async () => { try { await notificationPermission(true); } finally { complete(); } }} />
       <Button label="Ahora no" size="elder" variant="ghost" onPress={complete} />
     </View>

@@ -3,11 +3,12 @@
  * presentar → configurar → recordar → confirmar → avisar → tranquilizar.
  *
  * Cada paso es una pantalla inmersiva a todo color (un degradado de la marca que se funde con el siguiente al deslizar)
- * con una escena en capas. BUDDY es el vector animado de `components/robot/buddy.tsx` (parpadea, saluda, duerme):
- * el PNG anterior traía un borde de recorte que sobre estos fondos se veía pegado.
+ * con una escena en capas. BUDDY es el vector de `components/robot/buddy.tsx`, calcado del logo (parpadea, saluda una
+ * vez, duerme).
  *
- * Movimiento (solo transform y opacidad, en el hilo de UI):
- *  - cada escena corre su línea de tiempo SOLO mientras es la página activa; fuera de pantalla queda en su estado final;
+ * Movimiento (solo transform y opacidad, en el hilo de UI). V5.3, más sereno: sin órbitas, confeti ni bucles que se
+ * repiten; cada escena cuenta su historia UNA vez al quedar activa y luego descansa en su estado final.
+ *  - fuera de pantalla, cada escena queda en su estado final;
  *  - al deslizar, las capas se mueven a distinta velocidad (profundidad), la escena se encoge un poco y el teléfono gira;
  *  - el título entra palabra por palabra cuando la página queda centrada.
  * Con "reducir movimiento": sin paralaje, sin giro, sin bucles; cada escena quieta y el texto ya visible.
@@ -99,7 +100,11 @@ function pop(p: number, a: number, b: number) {
   return { opacity: seg(p, a, a + (b - a) * 0.4) * outro(p), transform: [{ translateY: 10 * (1 - v) }, { scale: 0.6 + 0.4 * v }] };
 }
 
-/** 0 → 1 en bucle mientras la página está activa; quieta en `still` (estado final) si no. */
+/**
+ * 0 → `still` UNA vez cada vez que la página queda activa, y ahí se queda (V5.3: la historia se cuenta y la escena
+ * descansa; antes se repetía en bucle cada 5 s y se sentía agitada). Fuera de pantalla o con "reducir movimiento",
+ * quieta en `still` (estado final).
+ */
 function useTimeline(active: boolean, duration: number, still = 0.85) {
   const reduce = useReducedMotion();
   const p = useSharedValue(still);
@@ -110,7 +115,7 @@ function useTimeline(active: boolean, duration: number, still = 0.85) {
       return;
     }
     p.set(0);
-    p.set(withRepeat(withTiming(1, { duration, easing: Easing.linear }), -1, false));
+    p.set(withTiming(still, { duration: duration * still, easing: Easing.linear }));
     return () => cancelAnimation(p);
   }, [active, reduce, duration, still, p]);
   return p;
@@ -130,21 +135,6 @@ function useFloat(active: boolean, ms = 2400) {
     return () => cancelAnimation(f);
   }, [active, reduce, ms, f]);
   return f;
-}
-
-/** Giro continuo 0 → 1 (una vuelta) mientras la página está activa. */
-function useSpin(active: boolean, ms: number) {
-  const reduce = useReducedMotion();
-  const a = useSharedValue(0.08);
-  useEffect(() => {
-    if (reduce || !active) {
-      cancelAnimation(a);
-      return;
-    }
-    a.set(withRepeat(withTiming(a.get() + 1, { duration: ms, easing: Easing.linear }), -1, false));
-    return () => cancelAnimation(a);
-  }, [active, reduce, ms, a]);
-  return a;
 }
 
 interface Ctx {
@@ -256,9 +246,9 @@ export function Words({ text, active, color }: { text: string; active: boolean; 
 function Word({ v, at, text, color }: { v: SharedValue<number>; at: number; text: string; color: string }) {
   const style = useAnimatedStyle(() => {
     const k = interpolate(v.get(), [at, at + 0.45], [0, 1], Extrapolation.CLAMP);
-    const b = backOut(k);
-    // Cada palabra sube con un rebote corto y se endereza (entra un poco inclinada).
-    return { opacity: easeOut(k), transform: [{ translateY: 22 * (1 - b) }, { rotate: `${6 * (1 - b)}deg` }, { scale: 0.9 + 0.1 * b }] };
+    const e = easeOut(k);
+    // Cada palabra sube un poco y aparece, sin rebote ni giro (V5.3: más sereno).
+    return { opacity: e, transform: [{ translateY: 14 * (1 - e) }] };
   });
   return (
     <Animated.View style={style}>
@@ -354,20 +344,10 @@ function Ping({ p, x, y, size, color, from, to }: { p: SharedValue<number>; x: n
   return <Animated.View style={[styles.abs, { left: x - size / 2, top: y - size / 2, width: size, height: size, borderRadius: size / 2, borderWidth: 2.5, borderColor: color }, style]} />;
 }
 
-/** Plataforma bajo BUDDY: sombra que respira con el flotar y un halo que se expande. */
-function Platform({ p, f, L, left, top, size }: { p: SharedValue<number>; f: SharedValue<number>; L: Look; left: number; top: number; size: number }) {
-  const shadow = useAnimatedStyle(() => ({ opacity: 0.5 - 0.18 * f.get(), transform: [{ scaleY: 0.22 }, { scale: 1 - 0.1 * f.get() }] }));
-  const halo = useAnimatedStyle(() => {
-    const v = (p.get() * 2) % 1;
-    return { opacity: 0.7 * (1 - v), transform: [{ scaleY: 0.22 }, { scale: 0.7 + 0.75 * v }] };
-  });
-  const box = { left, top, width: size, height: size, borderRadius: size / 2 };
-  return (
-    <>
-      <Animated.View style={[styles.abs, box, { borderWidth: 4, borderColor: L.edge }, halo]} />
-      <Animated.View style={[styles.abs, box, styles.platformFill, shadow]} />
-    </>
-  );
+/** Sombra suave bajo BUDDY que respira con su flotar. */
+function Platform({ f, left, top, size }: { f: SharedValue<number>; left: number; top: number; size: number }) {
+  const shadow = useAnimatedStyle(() => ({ opacity: 0.45 - 0.1 * f.get(), transform: [{ scaleY: 0.2 }, { scale: 1 - 0.05 * f.get() }] }));
+  return <Animated.View style={[styles.abs, { left, top, width: size, height: size, borderRadius: size / 2 }, styles.platformFill, shadow]} />;
 }
 
 /** Tres puntos que saltan: "BUDDY está escribiendo". */
@@ -389,64 +369,48 @@ function Dot({ p, i }: { p: SharedValue<number>; i: number }) {
   return <Animated.View style={[styles.dot, style]} />;
 }
 
-// 1 · Hola, soy BUDDY: saluda sobre su plataforma, los datos del día giran a sus pies y aparece su globo.
-const ORBIT: { icon: IconName; domain: Domain }[] = [
+// 1 · Hola, soy BUDDY: saluda una vez sobre su sombra, aparece su globo y, debajo, lo que cuida cada día.
+const DAY: { icon: IconName; domain: Domain }[] = [
   { icon: 'meds', domain: 'medication' },
   { icon: 'drop', domain: 'water' },
   { icon: 'moon', domain: 'sleep' },
   { icon: 'smile', domain: 'mood' },
 ];
 
-/** Un dato en órbita. Se dibuja dos veces (detrás y delante del robot) y cada copia solo se ve en su mitad de la vuelta. */
-function Orbiter({ spin, i, front, icon, domain }: { spin: SharedValue<number>; i: number; front: boolean; icon: IconName; domain: Domain }) {
+function DayTile({ p, i, icon, domain }: { p: SharedValue<number>; i: number; icon: IconName; domain: Domain }) {
   const style = useAnimatedStyle(() => {
-    const angle = spin.get() * Math.PI * 2 + (i * Math.PI) / 2;
-    const s = Math.sin(angle);
-    const depth = (s + 1) / 2;
-    return {
-      opacity: (front ? s >= 0 : s < 0) ? 0.55 + 0.45 * depth : 0,
-      transform: [{ translateX: Math.cos(angle) * 132 }, { translateY: s * 26 }, { scale: 0.6 + 0.4 * depth }],
-    };
+    const v = easeOut(seg(p.get(), 0.3 + i * 0.08, 0.5 + i * 0.08));
+    return { opacity: v, transform: [{ translateY: 10 * (1 - v) }] };
   });
   return (
-    <Animated.View style={[styles.orbiter, style]}>
-      <IconTile icon={icon} domain={domain} size={42} />
+    <Animated.View style={style}>
+      <IconTile icon={icon} domain={domain} size={44} />
     </Animated.View>
   );
 }
 
 function HelloScene(c: Ctx) {
   const { active, t, L } = c;
-  const p = useTimeline(active, 5600);
-  const f = useFloat(active, 1900);
-  const spin = useSpin(active, 16000);
-  const far = useDepth(c, 0.12);
+  const p = useTimeline(active, 3200);
+  const f = useFloat(active, 2600);
   const mid = useDepth(c, 0.3);
   const near = useDepth(c, 0.6);
-  const bubble = useAnimatedStyle(() => pop(p.get(), 0.08, 0.22));
-  const hearts = [0, 1, 2];
+  const bubble = useAnimatedStyle(() => {
+    const v = easeOut(seg(p.get(), 0.1, 0.3));
+    return { opacity: v, transform: [{ translateY: 8 * (1 - v) }] };
+  });
   return (
     <>
-      <Animated.View style={[StyleSheet.absoluteFill, far]}>
-        <Star p={p} x={40} y={46} size={26} phase={0} />
-        <Star p={p} x={286} y={40} size={16} phase={0.4} />
-        <Star p={p} x={300} y={196} size={12} phase={0.7} />
-        <Star p={p} x={20} y={206} size={14} phase={0.2} />
-      </Animated.View>
       <Animated.View style={[StyleSheet.absoluteFill, mid]}>
-        <Platform p={p} f={f} L={L} left={50} top={150} size={220} />
-        {ORBIT.map((o, i) => (
-          <Orbiter key={`b${o.domain}`} spin={spin} i={i} front={false} icon={o.icon} domain={o.domain} />
-        ))}
+        <Platform f={f} left={70} top={150} size={180} />
         <View style={styles.helloRobot}>
           <Buddy size={226} wave active={active} />
         </View>
-        {hearts.map((i) => (
-          <FloatHeart key={i} p={p} i={i} />
-        ))}
-        {ORBIT.map((o, i) => (
-          <Orbiter key={`f${o.domain}`} spin={spin} i={i} front icon={o.icon} domain={o.domain} />
-        ))}
+        <View style={styles.dayRow}>
+          {DAY.map((o, i) => (
+            <DayTile key={o.domain} p={p} i={i} icon={o.icon} domain={o.domain} />
+          ))}
+        </View>
       </Animated.View>
       <Animated.View style={[StyleSheet.absoluteFill, near]}>
         <Animated.View style={[styles.helloBubble, { backgroundColor: L.card }, t.hc && t.hairline, bubble]}>
@@ -456,21 +420,6 @@ function HelloScene(c: Ctx) {
         </Animated.View>
       </Animated.View>
     </>
-  );
-}
-
-/** Corazoncito que sube desde el pecho de BUDDY y se desvanece. */
-function FloatHeart({ p, i }: { p: SharedValue<number>; i: number }) {
-  const style = useAnimatedStyle(() => {
-    const v = seg(p.get(), 0.3 + i * 0.16, 0.62 + i * 0.16);
-    return { opacity: v > 0 && v < 1 ? Math.sin(v * Math.PI) : 0, transform: [{ translateY: -70 * v }, { translateX: (i - 1) * 26 * v + Math.sin(v * 6) * 6 }, { scale: 0.6 + 0.5 * v }] };
-  });
-  return (
-    <Animated.View style={[styles.heart, style]}>
-      <Svg width={18} height={18} viewBox="0 0 24 24">
-        <Path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11Z" fill="#FF8C82" />
-      </Svg>
-    </Animated.View>
   );
 }
 
@@ -649,26 +598,7 @@ function ReminderScene(c: Ctx) {
   );
 }
 
-// 4 · Confirma con un toque: el dedo presiona, el botón pasa a "Tomada", sale confeti y el aviso llega a la familia.
-const BURST: { a: number; r: number; s: number; tone: Tone }[] = Array.from({ length: 14 }, (_, i) => ({
-  a: (i / 14) * Math.PI * 2 + 0.2,
-  r: 70 + (i % 4) * 22,
-  s: 7 + (i % 3) * 3,
-  tone: (['mint', 'coral', 'lavender', 'sky', 'yellow'] as const)[i % 5],
-}));
-
-function Confetti({ p, spec, color }: { p: SharedValue<number>; spec: (typeof BURST)[number]; color: string }) {
-  const style = useAnimatedStyle(() => {
-    const v = easeOut(seg(p.get(), 0.34, 0.66));
-    return {
-      opacity: v > 0 && v < 1 ? 1 - v * v : 0,
-      // Sube, se abre y cae un poco al final (gravedad).
-      transform: [{ translateX: Math.cos(spec.a) * spec.r * v }, { translateY: Math.sin(spec.a) * spec.r * v - 46 * v + 60 * v * v }, { scale: 1 - 0.35 * v }, { rotate: `${v * 260}deg` }],
-    };
-  });
-  return <Animated.View style={[styles.confetti, { width: spec.s, height: spec.s * 1.6, borderRadius: spec.s / 3, backgroundColor: color }, style]} />;
-}
-
+// 4 · Confirma con un toque: el dedo presiona, el botón pasa a "Tomada" y el aviso llega a la familia.
 function ConfirmScene(c: Ctx) {
   const { active, t, L } = c;
   const p = useTimeline(active, 4600);
@@ -702,10 +632,10 @@ function ConfirmScene(c: Ctx) {
     const v = backOut(seg(p.get(), 0.72, 0.84));
     return { transform: [{ scale: 1 + 0.16 * (v - seg(p.get(), 0.84, 0.92)) }] };
   });
-  // BUDDY celebra: salta una vez cuando la toma queda confirmada.
+  // BUDDY asiente: un salto pequeño cuando la toma queda confirmada.
   const hop = useAnimatedStyle(() => {
     const v = seg(p.get(), 0.36, 0.5);
-    return { transform: [{ translateY: -22 * Math.sin(v * Math.PI) }, { rotate: `${-8 * Math.sin(v * Math.PI)}deg` }] };
+    return { transform: [{ translateY: -8 * Math.sin(v * Math.PI) }] };
   });
   const success = t.hc ? ([t.c.text, t.c.text] as const) : (['#2FB57A', '#1F8A57'] as const);
   const onSuccess = t.hc ? t.c.bg : '#FFFFFF';
@@ -742,7 +672,6 @@ function ConfirmScene(c: Ctx) {
       </Phone>
       <Animated.View style={[StyleSheet.absoluteFill, near]}>
         <Animated.View style={[styles.ripple, ripple]} />
-        {t.hc ? null : BURST.map((b, i) => <Confetti key={i} p={p} spec={b} color={t.bright[b.tone][1]} />)}
         <Animated.View style={[styles.flyChip, fly]}>
           <Glass L={L} style={styles.smallChip}>
             <Icon name="check" color={L.onGlass} size={16} strokeWidth={3} />
@@ -988,9 +917,8 @@ const styles = StyleSheet.create({
   smallChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999 },
   // 1 (plataforma centrada en y 260; órbita a sus pies)
   helloRobot: { position: 'absolute', top: 26, left: (CANVAS.w - 226 * (200 / 220)) / 2 },
-  orbiter: { position: 'absolute', left: CANVAS.w / 2 - 21, top: 240 },
-  helloBubble: { position: 'absolute', right: 12, top: 18, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, borderBottomLeftRadius: 6, transformOrigin: 'bottom left', boxShadow: '0px 10px 22px rgba(0, 0, 0, 0.22)' },
-  heart: { position: 'absolute', left: 151, top: 190 },
+  dayRow: { position: 'absolute', left: 0, right: 0, top: 268, flexDirection: 'row', justifyContent: 'center', gap: 14 },
+  helloBubble: { position: 'absolute', right: 4, top: 0, paddingVertical: 10, paddingHorizontal: 16, borderRadius: 20, borderBottomLeftRadius: 6, transformOrigin: 'bottom left', boxShadow: '0px 10px 22px rgba(0, 0, 0, 0.22)' },
   // 2
   setupTileA: { position: 'absolute', left: 22, top: 26 },
   setupTileB: { position: 'absolute', left: 74, top: 90 },
@@ -1017,9 +945,8 @@ const styles = StyleSheet.create({
   // 4 (botón centrado en x 160, y 281 del lienzo)
   phoneCenter: { left: PX, top: 14 },
   familyAvatar: { position: 'absolute', right: 14, top: 22 },
-  confirmRobot: { position: 'absolute', left: 0, top: 18 },
+  confirmRobot: { position: 'absolute', left: 14, top: 18 },
   ripple: { position: 'absolute', left: 140, top: 261, width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: '#FFFFFF' },
-  confetti: { position: 'absolute', left: 156, top: 276 },
   finger: { position: 'absolute', left: 150, top: 268, width: 46, height: 46, borderRadius: 23, borderWidth: 2.5, borderColor: '#FFFFFF' },
   flyChip: { position: 'absolute', left: 162, top: 214 },
   // 5

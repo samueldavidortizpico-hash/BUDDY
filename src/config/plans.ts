@@ -5,8 +5,14 @@
  *
  * Nunca se bloquea una función de seguridad: medicamentos, recordatorios, aviso escalonado, existencias, chequeo diario
  * con la pregunta de sueño y sus alertas, pedir ayuda y alertas de seguridad son siempre gratis.
+ *
+ * Solo se cobra lo que se entrega (V5.3, auditoría de venta V-03): cada beneficio declara en `requires` la capacidad
+ * que necesita (`server`, `watch` o `doctorReport`). Si la compilación no la tiene, el beneficio sale como
+ * "Próximamente" y no cuenta en el precio; un plan sin beneficios propios disponibles no se puede comprar
+ * (`planPurchasable` en domain/entitlements.ts).
  */
 import type { IconName } from '@/components/icon';
+import type { Capability } from '@/config/capabilities';
 import type { Domain } from '@/theme';
 
 export type PlanId = 'free' | 'plus' | 'health' | 'family';
@@ -54,7 +60,15 @@ export interface PlanInfo {
   /** Para quién es. */
   audience: string;
   /** 4 o 5 beneficios con ejemplos reales. */
-  benefits: string[];
+  benefits: Benefit[];
+}
+
+export interface Benefit {
+  text: string;
+  /** Capacidad que necesita para existir en la app instalada. Sin valor: ya existe. */
+  requires?: Capability;
+  /** "Todo lo de …": no es un beneficio propio del plan (no decide si se puede comprar). */
+  inherited?: boolean;
 }
 
 export const PLANS: Record<PlanId, PlanInfo> = {
@@ -67,11 +81,11 @@ export const PLANS: Record<PlanId, PlanInfo> = {
     yearly: 0,
     audience: 'Lo esencial, siempre',
     benefits: [
-      'Un cuidador y un adulto mayor',
-      'Medicamentos, recordatorios y aviso escalonado',
-      'Existencias y aviso cuando se están acabando',
-      'Chequeo diario con la pregunta de sueño y sus alertas',
-      'Pedir ayuda y alertas de seguridad',
+      { text: 'Un cuidador y un adulto mayor' },
+      { text: 'Medicamentos, recordatorios y aviso escalonado' },
+      { text: 'Existencias y aviso cuando se están acabando' },
+      { text: 'Chequeo diario con la pregunta de sueño y sus alertas' },
+      { text: 'Pedir ayuda y alertas de seguridad' },
     ],
   },
   plus: {
@@ -83,11 +97,11 @@ export const PLANS: Record<PlanId, PlanInfo> = {
     yearly: null,
     audience: 'Para un cuidador',
     benefits: [
-      'Chat con BUDDY: "Ponle losartán a las 6"',
-      'Ve cómo durmió tu mamá esta semana',
-      'Salud con gráficas e historial de semanas y meses',
-      'Reloj inteligente: pasos y actividad',
-      'Reporte en PDF para llevar al médico',
+      { text: 'Chat con BUDDY: "Ponle losartán a las 6"' },
+      { text: 'Ve cómo durmió tu mamá esta semana' },
+      { text: 'Salud con gráficas e historial de semanas y meses' },
+      { text: 'Reloj inteligente: pasos y actividad', requires: 'watch' },
+      { text: 'Reporte en PDF para llevar al médico', requires: 'doctorReport' },
     ],
   },
   health: {
@@ -99,11 +113,11 @@ export const PLANS: Record<PlanId, PlanInfo> = {
     yearly: null,
     audience: 'Si una enfermera te ayuda',
     benefits: [
-      'Todo lo de Plus',
-      'La enfermera recibe los avisos en su celular',
-      'Confirma las tomas que le da, con su nombre',
-      'Registra cada día cómo se siente',
-      'Lleva las existencias de los medicamentos',
+      { text: 'Todo lo de Plus', inherited: true },
+      { text: 'La enfermera recibe los avisos en su celular', requires: 'server' },
+      { text: 'Confirma las tomas que le da, con su nombre', requires: 'server' },
+      { text: 'Registra cada día cómo se siente', requires: 'server' },
+      { text: 'Lleva las existencias de los medicamentos', requires: 'server' },
     ],
   },
   family: {
@@ -115,30 +129,30 @@ export const PLANS: Record<PlanId, PlanInfo> = {
     yearly: null,
     audience: 'Para toda la familia',
     benefits: [
-      'Todo lo de Salud',
-      'Tus hermanos ven lo mismo que tú',
-      'Cada familiar con su rol: ver o administrar',
-      'Turnos de cuidado: quién acompaña cada día',
-      'Notas compartidas y vista de familia',
+      { text: 'Todo lo de Salud', inherited: true },
+      { text: 'Tus hermanos ven lo mismo que tú', requires: 'server' },
+      { text: 'Cada familiar con su rol: ver o administrar', requires: 'server' },
+      { text: 'Turnos de cuidado: quién acompaña cada día', requires: 'server' },
+      { text: 'Notas compartidas y vista de familia', requires: 'server' },
     ],
   },
 };
 
-/** Plan destacado en la pantalla de planes (configurable). */
+/** Plan destacado en la pantalla de planes (configurable). Si no se puede comprar, se destaca el primero que sí. */
 export const RECOMMENDED_PLAN: PaidPlanId = 'family';
 
-/** Filas de "Compara los planes": función y desde qué plan está incluida (`free` = en todos). */
-export const COMPARISON: { label: string; from: PlanId }[] = [
+/** Filas de "Compara los planes": función, desde qué plan está incluida (`free` = en todos) y qué necesita para existir. */
+export const COMPARISON: { label: string; from: PlanId; requires?: Capability }[] = [
   { label: 'Medicamentos, recordatorios y aviso escalonado', from: 'free' },
   { label: 'Existencias y pedir ayuda', from: 'free' },
   { label: 'Chequeo diario y alertas de seguridad', from: 'free' },
   { label: 'Chat con BUDDY', from: 'plus' },
   { label: 'Gráficas, historial y sueño con tendencias', from: 'plus' },
-  { label: 'Reloj inteligente', from: 'plus' },
-  { label: 'Reporte para el médico', from: 'plus' },
-  { label: 'Rol de enfermera', from: 'health' },
-  { label: 'Varios familiares con roles', from: 'family' },
-  { label: 'Turnos, notas y vista de familia', from: 'family' },
+  { label: 'Reloj inteligente', from: 'plus', requires: 'watch' },
+  { label: 'Reporte para el médico', from: 'plus', requires: 'doctorReport' },
+  { label: 'Rol de enfermera en su celular', from: 'health', requires: 'server' },
+  { label: 'Varios familiares con roles', from: 'family', requires: 'server' },
+  { label: 'Turnos, notas y vista de familia', from: 'family', requires: 'server' },
 ];
 
 /** Identificadores de producto (de trabajo; se crean en App Store Connect, Play Console y RevenueCat). */

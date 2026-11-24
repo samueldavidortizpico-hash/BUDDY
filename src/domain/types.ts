@@ -26,8 +26,15 @@ export interface SyncMeta {
   version?: number;
 }
 
-/** V4.3: `nurse` = enfermera o cuidadora invitada por el administrador (plan Salud). */
-export type Role = 'caregiver' | 'elder' | 'nurse';
+/**
+ * V4.3: `nurse` = enfermera o cuidadora invitada por el administrador (plan Salud).
+ * V5.3: `family` = familiar invitado por el titular (plan Familiar), con nivel `viewer` (solo ve) o `admin` (lo mismo
+ * que el titular sobre las personas compartidas, salvo la cuenta, el plan y los familiares). Spec access/roles-permissions.
+ */
+export type Role = 'caregiver' | 'family' | 'elder' | 'nurse';
+export const ROLES: readonly Role[] = ['caregiver', 'family', 'elder', 'nurse'];
+export type FamilyLevel = 'viewer' | 'admin';
+export const FAMILY_LEVELS: readonly FamilyLevel[] = ['viewer', 'admin'];
 
 /** 0 = domingo … 6 = sábado. Lista vacía = todos los días. */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;

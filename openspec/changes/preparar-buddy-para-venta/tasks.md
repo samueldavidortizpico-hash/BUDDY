@@ -2,24 +2,24 @@
 
 ## 1. Oferta honesta (Fase A, sin servidor)
 
-- [ ] 1.1 Agregar `requires` a cada beneficio de `PLANS` en `src/config/plans.ts` (`server`, `watch`, `doctorReport` o ninguno) y `FEATURES.doctorReport = false`. Verificar: prueba unitaria que lista qué beneficios quedan disponibles con capacidades locales (Plus: chat, historial, sueño; Salud y Familiar: ninguno propio).
-- [ ] 1.2 Implementar `benefitAvailable` y `planPurchasable` como funciones puras en `src/domain/entitlements.ts`. Verificar: pruebas de los escenarios "Plan con beneficios pendientes" y "Plan con parte disponible".
-- [ ] 1.3 Pantalla de planes (`src/app/(caregiver)/plus.tsx`): separar "Incluido" de "Próximamente", ocultar precio y botón de compra en planes no comprables y no ofrecer la opción anual mientras `yearly` sea `null`. Verificar: prueba con React Native Testing Library que Familiar no tiene botón de compra y que no aparece ningún porcentaje de ahorro.
-- [ ] 1.4 Revisar que las funciones de seguridad no dependan del plan ni de su vencimiento. Verificar: prueba que con plan `free` y suscripción vencida siguen activos recordatorios, aviso escalonado, existencias, chequeo diario y pedir ayuda.
+- [x] 1.1 Agregar `requires` a cada beneficio de `PLANS` en `src/config/plans.ts` (`server`, `watch`, `doctorReport` o ninguno) y `FEATURES.doctorReport = false`. Verificar: prueba unitaria que lista qué beneficios quedan disponibles con capacidades locales (Plus: chat, historial, sueño; Salud y Familiar: ninguno propio).
+- [x] 1.2 Implementar `benefitAvailable` y `planPurchasable` como funciones puras en `src/domain/entitlements.ts`. Verificar: pruebas de los escenarios "Plan con beneficios pendientes" y "Plan con parte disponible".
+- [x] 1.3 Pantalla de planes (`src/app/(caregiver)/plus.tsx`): separar "Incluido" de "Próximamente", ocultar precio y botón de compra en planes no comprables y no ofrecer la opción anual mientras `yearly` sea `null`. Verificar: prueba con React Native Testing Library que Familiar no tiene botón de compra y que no aparece ningún porcentaje de ahorro.
+- [x] 1.4 Revisar que las funciones de seguridad no dependan del plan ni de su vencimiento. Verificar: prueba que con plan `free` y suscripción vencida siguen activos recordatorios, aviso escalonado, existencias, chequeo diario y pedir ayuda.
 
 ## 2. Roles y permisos como datos
 
-- [ ] 2.1 Crear `src/domain/permissions-matrix.json` con `version: 1` y cada acción actual con sus roles; migrar `can()` a leerla sin cambiar resultados. Verificar: prueba que compara el `can()` anterior y el nuevo en todos los pares rol × acción.
-- [ ] 2.2 Agregar el rol `family` con nivel `viewer | admin` a `Role`, `AuthUser` y la matriz (admin = titular salvo `delete_account`, `manage_plan` y `manage_members`). Verificar: pruebas de los escenarios "Familiar que solo ve", "Familiar administrador" y "Familiar administrador no toca la cuenta".
-- [ ] 2.3 Extender `canAccessRecord` a `family` (alcance por persona compartida) y rechazar roles desconocidos al leer la sesión. Verificar: pruebas "Pedir un registro de otra persona por su id" y "Rol desconocido".
-- [ ] 2.4 Prueba que falla si una acción usada por la app no está en la matriz. Verificar: la prueba falla al agregar una acción ficticia y pasa al quitarla.
+- [x] 2.1 Crear `src/domain/permissions-matrix.json` con `version: 1` y cada acción actual con sus roles; migrar `can()` a leerla sin cambiar resultados. Verificar: prueba que compara el `can()` anterior y el nuevo en todos los pares rol × acción.
+- [x] 2.2 Agregar el rol `family` con nivel `viewer | admin` a `Role`, `AuthUser` y la matriz (admin = titular salvo `delete_account`, `manage_plan` y `manage_members`). Verificar: pruebas de los escenarios "Familiar que solo ve", "Familiar administrador" y "Familiar administrador no toca la cuenta".
+- [x] 2.3 Extender `canAccessRecord` a `family` (alcance por persona compartida) y rechazar roles desconocidos al leer la sesión. Verificar: pruebas "Pedir un registro de otra persona por su id" y "Rol desconocido".
+- [x] 2.4 Prueba que falla si una acción usada por la app no está en la matriz. Verificar: la prueba falla al agregar una acción ficticia y pasa al quitarla.
 
 ## 3. Publicación en tiendas (Fase A)
 
-- [ ] 3.1 Quitar "Versión de demostración con datos de ejemplo" de `expo.description` y `expo.web.description` en `app.json` y revisar que la ficha no prometa diagnóstico ni emergencias. Verificar: `grep -i "demostraci" app.json` sin resultados.
-- [ ] 3.2 Crear `scripts/check-release.mjs` (D8) y engancharlo como `eas-build-pre-install` solo en el perfil `production`. Verificar: el script falla con `EXPO_PUBLIC_DEV_TOOLS=1` y pasa sin ella.
-- [ ] 3.3 Completar la política de privacidad (`strings.legal.privacy`) con tipos de datos de salud, dónde se guardan, con quién se comparten, retención y cómo borrarlos, y escribir `docs/DECLARACIONES_TIENDAS.md` con el borrador de Data safety (Google) y etiquetas de privacidad (Apple) coherentes con ella. Verificar: revisión cruzada de los tres textos en la misma tabla.
-- [ ] 3.4 Revisar que el permiso de notificaciones se pida al configurar los recordatorios y con su explicación. Verificar: prueba de la pantalla de permisos.
+- [x] 3.1 Quitar "Versión de demostración con datos de ejemplo" de `expo.description` y `expo.web.description` en `app.json` y revisar que la ficha no prometa diagnóstico ni emergencias. Verificar: `grep -i "demostraci" app.json` sin resultados.
+- [x] 3.2 Crear `scripts/check-release.mjs` (D8) y engancharlo como `eas-build-pre-install` solo en el perfil `production`. Verificar: el script falla con `EXPO_PUBLIC_DEV_TOOLS=1` y pasa sin ella.
+- [x] 3.3 Completar la política de privacidad (`strings.legal.privacy`) con tipos de datos de salud, dónde se guardan, con quién se comparten, retención y cómo borrarlos, y escribir `docs/DECLARACIONES_TIENDAS.md` con el borrador de Data safety (Google) y etiquetas de privacidad (Apple) coherentes con ella. Verificar: revisión cruzada de los tres textos en la misma tabla.
+- [x] 3.4 Revisar que el permiso de notificaciones se pida al configurar los recordatorios y con su explicación. Verificar: prueba de la pantalla de permisos.
 
 ## 4. Contrato de integración (Fase B)
 

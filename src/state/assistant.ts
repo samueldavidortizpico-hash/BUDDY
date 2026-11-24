@@ -131,7 +131,7 @@ export function execute(a: AssistantAction): ExecResult {
 }
 
 function run(a: AssistantAction): ExecResult {
-  if (!can(currentRole(), a.type)) return { ok: false, summary: 'No tienes permiso para esta acción.' };
+  if (!can(currentRole(), a.type, useSession.getState().user?.level)) return { ok: false, summary: 'No tienes permiso para esta acción.' };
   const elderId = elderOrThrow();
   switch (a.type) {
     case 'add_medication': {

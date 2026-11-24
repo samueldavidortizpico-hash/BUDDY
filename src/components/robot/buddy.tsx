@@ -1,16 +1,18 @@
 /**
- * BUDDY vectorial y animado (V5.2). Mismo personaje que `assets/branding/buddy-robot.png` (cabeza blanca, visor
- * petróleo, orejas y brazos menta, corazón coral), dibujado en capas para que cada parte se mueva por separado:
- * parpadeo, saludo con el brazo, antena que se mece, corazón que late y un flotar suave. El PNG traía un borde claro
- * de recorte que sobre los degradados oscuros se veía como una calcomanía; el vector queda nítido en cualquier fondo.
+ * BUDDY vectorial (V5.3). Calcado del logo y de `assets/branding/buddy-robot.png`: cabeza grande y redonda con el
+ * visor petróleo que la llena, ojos en arco, la pieza de la antena que barre hacia la derecha con punta menta, orejas,
+ * cuello y brazos menta, y el corazón coral. El vector queda nítido en cualquier fondo (el PNG traía un borde de
+ * recorte claro que sobre los degradados oscuros parecía una calcomanía).
  *
- * Solo transform y opacidad, en el hilo de UI. Con "reducir movimiento" o `active={false}` queda quieto en su pose.
+ * Movimiento sereno (V5.3, pedido del dueño: "se ve muy animado"): respira despacio, parpadea cada pocos segundos y,
+ * con `wave`, saluda UNA vez al aparecer. Sin latido, sin antena que se mece y sin saludo en bucle. Solo transform en
+ * el hilo de UI. Con "reducir movimiento" o `active={false}` queda quieto en su pose.
  * Siempre decorativo: lo oculta al lector de pantalla quien lo usa (o `BuddyRobot` con etiqueta).
  */
 import { useEffect, useId, type ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
-import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, Ellipse, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 /** Lienzo de diseño: 200 × 220. `size` es el alto en dp. */
 const VW = 200;
@@ -20,16 +22,20 @@ export const BUDDY_RATIO = VW / VH;
 export type BuddyMood = 'happy' | 'open' | 'sleep';
 
 const C = {
-  shell: ['#FFFFFF', '#D6E4E9'],
-  visor: ['#1D5A66', '#0A2730'],
-  mint: ['#86EAD3', '#22A68B'],
+  shell: ['#FFFFFF', '#D3E0E5'],
+  rim: ['#E4ECEF', '#C3D3D9'],
+  visor: ['#1F5B67', '#09242D'],
+  mint: ['#86EAD3', '#1E9A82'],
   eye: '#FFFFFF',
-  glow: '#8AF7E0',
-  heart: '#FF7A70',
-  cheek: '#FF8C82',
+  heart: '#FF8478',
 };
 
-const HEART = 'M100 194 C 86 184, 82 173, 89 167 C 94 163, 99 166, 100 170 C 101 166, 106 163, 111 167 C 118 173, 114 184, 100 194 Z';
+/** Inclinación de la cabeza, como en el logo. */
+const TILT = -7;
+const HEART = 'M112 200 C 99 191, 95 181, 101 176 C 105 172.5, 110 174.5, 112 178 C 114 174.5, 119 172.5, 123 176 C 129 181, 125 191, 112 200 Z';
+const BODY = 'M100 140 C 132 140, 152 160, 152 184 C 152 206, 130 218, 100 218 C 70 218, 48 206, 48 184 C 48 160, 68 140, 100 140 Z';
+const ANTENNA = 'M104 34 C 110 16, 132 6, 156 8 C 166 9, 170 16, 164 22 C 146 20, 128 26, 122 36 Z';
+const ANTENNA_TIP = 'M150 8.5 C 160 6, 174 8, 173 15 C 172 21, 162 22, 155 21 C 149 19, 146 13, 150 8.5 Z';
 
 export function Buddy({
   size,
@@ -41,9 +47,9 @@ export function Buddy({
 }: {
   size: number;
   mood?: BuddyMood;
-  /** Saluda con el brazo derecho en bucle (con pausas). */
+  /** Saluda una vez con el brazo derecho cada vez que se activa. */
   wave?: boolean;
-  /** Corre sus bucles solo mientras se ve (p. ej. la página activa del carrusel). */
+  /** Mueve sus bucles solo mientras se ve (p. ej. la página activa del carrusel). */
   active?: boolean;
   float?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -56,43 +62,32 @@ export function Buddy({
   const blink = useSharedValue(1);
   const arm = useSharedValue(0);
   const bob = useSharedValue(0);
-  const beat = useSharedValue(0);
 
   useEffect(() => {
-    const all = [blink, arm, bob, beat];
+    const all = [blink, arm, bob];
     if (!live) {
       all.forEach((v) => cancelAnimation(v));
       blink.set(1);
       arm.set(0);
       bob.set(0);
-      beat.set(0);
       return;
     }
     const sine = Easing.inOut(Easing.sin);
     if (mood !== 'sleep') {
-      // Parpadeo y, de vez en cuando, uno doble: rápido al cerrar, un poco más lento al abrir.
-      const shut = () => withSequence(withTiming(0.08, { duration: 70 }), withTiming(1, { duration: 120 }));
-      blink.set(withRepeat(withSequence(withDelay(2400, shut()), withDelay(2800, shut()), withDelay(90, shut())), -1));
+      blink.set(withRepeat(withSequence(withDelay(4200, withTiming(0.1, { duration: 80 })), withTiming(1, { duration: 140 })), -1));
     }
     if (wave) {
-      const swing = (deg: number, ms = 190) => withTiming(deg, { duration: ms, easing: sine });
-      arm.set(withRepeat(withSequence(withDelay(400, swing(-24)), swing(8), swing(-24), swing(8), swing(-24), swing(0, 280), withDelay(1600, swing(0, 1))), -1));
+      const swing = (deg: number, ms: number) => withTiming(deg, { duration: ms, easing: sine });
+      arm.set(withDelay(500, withSequence(swing(-16, 320), swing(4, 320), swing(-16, 320), swing(0, 420))));
     }
-    const ms = mood === 'sleep' ? 2600 : 1900;
+    const ms = mood === 'sleep' ? 3200 : 2600;
     if (float) bob.set(withRepeat(withSequence(withTiming(1, { duration: ms, easing: sine }), withTiming(0, { duration: ms, easing: sine })), -1));
-    // Latido doble (lub-dub) y pausa.
-    beat.set(withRepeat(withSequence(withTiming(1, { duration: 140 }), withTiming(0, { duration: 160 }), withTiming(0.7, { duration: 120 }), withTiming(0, { duration: 420 }), withDelay(900, withTiming(0, { duration: 1 }))), -1));
     return () => all.forEach((v) => cancelAnimation(v));
-  }, [live, mood, wave, float, blink, arm, bob, beat]);
+  }, [live, mood, wave, float, blink, arm, bob]);
 
-  // Al flotar, la cabeza va un poco detrás del cuerpo y se inclina: se siente blanda, no rígida.
-  const whole = useAnimatedStyle(() => ({ transform: [{ translateY: -7 * k * bob.get() }] }));
-  const head = useAnimatedStyle(() => ({ transform: [{ translateY: 2 * k * bob.get() }, { rotate: `${(mood === 'sleep' ? 7 : -3) + 4 * bob.get()}deg` }] }));
-  const antenna = useAnimatedStyle(() => ({ transform: [{ rotate: `${-8 + 16 * bob.get()}deg` }] }));
+  const whole = useAnimatedStyle(() => ({ transform: [{ translateY: -3 * k * bob.get() }] }));
   const eyes = useAnimatedStyle(() => ({ transform: [{ scaleY: blink.get() }] }));
-  const rightArm = useAnimatedStyle(() => ({ transform: [{ rotate: `${arm.get() - 4 * bob.get()}deg` }] }));
-  const leftArm = useAnimatedStyle(() => ({ transform: [{ rotate: `${3 * bob.get()}deg` }] }));
-  const heart = useAnimatedStyle(() => ({ transform: [{ scale: 1 + 0.14 * beat.get() }] }));
+  const rightArm = useAnimatedStyle(() => ({ transform: [{ rotate: `${arm.get()}deg` }] }));
 
   const w = VW * k;
   const h = VH * k;
@@ -104,69 +99,56 @@ export function Buddy({
       {children}
     </Svg>
   );
+  const tilt = `rotate(${TILT} 100 92)`;
 
   return (
     <View style={[{ width: w, height: h }, style]} pointerEvents="none">
       <Animated.View style={[box, whole]}>
-        <Animated.View style={[box, origin(66, 166), leftArm]}>{layer(<Limb id={`${id}l`} cx={50} cy={186} rot={24} />)}</Animated.View>
-        {/* Brazo derecho levantado, listo para saludar: gira desde el hombro. */}
-        <Animated.View style={[box, origin(140, 170), rightArm]}>{layer(<Limb id={`${id}r`} cx={166} cy={150} rot={38} />)}</Animated.View>
-        <Animated.View style={box}>
+        <View style={box}>{layer(<Limb id={`${id}l`} cx={50} cy={190} />)}</View>
+        {/* Brazo derecho levantado, como en el logo: gira desde el hombro al saludar. */}
+        <Animated.View style={[box, origin(150, 168), rightArm]}>{layer(<Limb id={`${id}r`} cx={168} cy={146} />)}</Animated.View>
+        <View style={box}>
           {layer(
             <>
               <Grad id={`${id}s`} c={C.shell} />
               <Grad id={`${id}m`} c={C.mint} />
-              <Ellipse cx={100} cy={181} rx={47} ry={37} fill={`url(#${id}s)`} />
+              <Path d={BODY} fill={`url(#${id}s)`} />
               {/* Luz del costado: da volumen sin sombras costosas. */}
-              <Ellipse cx={82} cy={172} rx={20} ry={13} fill="#FFFFFF" opacity={0.75} />
-              <Ellipse cx={100} cy={144} rx={30} ry={9} fill={`url(#${id}m)`} />
+              <Ellipse cx={78} cy={174} rx={16} ry={11} fill="#FFFFFF" opacity={0.85} />
+              <Path d={HEART} fill={C.heart} />
+              <Ellipse cx={100} cy={146} rx={30} ry={9} fill={`url(#${id}m)`} />
             </>,
           )}
-        </Animated.View>
-        <Animated.View style={[box, origin(100, 180), heart]}>{layer(<Path d={HEART} fill={C.heart} />)}</Animated.View>
-
-        <Animated.View style={[box, origin(100, 142), head]}>
-          <Animated.View style={[box, origin(102, 28), antenna]}>
-            {layer(
-              <>
-                <Grad id={`${id}a`} c={C.mint} />
-                <Path d="M102 30 C 101 17, 108 9, 120 9" stroke="#E6F0F2" strokeWidth={6} strokeLinecap="round" fill="none" />
-                <Ellipse cx={130} cy={10} rx={15} ry={8} transform="rotate(-14 130 10)" fill={`url(#${id}a)`} />
-              </>,
-            )}
-          </Animated.View>
-          <Animated.View style={box}>
-            {layer(
-              <>
-                <Grad id={`${id}h`} c={C.shell} />
-                <Grad id={`${id}v`} c={C.visor} />
-                <Grad id={`${id}e`} c={C.mint} />
-                <Rect x={8} y={66} width={26} height={52} rx={13} fill={`url(#${id}e)`} />
-                <Rect x={166} y={66} width={26} height={52} rx={13} fill={`url(#${id}e)`} />
-                <Rect x={20} y={22} width={160} height={120} rx={58} fill={`url(#${id}h)`} />
-                <Rect x={36} y={39} width={128} height={85} rx={41} fill={`url(#${id}v)`} />
-                {/* Reflejo del visor. */}
-                <Ellipse cx={76} cy={53} rx={26} ry={6.5} fill="#FFFFFF" opacity={0.12} transform="rotate(-9 76 53)" />
-                {mood === 'sleep' ? null : (
-                  <>
-                    <Ellipse cx={58} cy={106} rx={8} ry={4.5} fill={C.cheek} opacity={0.55} />
-                    <Ellipse cx={142} cy={106} rx={8} ry={4.5} fill={C.cheek} opacity={0.55} />
-                  </>
-                )}
-              </>,
-            )}
-          </Animated.View>
-          <Animated.View style={[box, origin(100, 84), eyes]}>{layer(<Eyes mood={mood} />)}</Animated.View>
-        </Animated.View>
+        </View>
+        <View style={box}>
+          {layer(
+            <>
+              <Grad id={`${id}h`} c={C.shell} />
+              <Grad id={`${id}e`} c={C.mint} />
+              <Grad id={`${id}r`} c={C.rim} />
+              <Grad id={`${id}v`} c={C.visor} x2="0.2" />
+              <Path d={ANTENNA} fill={`url(#${id}h)`} transform={tilt} />
+              <Path d={ANTENNA_TIP} fill={`url(#${id}e)`} transform={tilt} />
+              <Rect x={2} y={68} width={24} height={54} rx={12} fill={`url(#${id}e)`} transform={tilt} />
+              <Rect x={174} y={68} width={24} height={54} rx={12} fill={`url(#${id}e)`} transform={tilt} />
+              <Rect x={10} y={28} width={180} height={130} rx={64} fill={`url(#${id}h)`} transform={tilt} />
+              <Rect x={21} y={38} width={160} height={110} rx={54} fill={`url(#${id}r)`} transform={tilt} />
+              <Rect x={26} y={42} width={152} height={102} rx={50} fill={`url(#${id}v)`} transform={tilt} />
+              {/* Reflejo del visor. */}
+              <Ellipse cx={74} cy={56} rx={32} ry={7} fill="#FFFFFF" opacity={0.1} transform={`${tilt} rotate(-8 74 56)`} />
+            </>,
+          )}
+        </View>
+        <Animated.View style={[box, origin(100, 94), eyes]}>{layer(<Eyes mood={mood} tilt={tilt} />)}</Animated.View>
       </Animated.View>
     </View>
   );
 }
 
-function Grad({ id, c }: { id: string; c: string[] }) {
+function Grad({ id, c, x2 = '0.35' }: { id: string; c: string[]; x2?: string }) {
   return (
     <Defs>
-      <LinearGradient id={id} x1="0" y1="0" x2="0.35" y2="1">
+      <LinearGradient id={id} x1="0" y1="0" x2={x2} y2="1">
         <Stop offset="0" stopColor={c[0]} />
         <Stop offset="1" stopColor={c[1]} />
       </LinearGradient>
@@ -174,39 +156,37 @@ function Grad({ id, c }: { id: string; c: string[] }) {
   );
 }
 
-function Limb({ id, cx, cy, rot }: { id: string; cx: number; cy: number; rot: number }) {
+function Limb({ id, cx, cy }: { id: string; cx: number; cy: number }) {
   return (
     <>
       <Grad id={id} c={C.mint} />
-      <Ellipse cx={cx} cy={cy} rx={14} ry={24}transform={`rotate(${rot} ${cx} ${cy})`} fill={`url(#${id})`} />
+      <Ellipse cx={cx} cy={cy} rx={15} ry={25} transform={`rotate(34 ${cx} ${cy})`} fill={`url(#${id})`} />
     </>
   );
 }
 
-function Eyes({ mood }: { mood: BuddyMood }) {
-  const stroke = { stroke: C.eye, strokeWidth: 8, strokeLinecap: 'round' as const, fill: 'none' };
+function Eyes({ mood, tilt }: { mood: BuddyMood; tilt: string }) {
+  const stroke = { stroke: C.eye, strokeLinecap: 'round' as const, fill: 'none', transform: tilt };
   if (mood === 'happy') {
     return (
       <>
-        <Path d="M60 90 Q74 72 88 90" {...stroke} />
-        <Path d="M112 90 Q126 72 140 90" {...stroke} />
+        <Path d="M60 100 A14 14 0 0 1 88 100" {...stroke} strokeWidth={9} />
+        <Path d="M114 100 A14 14 0 0 1 142 100" {...stroke} strokeWidth={9} />
       </>
     );
   }
   if (mood === 'sleep') {
     return (
       <>
-        <Path d="M60 84 Q74 96 88 84" {...stroke} strokeWidth={6} />
-        <Path d="M112 84 Q126 96 140 84" {...stroke} strokeWidth={6} />
+        <Path d="M60 94 A14 14 0 0 0 88 94" {...stroke} strokeWidth={7} />
+        <Path d="M114 94 A14 14 0 0 0 142 94" {...stroke} strokeWidth={7} />
       </>
     );
   }
   return (
     <>
-      <Rect x={64} y={70} width={18} height={26} rx={9} fill={C.glow} />
-      <Rect x={118} y={70} width={18} height={26} rx={9} fill={C.glow} />
-      <Circle cx={77} cy={77} r={3.5} fill="#FFFFFF" />
-      <Circle cx={131} cy={77} r={3.5} fill="#FFFFFF" />
+      <Rect x={66} y={82} width={16} height={24} rx={8} fill={C.eye} transform={tilt} />
+      <Rect x={120} y={82} width={16} height={24} rx={8} fill={C.eye} transform={tilt} />
     </>
   );
 }

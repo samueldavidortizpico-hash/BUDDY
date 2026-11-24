@@ -18,6 +18,7 @@ import { spacing, type Domain } from '@/theme';
 import { makeStyles, useBigText, useTheme } from '@/theme/provider';
 import { LockedPreview, PlusLock } from '@/components/plus-lock';
 import { useHasFeature } from '@/state/entitlements';
+import { FEATURES } from '@/config/features';
 
 const H = strings.health;
 /** Orden de Salud (V4). Comidas no está en el brief: se ve en su detalle desde Rutina. */
@@ -32,7 +33,9 @@ const CARDS: { key: MetricKey; title: string; icon: IconName; domain: Domain }[]
 export default function Health() {
   const router = useRouter();
   const t = useTheme();
-  const watch = useHasFeature('watch');
+  // El reloj no existe todavía (FEATURES.watch): no se ofrece como función de pago (auditoría de venta V-03).
+  const hasWatchPlan = useHasFeature('watch');
+  const watch = FEATURES.watch && hasWatchPlan;
   // V4.3: Hoy es gratis (chequeo diario con la pregunta de sueño); semanas, meses y tendencias son de Plus.
   const history = useHasFeature('health_history');
   const s = useStyles();
@@ -102,7 +105,7 @@ export default function Health() {
             {watch ? <Icon name="chevron" color={t.domains.activity.muted} /> : null}
           </View>
           <MetricBody metric="activity" data={data} />
-          {watch ? null : <PlusLock feature="watch" label={H.watchPlus} />}
+          {watch ? null : FEATURES.watch ? <PlusLock feature="watch" label={H.watchPlus} /> : <AppText variant="caption" color={t.c.muted}>{strings.settings.watchSoon}</AppText>}
         </Card>
       </View>
       )}

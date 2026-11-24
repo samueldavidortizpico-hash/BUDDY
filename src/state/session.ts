@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 
 import { FEATURES } from '@/config/features';
-import { AuthError, dataOwnerId, roleOf, type AuthUser } from '@/domain/auth';
+import { AuthError, dataOwnerId, isValidSessionUser, roleOf, type AuthUser } from '@/domain/auth';
 import { can, canAccessRecord, type Permission } from '@/domain/permissions';
 import { ALERT_KINDS, type AccountSettings, type Role } from '@/domain/types';
 import { getAuthService, syncIfRemote } from '@/infrastructure';
@@ -46,7 +46,9 @@ export function ensureAccount(user: AuthUser): AccountSettings {
   );
 }
 
-function setUser(user: AuthUser | null) {
+function setUser(incoming: AuthUser | null) {
+  // V5.3 (spec "Rol desconocido"): una sesión con un rol que la app no conoce no entra y no muestra datos.
+  const user = incoming && isValidSessionUser(incoming) ? incoming : null;
   const previous = useSession.getState().user;
   // La sesión se fija primero: la base solo deja escribir en la cuenta de quien está conectado.
   useSession.setState({ status: user ? 'signedIn' : 'signedOut', user });
@@ -194,5 +196,7 @@ export function actingRole(elderId?: string | null): Role {
 
 /** ¿El rol efectivo puede hacer esto? Es la única puerta de la matriz `can` para los casos de uso. */
 export function allowed(action: Permission, elderId?: string | null): boolean {
-  return !!useSession.getState().user && can(actingRole(elderId), action);
+  const user = useSession.getState().user;
+  // El nivel solo cuenta para el familiar invitado (`viewer` | `admin`); sin nivel válido, la matriz lo niega todo.
+  return !!user && can(actingRole(elderId), action, user.level);
 }
