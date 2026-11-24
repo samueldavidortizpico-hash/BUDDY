@@ -42,9 +42,10 @@ function variantStyle(t: Theme, variant: ButtonVariant, tone: Tone): VariantStyl
       // V4.3: degradado principal turquesa → petróleo a 135° con texto blanco (≥ 4,5:1 en ambos extremos).
       return { gradient: t.gradients.primary, text: t.c.onPrimary, shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'mint':
-      // V4.2: turquesa de la primera apertura con texto BLANCO. Blanco sobre #14A3A6 da 3,1:1 y la etiqueta va a 20 px
-      // en negrita (letra grande WCAG, mínimo 3:1); el turquesa de la referencia (#26B5BB) solo daba 2,4:1.
-      return { gradient: ['#0C939B', '#14A3A6'], text: '#FFFFFF', shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
+      // V5: CTA protagonista de la primera apertura y Bienvenido. Claro: turquesa → cobalto con texto BLANCO (4,0:1 y
+      // 5,3:1; antes 3,1:1). Oscuro: el degradado de marca pervinca → lavanda con tinta (≥ 6,8:1), sin verde.
+      if (t.dark && !t.hc) return { gradient: t.gradients.primary, text: t.c.onPrimary, dim: 0.08 };
+      return { gradient: ['#0E8C99', '#2367D1'], text: '#FFFFFF', shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'coral':
       return { gradient: t.gradients.coral, text: t.c.onCoral, shadow: t.shadow.soft, dim: 0.08, ...(t.hc ? hcBorder : {}) };
     case 'secondary':
@@ -93,6 +94,8 @@ export interface ButtonProps {
   stacked?: boolean;
   /** Brillo que recorre el botón cada 5 s (solo la acción protagonista). */
   shine?: boolean;
+  /** El icono final avanza 4 px cada 2,6 s: invita a seguir (carrusel de la primera apertura). */
+  nudge?: boolean;
   accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -114,6 +117,7 @@ export function Button({
   haptic,
   stacked = false,
   shine = false,
+  nudge = false,
   accessibilityHint,
   style,
   testID,
@@ -159,7 +163,15 @@ export function Button({
         >
           {label}
         </AppText>
-        {trailing ? <Icon name={trailing} color={v.text} size={20} /> : null}
+        {trailing ? (
+          nudge && !disabled ? (
+            <Nudge>
+              <Icon name={trailing} color={v.text} size={20} />
+            </Nudge>
+          ) : (
+            <Icon name={trailing} color={v.text} size={20} />
+          )
+        ) : null}
       </View>
       {loading ? (
         <View style={s.center} pointerEvents="none">
@@ -186,6 +198,20 @@ function SuccessCheck({ color }: { color: string }) {
       <Icon name="check" color={color} size={24} strokeWidth={2.6} />
     </Animated.View>
   );
+}
+
+/** Empujoncito del icono final: avanza y vuelve, con pausa larga (solo transform). */
+function Nudge({ children }: { children: ReactNode }) {
+  const reduce = useReducedMotion();
+  const x = useSharedValue(0);
+  useEffect(() => {
+    if (reduce) return;
+    const out = { duration: 220, easing: Easing.out(Easing.quad) };
+    x.set(withRepeat(withSequence(withDelay(2000, withTiming(4, out)), withTiming(0, { duration: 260, easing: Easing.inOut(Easing.quad) }), withTiming(3, out), withTiming(0, { duration: 260 })), -1));
+    return () => cancelAnimation(x);
+  }, [reduce, x]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  return <Animated.View style={style}>{children}</Animated.View>;
 }
 
 /** Franja de luz diagonal que cruza el botón (solo transform). */

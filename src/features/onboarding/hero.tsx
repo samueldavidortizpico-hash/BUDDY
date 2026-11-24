@@ -45,28 +45,28 @@ export const SLIDE_ART: { image: number; ratio: number; detail: Detail; light: P
     ratio: 146 / 192,
     detail: 'sparkles',
     light: { top: '#C9F4F1', bottom: '#E8F6F0', tint: ['#6FE6E2', '#D4CBF9'] },
-    dark: { top: '#0B1622', bottom: '#0B1622', tint: ['#0F4650', '#2A2C5C'] },
+    dark: { top: '#0A0E1A', bottom: '#0A0E1A', tint: ['#1A2A5E', '#2A2C5C'] },
   },
   {
     image: require('../../../assets/onboarding/rutinas.png'),
     ratio: 151 / 179,
     detail: 'ping',
     light: { top: '#EAF8F1', bottom: '#E9F5F1', tint: ['#A3EDCF', '#C4C3F8'] },
-    dark: { top: '#0B1622', bottom: '#0B1622', tint: ['#123F3A', '#272B57'] },
+    dark: { top: '#0A0E1A', bottom: '#0A0E1A', tint: ['#1E2B55', '#2E2660'] },
   },
   {
     image: require('../../../assets/onboarding/bienestar.png'),
     ratio: 144 / 184,
     detail: 'beat',
     light: { top: '#E9E6F8', bottom: '#EBF6F1', tint: ['#C6BBFB', '#FBA694'] },
-    dark: { top: '#0B1622', bottom: '#0B1622', tint: ['#2B2558', '#4A2830'] },
+    dark: { top: '#0A0E1A', bottom: '#0A0E1A', tint: ['#2B2558', '#4A2830'] },
   },
   {
     image: require('../../../assets/onboarding/familia.png'),
     ratio: 146 / 182,
     detail: 'sway',
     light: { top: '#C3D3E6', bottom: '#E9F6F2', tint: ['#9FB7DA', '#A6CFEE'] },
-    dark: { top: '#0B1622', bottom: '#0B1622', tint: ['#163257', '#1C3B57'] },
+    dark: { top: '#0A0E1A', bottom: '#0A0E1A', tint: ['#163257', '#22305E'] },
   },
 ];
 

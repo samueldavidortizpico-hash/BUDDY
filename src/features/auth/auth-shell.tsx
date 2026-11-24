@@ -20,8 +20,8 @@ import { motion, radius, spacing, touch } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
 
 const ICON = require('../../../assets/branding/buddy-splash.png');
-/** Degradado del encabezado: el principal en claro y su versión de noche en oscuro. */
-const HEADER = { light: ['#14837D', '#155E68', '#174A59'] as const, dark: ['#0E3B44', '#0F2B3C', '#0B1E2D'] as const };
+/** Degradado del encabezado (V5): turquesa → cobalto en claro, como el botón principal; noche índigo en oscuro. */
+const HEADER = { light: ['#0E7C8A', '#165A8A', '#1F4C8F'] as const, dark: ['#1C2660', '#151C42', '#0E1428'] as const };
 
 export function AuthShell({ tagline, back = '/', children, footer }: { tagline: string; back?: Href; children: ReactNode; footer?: ReactNode }) {
   const router = useRouter();
@@ -51,7 +51,7 @@ export function AuthShell({ tagline, back = '/', children, footer }: { tagline: 
             {t.hc ? null : (
               <>
                 <LinearGradient colors={t.dark ? HEADER.dark : HEADER.light} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                <Glow style={s.glowA} color="#5ED9B5" />
+                <Glow style={s.glowA} color={t.dark ? '#8C9EFF' : '#5ED9B5'} />
                 <Glow style={s.glowB} color="#A99DFF" />
               </>
             )}

@@ -29,8 +29,13 @@ import { Button } from '@/components/button';
 import { bootView, type StageKey } from './stages';
 
 const ICON = require('../../../assets/branding/buddy-splash.png');
-/** Medido en la referencia: verde azulado arriba a la derecha que se hunde en petróleo casi negro. */
-const PETROL = ['#3F8676', '#174B55', '#082C3E', '#052338'] as const;
+/**
+ * V5: luz índigo arriba a la derecha (antes verde azulado) que se hunde en el mismo petróleo casi negro del splash
+ * nativo (#062639): el centro y el pie no cambian, así el paso splash → portada sigue siendo continuo.
+ */
+const PETROL = ['#3D4FA3', '#1B3566', '#082C3E', '#052338'] as const;
+/** Barra de avance: azul → pervinca → lavanda, con punta casi blanca. */
+const BAR = ['#4F7BEA', '#8C9EFF', '#C3B5FF'] as const;
 const STAR = 'M12 0 C12.8 8 16 11.2 24 12 C16 12.8 12.8 16 12 24 C11.2 16 8 12.8 0 12 C8 11.2 11.2 8 12 0Z';
 const SPARKS = [
   { x: 16, y: 13, s: 12, d: 1700 },
@@ -105,9 +110,18 @@ export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, b
       ))}
 
       <View style={styles.center}>
-        <Animated.View style={[styles.iconWrap, iconStyle]}>
-          <Image source={ICON} style={styles.icon} contentFit="contain" accessible={false} />
-        </Animated.View>
+        <View style={styles.iconStage}>
+          {/* Mientras carga, dos ondas salen del ícono: BUDDY está "despertando". Al terminar dejan de salir. */}
+          {reduce || ready ? null : (
+            <>
+              <Pulse delay={0} />
+              <Pulse delay={1100} />
+            </>
+          )}
+          <Animated.View style={[styles.iconWrap, iconStyle]}>
+            <Image source={ICON} style={styles.icon} contentFit="contain" accessible={false} />
+          </Animated.View>
+        </View>
         <Animated.View style={[styles.words, wordStyle]}>
           <Text style={styles.word} accessibilityRole="header" maxFontSizeMultiplier={1.4}>
             BUDDY
@@ -135,9 +149,9 @@ export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, b
               accessibilityValue={{ min: 0, max: 100, now: Math.round(target * 100) }}
             >
               <Animated.View style={[styles.fill, bar]}>
-                <LinearGradient colors={['#1E9FA6', '#2BC4B4', '#5ED9B5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={BAR} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
                 {/* Punta brillante: el extremo del avance se ilumina. */}
-                <LinearGradient colors={['rgba(201,255,240,0)', '#D9FFF4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.tip} />
+                <LinearGradient colors={['rgba(238,240,255,0)', '#EEF0FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.tip} />
               </Animated.View>
             </View>
             <Text style={styles.stage} accessibilityLiveRegion="polite">
@@ -149,6 +163,16 @@ export function BootScreen({ done, onDone, onRetry }: { done: Record<StageKey, b
       </View>
     </Animated.View>
   );
+}
+
+/** Onda que nace detrás del ícono, crece y se desvanece cada 2,2 s (solo transform y opacidad). */
+function Pulse({ delay }: { delay: number }) {
+  const v = useSharedValue(0);
+  useEffect(() => {
+    v.set(withDelay(delay, withRepeat(withTiming(1, { duration: 2200, easing: Easing.out(Easing.cubic) }), -1)));
+  }, [v, delay]);
+  const style = useAnimatedStyle(() => ({ opacity: 0.38 * (1 - v.get()), transform: [{ scale: 0.9 + 0.55 * v.get() }] }));
+  return <Animated.View pointerEvents="none" style={[styles.pulse, style]} />;
 }
 
 /** Destello de cuatro puntas que titila (opacidad y escala). */
@@ -176,6 +200,8 @@ const styles = StyleSheet.create({
   spark: { position: 'absolute' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 24 },
   iconWrap: { borderRadius: 43, boxShadow: '0 18px 40px rgba(0, 0, 0, 0.38)' },
+  iconStage: { width: 188, height: 188, alignItems: 'center', justifyContent: 'center' },
+  pulse: { ...StyleSheet.absoluteFill, borderRadius: 52, borderWidth: 2, borderColor: 'rgba(195, 181, 255, 0.9)' },
   icon: { width: 188, height: 188 },
   words: { alignItems: 'center', marginTop: 28, gap: 4 },
   // La portada se dibuja ANTES de que carguen las fuentes de la app: letra del sistema, en negrita.

@@ -350,13 +350,14 @@ const useStyles = makeStyles((t) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: t.c.bg },
     flex: { flex: 1, minWidth: 0 },
-    header: { paddingHorizontal: spacing.lg, paddingBottom: 72, overflow: 'hidden' },
-    lavenderGlow: { position: 'absolute', right: -80, top: -40, width: 260, height: 260, borderRadius: 130, backgroundColor: '#A99DFF', opacity: 0.18 },
+    // Base redondeada: la fila de período que sube sobre el degradado se lee como tarjeta, no como un corte (V5).
+    header: { paddingHorizontal: spacing.lg, paddingBottom: 72, overflow: 'hidden', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+    lavenderGlow: { position: 'absolute', right: -80, top: -40, width: 260, height: 260, borderRadius: 130, backgroundColor: '#A99DFF', opacity: t.dark ? 0.12 : 0.18 },
     back: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.hc ? t.c.bg : 'rgba(255,255,255,0.14)', ...(t.hc ? t.hairline : {}) },
     heroRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, marginTop: spacing.lg },
     heroBody: { marginTop: spacing.xs },
     content: { marginTop: -48, paddingHorizontal: spacing.lg, gap: spacing.section },
-    periodRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.xs, borderRadius: radius.cardLg, backgroundColor: t.c.surface, ...t.shadow.elevated, ...(t.hc ? t.hairline : {}) },
+    periodRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.xs, borderRadius: radius.cardLg, backgroundColor: t.c.surface, ...t.shadow.elevated, ...t.hairline },
     saveTag: { paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: t.hc ? t.c.bg : t.c.successPale, maxWidth: 140, ...(t.hc ? t.hairline : {}) },
     cards: { gap: spacing.md },
     cardShell: { borderRadius: radius.cardLg },

@@ -1,7 +1,8 @@
 /**
  * BUDDY (V4.2): el robot es SIEMPRE la imagen real de `assets/branding/` (nunca un dibujo en código) y nunca va sobre
  * blanco puro: vive dentro de un círculo o cuadro con degradado menta muy claro → turquesa claro (azul noche en oscuro).
- * Solo aparece donde lo muestra el diseño: ícono, carga, presentación 1, botón central de BUDDY y encabezado del chat.
+ * Solo aparece donde lo muestra el diseño: ícono, carga, presentación 1, Bienvenido (sobre su halo), botón central de
+ * BUDDY y encabezado y mensajes del chat.
  */
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,7 +14,7 @@ export const ROBOT_IMAGE = require('../../../assets/branding/buddy-robot.png');
 /** Proporción ancho / alto del PNG recortado (792 × 887). */
 export const ROBOT_RATIO = 792 / 887;
 
-export const robotFrame = { light: ['#EFFCF7', '#B9EEE4'] as const, dark: ['#1B3A4E', '#12283A'] as const };
+export const robotFrame = { light: ['#EFFCF7', '#B9EEE4'] as const, dark: ['#28336A', '#151C3A'] as const };
 
 export function BuddyRobot({
   size,

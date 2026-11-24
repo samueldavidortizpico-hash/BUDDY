@@ -370,6 +370,18 @@ export function answerQuery(topic: string, match: string | null, period?: 'week'
       if (!items.length) return match ? `Hoy no hay tomas de ${match} programadas o registradas.` : none;
       return items.map((i) => `${i.medication.name} de las ${formatClock(effectiveTime(i.dose))}: ${strings.meds.statuses[i.status].toLowerCase()}`).join('. ') + '.';
     }
+    case 'next': {
+      // La siguiente toma pendiente de HOY según lo programado. Sin tomas registradas lo dice (nunca "no le queda nada").
+      const meds = db.list('medications', userId, elderId);
+      if (!meds.length) return 'Aún no hay medicamentos registrados.';
+      const items = dayDoses(meds, db.list('doses', userId, elderId), today, now).filter((i) => !match || normalizeText(i.medication.name).includes(normalizeText(match)));
+      if (!items.length) return match ? `Hoy no hay tomas de ${match} programadas o registradas.` : 'Hoy no hay tomas programadas o registradas.';
+      const pending = items.filter((i) => i.status === 'pending' || i.status === 'snoozed').sort((a, b) => effectiveTime(a.dose).localeCompare(effectiveTime(b.dose)));
+      const late = items.filter((i) => i.status === 'unconfirmed').length;
+      const lateText = late ? ` ${late === 1 ? 'Hay 1 toma sin confirmar' : `Hay ${late} tomas sin confirmar`}.` : '';
+      const n = pending[0];
+      return n ? `Lo próximo: ${n.medication.name} a las ${formatClock(effectiveTime(n.dose))}.${lateText}` : `Hoy ya no le quedan tomas pendientes.${lateText}`;
+    }
     default: {
       const a = adherence(db.list('doses', userId, elderId), [today], now);
       const water = waterByDay(db.list('water', userId, elderId), [today])[0];

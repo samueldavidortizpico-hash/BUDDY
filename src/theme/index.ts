@@ -154,27 +154,29 @@ const LIGHT: Palette = {
   shadowInk: '23, 74, 89',
 };
 
-// V4.2: noche azul neutra (no petróleo ni verde). El turquesa es el acento principal y se usa con moderación;
-// los fondos de tarjeta llevan el color de su dominio al 16 % sobre la superficie.
+// V5: noche azul tinta con acento pervinca → lavanda (antes todo giraba en turquesa y la app se veía verde).
+// El verde queda SOLO para lo que significa "bien" (estado ok, actividad); la marca es la luz azul de la noche.
 const DARK: Palette = {
-  bg: '#0B1622',
-  surface: '#13212E',
-  surface2: '#1B2B3A',
-  text: '#F3F6F8',
-  muted: '#A7B4C2',
-  tertiary: '#7D8B98',
-  border: 'rgba(255, 255, 255, 0.08)',
-  accent: '#2BC4B4',
-  primary: '#2BC4B4',
-  primaryEnd: '#22B3A6',
-  onPrimary: '#062A2A', // el blanco sobre turquesa no llega a 4,5:1; petróleo casi negro da 7:1
+  bg: '#0A0E1A',
+  surface: '#131A2B',
+  surface2: '#1B2438',
+  text: '#F2F4FA',
+  muted: '#A9B2C7',
+  tertiary: '#7F89A1',
+  border: 'rgba(170, 185, 255, 0.10)',
+  accent: '#8C9EFF',
+  primary: '#8C9EFF',
+  primaryEnd: '#A58BFF',
+  onPrimary: '#0B1030', // tinta casi negra sobre pervinca: 7,5:1 (6,8:1 sobre la lavanda del final)
   coralCta: '#FF9C8A',
   coralCtaEnd: '#FF8577',
   onCoral: '#0D3946',
+  // V5: en oscuro, el tono "mint" es el tono de ACCIÓN de la marca (chips, botones tonales, pestaña activa, checks):
+  // pasa a pervinca. El verde de "todo bien" vive aparte, en `status.ok` y en el dominio de actividad.
   mint: '#5ED9B5',
-  mintStrong: '#1F9E91', // fondo de iconos blancos (3,3:1)
-  mintDeep: '#178C6F',
-  mintPale: '#1F3E44',
+  mintStrong: '#5A68E0', // fondo de iconos y puntos blancos (4,7:1)
+  mintDeep: '#4C5BD4', // icono blanco ≥ 3:1 (5,6:1)
+  mintPale: '#1E2747',
   coral: '#FF9C8A',
   coralPale: '#3F2A2A',
   lavender: '#A99DFF',
@@ -190,9 +192,9 @@ const DARK: Palette = {
   night: '#1A1D45',
   nightSoft: '#3A3F9A',
   nightText: '#C9CCFF',
-  scrim: 'rgba(3, 8, 14, 0.66)',
-  glass: 'rgba(19, 33, 46, 0.9)',
-  focus: '#2BC4B4',
+  scrim: 'rgba(4, 6, 16, 0.7)',
+  glass: 'rgba(19, 26, 43, 0.9)',
+  focus: '#8C9EFF',
   shadowInk: '0, 0, 0',
 };
 
@@ -208,14 +210,14 @@ const INK_LIGHT: Ink = {
 };
 
 const INK_DARK: Ink = {
-  mint: '#5ED9B5',
+  mint: '#A9B8FF',
   coral: '#FF9C8A',
   lavender: '#B9AFFF',
   sky: '#7CC2FF',
   yellow: '#F6D27A',
   success: '#4AD395',
   danger: '#FF8585',
-  info: '#7FD3E3',
+  info: '#A9B8FF',
 };
 
 function softTheme(name: 'light' | 'dark'): Theme {
@@ -235,14 +237,14 @@ function softTheme(name: 'light' | 'dark'): Theme {
     borderWidth: 1,
     hairline: { borderWidth: 1, borderColor: c.border },
     tones: {
-      mint: { bg: c.mintPale, fg: ink.mint, solid: c.mint, soft: p('#D2F5E9', '#2C605C') },
+      mint: { bg: c.mintPale, fg: ink.mint, solid: p(c.mint, '#8C9EFF'), soft: p('#D2F5E9', '#2D3A66') },
       coral: { bg: c.coralPale, fg: ink.coral, solid: c.coral, soft: p('#FFD8D0', '#6B4440') },
       lavender: { bg: c.lavenderPale, fg: ink.lavender, solid: c.lavender, soft: p('#DDD8FF', '#464B75') },
       sky: { bg: c.skyPale, fg: ink.sky, solid: c.sky, soft: p('#D4EBFF', '#375875') },
       yellow: { bg: c.yellowPale, fg: ink.yellow, solid: c.yellow, soft: p('#FFEDAA', '#6E5A27') },
       red: { bg: c.dangerPale, fg: ink.danger, solid: c.danger, soft: p('#FFD6D6', '#6E3B42') },
-      petrol: { bg: p('#E8F0F1', '#1B2B3A'), fg: p('#174A59', '#F3F6F8'), solid: c.primary, soft: p('#D3E2E5', '#2A3B4C') },
-      slate: { bg: c.surface2, fg: c.muted, solid: p('#64748B', '#A7B4C2'), soft: p('#DBE5E3', '#2A3B4C') },
+      petrol: { bg: p('#E8F0F1', '#1B2438'), fg: p('#174A59', '#F2F4FA'), solid: c.primary, soft: p('#D3E2E5', '#2A3550') },
+      slate: { bg: c.surface2, fg: c.muted, solid: p('#64748B', '#A9B2C7'), soft: p('#DBE5E3', '#2A3550') },
     },
     domains: {
       water: {
@@ -288,10 +290,10 @@ function softTheme(name: 'light' | 'dark'): Theme {
         tone: 'yellow',
       },
       contact: {
-        gradient: p(['#E3F5F3', '#E3F5F3'], ['#163841', '#163841']),
-        accent: p('#1FA9A0', '#2BC4B4'),
-        text: p('#102A33', '#F3F6F8'),
-        muted: p('#177B75', '#A8E6DE'),
+        gradient: p(['#E3F5F3', '#E3F5F3'], ['#1E2747', '#1E2747']),
+        accent: p('#1FA9A0', '#8C9EFF'),
+        text: p('#102A33', '#F2F4FA'),
+        muted: p('#177B75', '#C3CCFF'),
         tone: 'mint',
       },
       followUp: {
@@ -309,23 +311,24 @@ function softTheme(name: 'light' | 'dark'): Theme {
       sleep: { bg: p('#ECEEFC', '#24314B'), fg: p('#5B63D6', '#8C93FF') },
       activity: { bg: p('#E5F7F1', '#1E3B41'), fg: p('#219D7F', '#5ED9B5') },
       food: { bg: p('#FDF4DD', '#37332B'), fg: p('#BD8211', '#F6D27A') },
-      contact: { bg: p('#E3F5F3', '#163841'), fg: p('#1D9B93', '#2BC4B4') },
+      contact: { bg: p('#E3F5F3', '#1E2747'), fg: p('#1D9B93', '#8C9EFF') },
       followUp: { bg: p('#FDF4DD', '#37332B'), fg: p('#BD8211', '#F6D27A') },
-      petrol: { bg: p('#E6EEF0', '#1B2B3A'), fg: p('#174A59', '#F3F6F8') },
-      slate: { bg: p('#EDF3F2', '#1B2B3A'), fg: p('#5B6B73', '#A7B4C2') },
+      petrol: { bg: p('#E6EEF0', '#1B2438'), fg: p('#174A59', '#F2F4FA') },
+      slate: { bg: p('#EDF3F2', '#1B2438'), fg: p('#5B6B73', '#A9B2C7') },
     },
     status: {
       ok: { bg: p('#E6F5ED', '#1B3A3C'), border: p('#BFE6D0', '#255A4F'), accent: p('#2E9E64', '#4AD395'), text: p('#102A33', '#F3F6F8'), muted: p('#1F5E40', '#B7E9CF') },
       attention: { bg: p('#FDF4DD', '#3B321C'), border: p('#F1DDA6', '#6E5A27'), accent: p('#C98A12', '#F6D27A'), text: p('#102A33', '#FFF4D6'), muted: p('#6B4E0A', '#EEDCA8') },
       action: { bg: p('#FDEDE9', '#40262B'), border: p('#F5C9BF', '#6E3B42'), accent: p('#D64545', '#FF9C8A'), text: p('#102A33', '#FFECE7'), muted: p('#8A3A2C', '#FFC9BD') },
-      none: { bg: p('#EDF3F2', '#1B2B3A'), border: p('#DCE6E4', '#2A3B4C'), accent: p('#5B6B73', '#A7B4C2'), text: p('#102A33', '#F3F6F8'), muted: p('#5B6B73', '#A7B4C2') },
+      none: { bg: p('#EDF3F2', '#1B2438'), border: p('#DCE6E4', '#2A3550'), accent: p('#5B6B73', '#A9B2C7'), text: p('#102A33', '#F2F4FA'), muted: p('#5B6B73', '#A9B2C7') },
     },
     gradients: {
-      primary: p(['#14837D', '#174A59'], ['#2BC4B4', '#22B3A6']),
+      // V5: turquesa → cobalto en claro (más vivo que el petróleo plano); pervinca → lavanda en oscuro.
+      primary: p(['#0E7C8A', '#1F4C8F'], ['#8C9EFF', '#A58BFF']),
       coral: [c.coralCta, c.coralCtaEnd],
-      welcome: p(['#F6F9F8', '#E9F6F2'], ['#0B1622', '#0F1D2B']),
-      screen: p(['#F6F9F8', '#F4F7F6'], ['#0D1926', '#0B1622']),
-      plus: p(['#0D3946', '#155E68', '#1FA9A0'], ['#0B2233', '#123D4A', '#1B8C86']),
+      welcome: p(['#F6F9F8', '#E9F6F2'], ['#0A0E1A', '#10152A']),
+      screen: p(['#F6F9F8', '#F4F7F6'], ['#0C1120', '#0A0E1A']),
+      plus: p(['#0D3946', '#155E68', '#1FA9A0'], ['#10153A', '#272766', '#4C3D9E']),
     },
     shadow: {
       soft: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(4, 12, 0.06)}` },

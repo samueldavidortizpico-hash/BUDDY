@@ -36,6 +36,8 @@ export const esCO = {
   brand: {
     name: 'BUDDY',
     tagline: 'Aunque no estés a su lado, BUDDY está pendiente por ti',
+    /** Promesa del producto (docs/PRODUCTO.md), bajo "Bienvenido". */
+    promise: 'Aunque no estés a su lado, sabes que está bien.',
   },
   welcome: {
     eyebrow: 'BUDDY · Cuidado a distancia',
@@ -84,6 +86,8 @@ export const esCO = {
     progress: (i: number, n: number) => `Paso ${i} de ${n}`,
     skip: 'Omitir',
     counter: (i: number, n: number) => `${i} de ${n}`,
+    /** CTA de la última presentación (lleva a Bienvenido). */
+    begin: 'Empezar',
   },
   auth: {
     signUpTitle: 'Crea tu cuenta',
@@ -1051,6 +1055,21 @@ export const esCO = {
     whichMed: '¿Qué medicamento quieres consultar?',
     whichMeal: '¿Qué comida quieres programar?',
     mealOptions: ['Desayuno', 'Almuerzo', 'Cena', 'Merienda'],
+    /** V5: preguntas sugeridas tras cada respuesta y al no entender. Se responden SOLO con lo registrado. */
+    ask: {
+      day: '¿Cómo está hoy?',
+      next: '¿Qué le toca ahora?',
+      sleep: '¿Cómo durmió?',
+      medication: '¿Se tomó todo hoy?',
+      stock: '¿Cuántas pastillas le quedan?',
+      water: '¿Cuánta agua lleva hoy?',
+      tookMed: (m: string) => `¿Se tomó ${m} hoy?`,
+      stockOf: (m: string) => `¿Cuántas pastillas de ${m} le quedan?`,
+    },
+    /** Tarjeta "Hoy" del chat vacío: el resumen real del día (o "Aún no hay registros de hoy."). */
+    todayTitle: 'Hoy',
+    askTitle: 'Pregúntame',
+    greeting: (h: number) => (h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'),
   },
   // Ubicación (V2.4, Hito 6). Solo con consentimiento del adulto mayor y en primer plano.
   location: {

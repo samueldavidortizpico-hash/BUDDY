@@ -1,7 +1,19 @@
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Extrapolation, interpolate, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedRef,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
@@ -96,9 +108,33 @@ export default function Onboarding() {
 
       <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         <Dots x={x} width={width} count={n} label={S.progress(i + 1, n)} />
-        <Button label={strings.common.next} variant="mint" haptic shine style={s.cta} onPress={next} />
+        <Cta last={i === n - 1} onPress={next} />
       </View>
     </View>
+  );
+}
+
+/**
+ * CTA del carrusel (V5): la flecha invita a seguir con un empujoncito cada pocos segundos; en la última presentación la
+ * etiqueta pasa a "Empezar" con un pequeño rebote del botón (encoge 4 % y vuelve con resorte), para marcar el cambio.
+ */
+function Cta({ last, onPress }: { last: boolean; onPress: () => void }) {
+  const s = useStyles();
+  const reduce = useReducedMotion();
+  const pop = useSharedValue(1);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (!reduce) pop.set(withSequence(withTiming(0.96, { duration: 90 }), withSpring(1, { damping: 10, stiffness: 260 })));
+  }, [last, reduce, pop]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: pop.get() }] }));
+  return (
+    <Animated.View style={style}>
+      <Button label={last ? S.begin : strings.common.next} trailing="arrow" nudge variant="mint" haptic shine style={s.cta} onPress={onPress} />
+    </Animated.View>
   );
 }
 
@@ -147,7 +183,7 @@ function Dot({ index, x, width }: { index: number; x: SharedValue<number>; width
     const near = interpolate(Math.abs(x.get() / Math.max(1, width) - index), [0, 1], [1, 0], Extrapolation.CLAMP);
     return { opacity: 0.35 + 0.65 * near, transform: [{ scaleX: withSpring(1 + near * 1.6, motion.spring) }] };
   });
-  return <Animated.View style={[styles.dot, { backgroundColor: t.hc ? t.c.text : t.dark ? '#2BC4B4' : '#139AA0' }, style]} />;
+  return <Animated.View style={[styles.dot, { backgroundColor: t.hc ? t.c.text : t.dark ? t.c.primary : '#1D6FB8' }, style]} />;
 }
 
 const styles = StyleSheet.create({
