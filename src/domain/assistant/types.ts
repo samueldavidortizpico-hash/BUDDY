@@ -4,7 +4,7 @@
  */
 import type { ActivityKind, ClockTime, DoseUnit, MealKind, MedForm, Weekday } from '../types';
 
-export type QueryTopic = 'sleep' | 'mood' | 'medication' | 'water' | 'meals' | 'activity' | 'day' | 'stock' | 'recommendations' | 'location';
+export type QueryTopic = 'sleep' | 'mood' | 'medication' | 'water' | 'meals' | 'activity' | 'day' | 'stock' | 'recommendations' | 'location' | 'next';
 
 export type AssistantAction =
   | {

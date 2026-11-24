@@ -52,7 +52,7 @@ La previa no debe guardar respuestas, sincronizar dosis, llamar contactos ni cam
 
 ## Stack verificado en `package.json`
 
-Expo SDK 57, React Native 0.86, React 19, TypeScript 6, Expo Router, Reanimated 4, Zustand 5, AsyncStorage, SecureStore, React Native SVG y Jest con `jest-expo`/RNTL. Consultar el manifest antes de cambiar APIs Expo o nativas, ya que se actualiza con los SDK.
+Expo SDK 58, React Native 0.88, React 19, TypeScript 6, Expo Router, Reanimated 4, Zustand 5, AsyncStorage, SecureStore, React Native SVG y Jest con `jest-expo`/RNTL. Consultar el manifest antes de cambiar APIs Expo o nativas, ya que se actualiza con los SDK.
 
 ## Validación esperada por cambio
 

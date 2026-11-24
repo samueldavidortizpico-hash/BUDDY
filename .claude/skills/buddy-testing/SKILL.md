@@ -1,6 +1,6 @@
 ---
 name: buddy-testing
-description: Estrategia y buenas prácticas de pruebas para BUDDY (React Native + Expo SDK 57 + TypeScript + Supabase). Usar al escribir, revisar o planear pruebas (Jest, React Native Testing Library, integración, E2E con Maestro), al implementar navegación, registro de medicamentos, alarmas/horarios/zonas horarias, permisos, autenticación o accesibilidad, y antes de dar por aprobada cualquier fase del proyecto.
+description: Estrategia y buenas prácticas de pruebas para BUDDY (React Native + Expo SDK 58 + TypeScript + Supabase). Usar al escribir, revisar o planear pruebas (Jest, React Native Testing Library, integración, E2E con Maestro), al implementar navegación, registro de medicamentos, alarmas/horarios/zonas horarias, permisos, autenticación o accesibilidad, y antes de dar por aprobada cualquier fase del proyecto.
 ---
 
 # BUDDY — Pruebas

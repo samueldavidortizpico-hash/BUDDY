@@ -39,7 +39,7 @@ const ADD_VERBS = /^(ponle|ponerle|pon|agrega|agregale|agregar|anade|anadele|dal
 const FIXABLE_VERBS = ['ponle', 'agrega', 'agregale', 'anade', 'anadele', 'programa', 'programale', 'registra', 'configura', 'configurale', 'recuerdale', 'agenda', 'anota'];
 /** "¿Qué puedes hacer?", "ayuda": se responde con el menú de acciones. */
 const HELP = /^(ayuda|ayudame|menu|opciones|que (puedes|sabes) hacer|que haces|como funciona(s)?|como te uso|para que sirves)\b/;
-const QUESTION = /^(donde|como|cuanto|cuanta|cuantas|cuantos|que tal|tomo|comio|almorzo|ceno|durmio|ya tomo|ya comio|resumen|dime|dame|cual|camino|hizo)\b/;
+const QUESTION = /^(donde|como|cuanto|cuanta|cuantas|cuantos|que tal|tomo|comio|almorzo|ceno|durmio|ya tomo|ya comio|resumen|dime|dame|cual|camino|hizo|que le toca|que sigue|proxima|siguiente|a que hora|todo (bien|en orden)|esta bien|sigue bien)\b/;
 
 /** Palabra original (con tildes) equivalente a un token normalizado, para conservar los nombres propios. */
 function original(text: string, token: string): string {
@@ -130,14 +130,18 @@ const MEALS: [RegExp, MealKind][] = [
 function queryTopic(t: string): QueryTopic | null {
   if (/recomendacion|sugerencia|novedad|alerta/.test(t)) return 'recommendations';
   if (/\bdonde (esta|anda|se encuentra)\b|\bubicacion\b/.test(t)) return 'location';
+  // V5: "¿qué le toca ahora?", "¿próxima pastilla?", "¿a qué hora le toca?": la siguiente toma programada de hoy.
+  if (/\bque le toca\b|\bque sigue\b|\b(proxima|siguiente) (toma|dosis|pastilla|medicina|medicamento)\b|\ba que hora (le toca|toma|se toma)\b/.test(t)) return 'next';
   if (/\bresumen\b|\bcomo (va|fue|le fue|le va)\b.*\bdia\b|\bcomo (va|esta|le fue|le va) hoy\b/.test(t)) return 'day';
   if (/\bdurmio\b|\bsueno\b|\bdormir\b/.test(t)) return 'sleep';
   if (/\bquedan?\b|\bexistencias\b|\bcuantas (pastillas|tabletas)\b/.test(t)) return 'stock';
-  if (/\banimo\b|\bcomo (se siente|esta|amanecio)\b/.test(t)) return 'mood';
+  if (/\banimo\b|\bcomo (se siente|amanecio)\b/.test(t)) return 'mood';
   if (/\bagua\b|\bvasos?\b/.test(t)) return 'water';
   if (/\bcomio\b|\bdesayuno\b|\balmorzo\b|\bceno\b|\bcomida\b/.test(t)) return 'meals';
   if (/\bcamino\b|\bactividad\b|\bejercicio\b|\bhizo\b/.test(t)) return 'activity';
   if (/\btomo\b|\bmedicamento|\bpastilla|\bdosis\b/.test(t)) return 'medication';
+  // V5: "¿cómo está mi mamá?", "¿todo bien?", "¿cómo sigue?" sin otro tema: el resumen del día (incluye el ánimo).
+  if (/\bcomo (esta|sigue|anda)\b|\btodo (bien|en orden)\b|\besta bien\b|\bsigue bien\b|\bque tal (esta|va|sigue)\b/.test(t)) return 'day';
   return null;
 }
 
@@ -180,6 +184,9 @@ export function interpretText(raw: string, ctx: AssistantContext): Interpretatio
   // 1a. Saludo y agradecimiento (V4): una respuesta corta, nunca "No entendí".
   if (/^(hola|buenas|buenos dias|buenas tardes|buenas noches)\b/.test(t) && t.split(' ').length <= 3) return { actions, missing, reply: `¡Hola! ¿Qué hacemos hoy por ${ctx.elderName}?`, understood: true };
   if (/^(gracias|muchas gracias|mil gracias)\b/.test(t)) return { actions, missing, reply: 'Con gusto. Aquí estoy si necesitas algo más.', understood: true };
+  // V5: charla corta. BUDDY se presenta o responde y vuelve a lo que importa: cómo va el día de la persona cuidada.
+  if (/^(quien eres|que eres|como te llamas)\b/.test(t)) return { actions, missing, reply: `Soy BUDDY. Te ayudo con la rutina de ${ctx.elderName} y te cuento cómo va su día con lo que está registrado.`, understood: true };
+  if (/^(como estas|como vas|que tal estas|que tal)$/.test(t)) return { actions, missing, reply: `¡Muy bien, gracias! ¿Te cuento cómo va el día de ${ctx.elderName}?`, understood: true };
 
   // 1b. Ayuda: el menú de acciones.
   if (HELP.test(t)) return { actions: [{ type: 'show_menu' }], missing, reply: null, understood: true };

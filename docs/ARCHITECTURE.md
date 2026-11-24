@@ -6,7 +6,7 @@
 > Ver también: DECISIONS.md, DESIGN_SYSTEM.md, PANTALLAS_CHECKLIST.md y ACCESSIBILITY_AUDIT.md.
 
 ## Stack
-Expo SDK 57 · React Native 0.86 · React 19.2 (React Compiler) · TypeScript 6 (`strict`) · Expo Router (`src/app`, typed routes) · Reanimated 4 · Zustand 5 + AsyncStorage · expo-linear-gradient · react-native-svg · expo-haptics · Manrope (`@expo-google-fonts/manrope`) · Jest 29 + jest-expo + RNTL 13.
+Expo SDK 58 · React Native 0.88 · React 19.2 (React Compiler) · TypeScript 6 (`strict`) · Expo Router (`src/app`, typed routes) · Reanimated 4 · Zustand 5 + AsyncStorage · expo-linear-gradient · react-native-svg · expo-haptics · Manrope (`@expo-google-fonts/manrope`) · Jest 29 + jest-expo + RNTL 13.
 
 ## Capas
 ```

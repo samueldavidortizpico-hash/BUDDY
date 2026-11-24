@@ -1,12 +1,15 @@
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, StyleSheet, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
+import { Appear } from '@/components/appear';
 import { Button } from '@/components/button';
+import { PressableScale } from '@/components/pressable-scale';
 import { BottomSheet } from '@/components/feedback';
 import { Icon, type IconName } from '@/components/icon';
 import { IconTile } from '@/components/icon-tile';
@@ -22,7 +25,7 @@ import { DONE, MENU, useBuddyChat } from '@/features/chat/use-chat';
 import { PreviewSheetButton } from '@/features/elder/phone-preview';
 import { savePhoto } from '@/infrastructure/local/media';
 import { strings } from '@/i18n';
-import { SUGGESTIONS, conversation, type RoutineSegment } from '@/state/assistant';
+import { SUGGESTIONS, answerQuery, conversation, type RoutineSegment } from '@/state/assistant';
 import { routineActions } from '@/state/actions';
 import { useHasFeature } from '@/state/entitlements';
 import { useActiveElder, useRecords } from '@/state/data';
@@ -212,6 +215,24 @@ export default function Buddy() {
                 {/* Saludo corto y seis acciones rápidas en una tarjeta neutra (el color vive en cada icono); el menú
                     completo sigue en "+". */}
                 <AppText variant="h2">{B.hello(elder.firstName)}</AppText>
+                {/* V5: lo que ya sabe de hoy, con datos reales ("Aún no hay registros de hoy." si no hay), y tres
+                    preguntas que se responden con un toque. */}
+                <Appear>
+                  <View style={s.today} accessible accessibilityLabel={`${B.todayTitle}. ${answerQuery('day', null)}`}>
+                    <BuddyRobot size={40} />
+                    <View style={s.flex}>
+                      <AppText variant="captionStrong" color={t.c.muted}>{B.todayTitle}</AppText>
+                      <AppText variant="secondary">{answerQuery('day', null)}</AppText>
+                    </View>
+                  </View>
+                </Appear>
+                <View style={s.asks}>
+                  {[B.ask.next, B.ask.sleep, B.ask.medication].map((q, i) => (
+                    <Appear key={q} index={i + 1}>
+                      <Button label={q} size="sm" variant="tonal" tone="mint" onPress={() => send(q)} />
+                    </Appear>
+                  ))}
+                </View>
                 <View style={s.chips}>
                   {QUICK.map((q, i) => (
                     <ListRow
@@ -277,20 +298,14 @@ export default function Buddy() {
             // Tope ×1.5: con más, el texto no cabe en el compositor junto a sus botones. Hasta 4 líneas, luego desplaza.
             style={[s.input, { fontSize: type.secondary.fontSize * Math.min(scale, 1.5), maxHeight: 4 * type.secondary.lineHeight * Math.min(scale, 1.5) + spacing.sm * 2, color: t.c.text }]}
             multiline
+            // Web: el textarea nace con 2 filas y el marcador quedaba arriba, descuadrado de los botones (V5). En
+            // Android `rows` fijaría las líneas (no crecería), por eso solo en web.
+            rows={Platform.OS === 'web' ? 1 : undefined}
             onSubmitEditing={() => send(text)}
             returnKeyType="send"
             submitBehavior="blurAndSubmit"
           />
-          <Pressable
-            onPress={() => send(text)}
-            disabled={!text.trim()}
-            accessibilityRole="button"
-            accessibilityLabel={B.send}
-            accessibilityState={{ disabled: !text.trim() }}
-            style={[s.send, !text.trim() && s.disabled]}
-          >
-            <Icon name="send" color={t.hc ? t.c.bg : '#FFFFFF'} size={20} />
-          </Pressable>
+          <SendButton ready={!!text.trim()} onPress={() => send(text)} />
         </View>
       </KeyboardAvoidingView>
 
@@ -337,7 +352,7 @@ function Message({ m, onMenu, onSee, onUndo }: { m: AssistantMessage; onMenu: (k
   return (
     <Animated.View entering={reduce ? undefined : FadeIn.duration(180)} style={[s.msgRow, mine && s.mineRow]}>
       <View style={[s.messageLine, mine && s.messageMine]}>
-        {!mine ? <IconTile icon="sparkle" domain="activity" size={30} /> : null}
+        {!mine ? <BuddyRobot size={30} /> : null}
         <View style={[s.messageContent, mine && s.messageContentMine]}>
           <View style={[s.bubble, mine ? s.mine : s.theirs]}>
             {m.imageUri ? <AppText variant="caption" color={mine ? t.c.onPrimary : t.c.muted}>{B.photoSent}</AppText> : null}
@@ -348,6 +363,29 @@ function Message({ m, onMenu, onSee, onUndo }: { m: AssistantMessage; onMenu: (k
       </View>
       {p?.kind === MENU ? <ActionMenu onPick={onMenu} /> : null}
       {p?.suggestions ? <Suggestions /> : null}
+    </Animated.View>
+  );
+}
+
+/**
+ * Enviar (V5): apagado mientras no hay texto; al escribir se enciende con un pequeño resorte (crece de 0,88 a 1) y
+ * vuelve a apagarse al enviar. Solo transform y opacidad.
+ */
+function SendButton({ ready, onPress }: { ready: boolean; onPress: () => void }) {
+  const t = useTheme();
+  const s = useStyles();
+  const reduce = useReducedMotion();
+  const on = useSharedValue(ready ? 1 : 0);
+  useEffect(() => {
+    on.set(reduce ? withTiming(ready ? 1 : 0, { duration: 120 }) : withSpring(ready ? 1 : 0, { damping: 13, stiffness: 320 }));
+  }, [ready, reduce, on]);
+  const style = useAnimatedStyle(() => ({ opacity: 0.4 + 0.6 * on.get(), transform: [{ scale: 0.88 + 0.12 * on.get() }] }));
+  return (
+    <Animated.View style={style}>
+      <PressableScale onPress={onPress} disabled={!ready} haptic="light" dim={0.1} accessibilityLabel={B.send} style={s.send}>
+        {t.hc ? null : <LinearGradient colors={t.gradients.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />}
+        <Icon name="send" color={t.hc ? t.c.bg : t.c.onPrimary} size={20} />
+      </PressableScale>
     </Animated.View>
   );
 }
@@ -401,7 +439,7 @@ function Typing() {
   return (
     <View style={s.msgRow} accessibilityLabel={B.typing} accessibilityLiveRegion="polite">
       <View style={s.typingRow}>
-        <IconTile icon="sparkle" domain="activity" size={30} />
+        <BuddyRobot size={30} />
         <View style={[s.bubble, s.theirs, s.typing]}>
           <AppText variant="caption" color="text">{B.typing}</AppText>
           <View style={s.dots}>
@@ -448,11 +486,14 @@ const useStyles = makeStyles((t) =>
     action: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, borderLeftWidth: 4, borderWidth: t.hc ? 2 : 0 },
     quick: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
     toEnd: { position: 'absolute', bottom: spacing.sm, alignSelf: 'center' },
-    composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, marginHorizontal: spacing.md, marginTop: spacing.xs, marginBottom: spacing.sm, padding: 2, minHeight: touch.secondary, borderRadius: 28, backgroundColor: t.c.surface },
+    // Relleno 4 + botón de 48 = radio 28 concéntrico: el círculo de enviar ya no toca el borde (V5).
+    composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, marginHorizontal: spacing.md, marginTop: spacing.xs, marginBottom: spacing.sm, padding: 4, minHeight: touch.secondary, borderRadius: 28, backgroundColor: t.c.surface, ...t.shadow.soft },
     tool: { width: touch.min - 4, height: touch.min, alignItems: 'center', justifyContent: 'center' },
     // minWidth 0: sin él, en web el campo no se encoge y empuja el botón enviar fuera del compositor.
     input: { flex: 1, minWidth: 0, minHeight: touch.min, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, fontFamily: 'Manrope_600SemiBold' },
-    send: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: t.hc ? t.c.text : t.c.primary },
+    send: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: t.hc ? t.c.text : t.c.primary },
     disabled: { opacity: 0.4 },
+    today: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: radius.card, backgroundColor: t.c.surface, ...t.hairline, ...t.shadow.soft },
+    asks: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   }),
 );

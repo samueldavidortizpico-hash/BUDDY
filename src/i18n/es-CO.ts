@@ -1062,6 +1062,21 @@ export const esCO = {
     whichMed: '¿Qué medicamento quieres consultar?',
     whichMeal: '¿Qué comida quieres programar?',
     mealOptions: ['Desayuno', 'Almuerzo', 'Cena', 'Merienda'],
+    /** V5: preguntas sugeridas tras cada respuesta y al no entender. Se responden SOLO con lo registrado. */
+    ask: {
+      day: '¿Cómo está hoy?',
+      next: '¿Qué le toca ahora?',
+      sleep: '¿Cómo durmió?',
+      medication: '¿Se tomó todo hoy?',
+      stock: '¿Cuántas pastillas le quedan?',
+      water: '¿Cuánta agua lleva hoy?',
+      tookMed: (m: string) => `¿Se tomó ${m} hoy?`,
+      stockOf: (m: string) => `¿Cuántas pastillas de ${m} le quedan?`,
+    },
+    /** Tarjeta "Hoy" del chat vacío: el resumen real del día (o "Aún no hay registros de hoy."). */
+    todayTitle: 'Hoy',
+    askTitle: 'Pregúntame',
+    greeting: (h: number) => (h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'),
   },
   // Ubicación (V2.4, Hito 6). Solo con consentimiento del adulto mayor y en primer plano.
   location: {

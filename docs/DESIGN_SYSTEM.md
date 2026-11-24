@@ -280,6 +280,30 @@ fuera de foco (`useIsFocused`) y con "reducir movimiento".
 
 El resto de botones usa superficie 2 con texto claro. Contraste verificado en `src/theme/__tests__/contrast.test.ts`.
 
+## Modo oscuro · V5 (noche tinta, marca pervinca; reemplaza la tabla V4.2)
+
+En V4.2 todo lo accionable seguía en turquesa y la app se veía verde. En V5 el verde queda **solo** para lo que significa
+"bien" (`status.ok`, dominio de actividad, éxito); la marca es la luz azul de la noche.
+
+| Token | Valor |
+| --- | --- |
+| Fondo / superficie 1 / 2 | `#0A0E1A` / `#131A2B` / `#1B2438` |
+| Borde | pervinca `rgba(170,185,255,0.10)` |
+| Texto principal / secundario / terciario | `#F2F4FA` (17,5:1) / `#A9B2C7` (8,2:1) / `#7F89A1` (4,9:1) |
+| Marca (`primary`, `accent`, `focus`) | pervinca `#8C9EFF`; degradado principal `#8C9EFF` → lavanda `#A58BFF` con texto `#0B1030` (7,5:1 / 6,8:1) |
+| Tono "mint" (chips, tonales, pestaña activa, checks) | ahora pervinca: fondo `#1E2747`, texto `#A9B8FF` (7,7:1); `mintStrong` `#5A68E0` y `mintDeep` `#4C5BD4` con blanco (4,7:1 / 5,6:1) |
+| Enlaces (`ink.info`) | `#A9B8FF` (9,1:1 sobre superficie) |
+| Contacto | `#8C9EFF` sobre `#1E2747` |
+| Degradados | carga: luz índigo `#3D4FA3` sobre el mismo petróleo del splash (`#062639`); Bienvenido `#121A3E` → `#22286A` → `#3A2F7E`; cuenta `#1C2660` → `#0E1428`; Plus `#10153A` → `#4C3D9E` |
+
+**Claro (V5):** el degradado principal pasa a turquesa → cobalto `#0E7C8A` → `#1F4C8F` (blanco 4,9:1 / 8,4:1) y el CTA
+`mint` a `#0E8C99` → `#2367D1` (blanco 4,0:1 / 5,3:1, antes 3,1:1). En oscuro el CTA `mint` usa el degradado de marca.
+
+**Movimiento V5:** hover en todo `PressableScale` (sube 1 px y se ilumina 6 % en oscuro / sombrea 4 % en claro, 150 ms);
+flecha con empujoncito en el CTA del carrusel y rebote al pasar a "Empezar"; BUDDY flota sobre un halo en Bienvenido;
+dos ondas salen del ícono mientras carga; los vacíos abren dos anillos una vez; enviar se enciende con resorte al escribir.
+Con "reducir movimiento" nada de esto se mueve.
+
 ## Componentes nuevos o ampliados
 
 `Button` (+ `tonal` por tono, `white`, tamaños `elder` 72 / `lg` 60 / `md` 52, `stacked`, `shine`, `textColor`) ·

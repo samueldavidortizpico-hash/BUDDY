@@ -43,6 +43,34 @@ function medInfoMessage(m: ProductMatch, by: 'brand' | 'ingredient') {
   };
   conversation.add('buddy', m.name, { proposal: JSON.stringify(payload), proposalState: null });
 }
+/**
+ * V5 — siguiente pregunta natural después de una respuesta, para que la conversación avance sin escribir. Todas se
+ * responden con lo registrado; ninguna propone cambiar un tratamiento.
+ */
+export function followUps(topic: string): string[] {
+  const Q = B.ask;
+  if (topic === 'day') return [Q.next, Q.sleep];
+  if (topic === 'medication') return [Q.next, Q.stock];
+  if (topic === 'next') return [Q.medication, Q.day];
+  if (topic === 'stock') return [Q.next];
+  return [Q.day];
+}
+
+/**
+ * V5 — al no entender, sugerencias según lo que se escribió (en vez de siempre los mismos ejemplos): si nombra un
+ * medicamento registrado, preguntas sobre ESE medicamento; si habla de agua, la de agua; si no, las más útiles.
+ */
+export function smartSuggestions(msg: string, medicationNames: string[]): string[] {
+  const t = normalizeText(msg);
+  const med = medicationNames.find((n) => {
+    const first = normalizeText(n).split(' ')[0];
+    return first.length >= 4 && t.includes(first);
+  });
+  if (med) return [B.ask.tookMed(med), B.ask.stockOf(med), K.askAbout(med)];
+  if (/\bagua\b|\bvaso/.test(t)) return [B.ask.water, EXAMPLES[1]];
+  return [B.ask.day, B.ask.next, EXAMPLES[0]];
+}
+
 /** Pausa breve y proporcional al texto, sin fingir que BUDDY está haciendo un análisis externo. */
 export const replyDelay = (text: string) => Math.min(1100, Math.max(300, 220 + text.trim().length * 7));
 
@@ -268,9 +296,9 @@ export function useBuddyChat(h: ChatHandlers) {
         return medInfo(msg.replace(/^./, (c) => c.toUpperCase()));
       }
       const r = interpret(msg);
-      if (!r.understood) return showMenu(B.notUnderstoodMenu, EXAMPLES.slice(0, 3));
-      // Saludo o agradecimiento: el intérprete responde sin acciones (V4).
-      if (!r.actions.length) return reply(r.reply ?? B.menuIntro);
+      if (!r.understood) return showMenu(B.notUnderstoodMenu, smartSuggestions(msg, context().medicationNames));
+      // Saludo, agradecimiento o charla corta: el intérprete responde sin acciones y BUDDY ofrece seguir (V5).
+      if (!r.actions.length) return reply(r.reply ?? B.menuIntro, { quickReplies: [B.ask.day, B.ask.next] });
       const first = r.actions[0];
       if (first.type === 'show_menu') return showMenu(B.menuIntro);
       if (first.type === 'medication_info') return medInfo(first.name);
@@ -286,9 +314,9 @@ export function useBuddyChat(h: ChatHandlers) {
         return reply(items.slice(0, 3).map((f) => `• ${f.title}`).join('\n'), { quickReplies: [B.seeFeed] });
       }
       if (first.type === 'query_summary' && first.topic === 'location' && elder) return reply(strings.location.title(elder.firstName), { quickReplies: [strings.location.open(elder.firstName)] });
-      if (first.type === 'query_summary') return reply(answerQuery(first.topic, first.match, first.period));
+      if (first.type === 'query_summary') return reply(answerQuery(first.topic, first.match, first.period), { quickReplies: followUps(first.topic) });
       const actions = r.actions.filter(isDraftable);
-      if (!actions.length) return showMenu(B.notUnderstoodMenu, EXAMPLES.slice(0, 3));
+      if (!actions.length) return showMenu(B.notUnderstoodMenu, smartSuggestions(msg, context().medicationNames));
       startDraft(actions);
     },
     [answer, medInfo, reply, showMenu, startDraft, h, elder, userId],
@@ -300,7 +328,7 @@ export function useBuddyChat(h: ChatHandlers) {
       const tpl = menuTemplate(key);
       if (tpl) return startDraft([tpl]);
       if (key === 'meal') return reply(B.whichMeal, { quickReplies: [...B.mealOptions.map((m) => `Programa ${m.toLowerCase()}`), ...(FEATURES.foodAnalysis ? [strings.food.open] : [])] });
-      if (key === 'day') return reply(answerQuery('day', null));
+      if (key === 'day') return reply(answerQuery('day', null), { quickReplies: followUps('day') });
       awaitingMed.current = true;
       reply(B.whichMed, { quickReplies: context().medicationNames.slice(0, 4) });
     },
