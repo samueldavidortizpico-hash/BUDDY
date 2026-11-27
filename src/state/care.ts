@@ -354,13 +354,14 @@ export const elderAnswers = {
     const date = toISODate(new Date());
     const prev = db.list('checkins', currentUserId(), id).find((c) => c.date === date);
     const raw = answer.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    // Afirmativo por la primera palabra, no por subcadena: el bot\u00f3n de agua dice "Tom\u00e9 un vaso" (antes no contaba).
+    const yes = /^(si|ya|tome)\b/.test(raw);
     // FUN-01: la respuesta a un recordatorio en un d\u00eda es UNA ocurrencia. Su efecto sobre el agua se guarda con ella:
     // repetir "S\u00ed" no suma otro vaso, cambiar a "No" retira el que sum\u00f3 y, si el vaso se deshizo a mano, "S\u00ed" lo repone.
     let waterEntryId = prev?.automationAnswers?.[reminderId]?.waterEntryId ?? null;
     if (reminder.automation.kind === 'water') {
       const entry = waterEntryId ? db.get('water', waterEntryId) : undefined;
       const counted = !!entry && !entry.deletedAt;
-      const yes = /si|ya/.test(raw);
       if (yes && !counted) waterEntryId = this.addWater(id).id;
       if (!yes && counted) {
         this.undoWater(waterEntryId!);
@@ -375,11 +376,11 @@ export const elderAnswers = {
     if (reminder.automation.kind === 'emotional') this.checkin({ unwell: /si|mal/.test(raw) && !/no/.test(raw) }, id);
     if (reminder.automation.kind === 'meal') {
       const meals = db.list('meals', currentUserId(), id).slice().sort((a, b) => Math.abs(toMinutes(a.time) - toMinutes(reminder.time)) - Math.abs(toMinutes(b.time) - toMinutes(reminder.time)));
-      if (meals[0]) this.meal(meals[0].id, /si|ya/.test(raw) ? 'yes' : 'no', id);
+      if (meals[0]) this.meal(meals[0].id, yes ? 'yes' : 'no', id);
     }
     if (reminder.automation.kind === 'walk') {
       const walk = db.list('activities', currentUserId(), id).find((a) => a.kind === 'walk');
-      if (walk) this.activity(walk.id, /si|ya/.test(raw) && !/no|todavia/.test(raw), id);
+      if (walk) this.activity(walk.id, yes, id);
     }
     beat(id, 'answer');
     return reminder;
