@@ -2,7 +2,7 @@
  * Horarios de medicamentos y estado de las tomas. Puro: todo recibe `now` o `date`.
  * Zona horaria: las tomas siguen la hora local del dispositivo (fecha `YYYY-MM-DD` + `HH:mm`).
  */
-import { atClock, daysBetween, parseISODate, toISODate } from '@/utils/dates';
+import { atClock, daysBetween, minutesToClock, parseISODate, toISODate } from '@/utils/dates';
 
 import { doseDayLimit, withDoseSlots, type SlottedDose } from './dose-safety';
 import { intervalTimes, onDay, sortTimes, toMinutes } from './time';
@@ -148,8 +148,7 @@ export function dayDoses(meds: Medication[], doses: DoseEvent[], date: ISODate, 
 /** Hora a la que se reprograma una toma pospuesta (no cruza la medianoche). */
 export function snoozeTarget(now: Date, minutes = SNOOZE_MINUTES): ClockTime {
   const target = now.getHours() * 60 + now.getMinutes() + minutes;
-  const m = Math.min(target, 23 * 60 + 59);
-  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  return minutesToClock(Math.min(target, 23 * 60 + 59));
 }
 
 // ── Textos de dosis ──────────────────────────────────────────

@@ -52,10 +52,8 @@ export interface DayStatus {
 /** Margen tras la hora del chequeo para considerarlo "sin responder". */
 export const CHECKIN_GRACE_MIN = 60;
 
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
 export function dayFacts(i: StatusInput): DayFacts {
-  const today = iso(i.now);
+  const today = toISODate(i.now);
   const active = new Map(i.meds.filter((m) => !m.paused && !m.deletedAt).map((m) => [m.id, m]));
   const doses = i.doses.filter((d) => d.date === today && !d.cancelledAt && !d.deletedAt && !d.safetyHold && active.has(d.medicationId));
   const c = i.checkins.find((x) => x.date === today);
@@ -75,7 +73,7 @@ export function dayFacts(i: StatusInput): DayFacts {
 export function dayStatus(i: StatusInput): DayStatus {
   const facts = dayFacts(i);
   const name = i.elderName;
-  const today = iso(i.now);
+  const today = toISODate(i.now);
   const pending = i.alerts.filter((a) => !a.deletedAt && a.status === 'pending' && toISODate(new Date(a.createdAt)) >= addDays(today, -1));
   const c = i.checkins.find((x) => x.date === today);
   const { unconfirmedAfterMin } = escalationOf(i.escalation);
@@ -113,7 +111,7 @@ const ANSWER: Record<'good' | 'regular' | 'bad', string> = { good: 'bien', regul
  */
 export function dailySummary(i: StatusInput): string | null {
   const s = dayStatus(i);
-  const today = iso(i.now);
+  const today = toISODate(i.now);
   const c = i.checkins.find((x) => x.date === today);
   const parts: string[] = [];
   if (s.facts.doses.total) parts.push(`${s.facts.doses.taken} de ${s.facts.doses.total} ${s.facts.doses.total === 1 ? 'medicina' : 'medicinas'}`);

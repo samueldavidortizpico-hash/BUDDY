@@ -25,7 +25,7 @@ import { strings } from '@/i18n';
 import { useRecords, useUserId } from '@/state/data';
 import { spacing, type StatusKind } from '@/theme';
 import { makeStyles, useTextScaleFactor, useTheme } from '@/theme/provider';
-import { formatClock, toISODate } from '@/utils/dates';
+import { formatClock, toClock, toISODate } from '@/utils/dates';
 
 const S = strings.status;
 const H = strings.summary.home;
@@ -106,7 +106,7 @@ export function TodayTiles({ elder }: { elder: Elder }) {
   const water = useRecords('water', { elderId: elder.id }).filter((w) => w.date === today).length;
   const plan = useRecords('waterPlans', { elderId: elder.id })[0];
   const checkin = input.checkins.find((c) => c.date === today);
-  const clock = `${String(input.now.getHours()).padStart(2, '0')}:${String(input.now.getMinutes()).padStart(2, '0')}`;
+  const clock = toClock(input.now);
   const next = dayDoses(input.meds, input.doses, today, input.now, escalationOf(elder.screen).unconfirmedAfterMin).find(
     (it) => (it.status === 'pending' || it.status === 'snoozed') && effectiveTime(it.dose) >= clock,
   );
@@ -160,7 +160,7 @@ export function useDailySummaryNotice(elder: Elder) {
   const input = useStatusInput(elder);
   const line = dailySummary(input);
   const time = elder.summaryTime ?? '20:00';
-  const asOf = formatClock(`${String(input.now.getHours()).padStart(2, '0')}:${String(input.now.getMinutes()).padStart(2, '0')}`);
+  const asOf = formatClock(toClock(input.now));
   const body = line ? S.summaryBody(elder.firstName, asOf, line) : null;
   useEffect(() => {
     const [h, m] = time.split(':').map(Number);

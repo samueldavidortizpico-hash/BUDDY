@@ -3,6 +3,8 @@
  * Prioridad: aviso de existencias sin leer → medicamento (sin confirmar o en ≤ 60 min) → chequeo → comida →
  * actividad → agua → recordatorio → nada pendiente. Puro: todo recibe `now`.
  */
+import { toISODate } from '@/utils/dates';
+
 import { effectiveTime, isOpen, type DoseItem } from './schedule';
 import { onDay, toMinutes } from './time';
 import type { Activity, ActivityLog, Alert, Appointment, CheckinAnswer, ClockTime, Meal, MealLog, Reminder, WaterPlan } from './types';
@@ -49,8 +51,6 @@ export const appointmentSeenKey = (id: string, when: 'tomorrow' | 'today') => `a
  */
 export const reminderSeenKey = (id: string, date: string) => `${id}@${date}`;
 
-const localDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
 const SOON_MIN = 60;
 /** Ventana para preguntar por una comida o actividad después de su hora. */
 const ASK_WINDOW_MIN = 180;
@@ -67,8 +67,8 @@ export function elderNow(i: ElderInput): { now: ElderItem; later: { time: ClockT
   if (dose) queue.push({ kind: 'dose', item: dose });
 
   // Citas después de los medicamentos: un aviso de cita no tapa una toma.
-  const todayIso = localDate(i.now);
-  const tomorrowIso = localDate(new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + 1));
+  const todayIso = toISODate(i.now);
+  const tomorrowIso = toISODate(new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + 1));
   for (const ap of i.appointments ?? []) {
     if (ap.date === tomorrowIso && nowMin >= toMinutes(i.apptNoticeTime ?? '18:00') && !i.seenReminders.includes(appointmentSeenKey(ap.id, 'tomorrow'))) {
       queue.push({ kind: 'appointment', appointment: ap, when: 'tomorrow' });
@@ -96,11 +96,11 @@ export function elderNow(i: ElderInput): { now: ElderItem; later: { time: ClockT
   if (i.water && i.glassesToday < i.water.glasses) {
     const lastDue = i.water.times.map(toMinutes).filter((m) => m <= nowMin).sort((a, b) => b - a)[0];
     const last = i.lastGlassAt ? new Date(i.lastGlassAt) : null;
-    const answered = last && localDate(last) === localDate(i.now) && last.getHours() * 60 + last.getMinutes() >= (lastDue ?? 0);
+    const answered = last && toISODate(last) === toISODate(i.now) && last.getHours() * 60 + last.getMinutes() >= (lastDue ?? 0);
     if (lastDue !== undefined && !answered) queue.push({ kind: 'water', glasses: i.glassesToday, goal: i.water.glasses });
   }
 
-  const today = localDate(i.now);
+  const today = toISODate(i.now);
   for (const r of i.reminders) {
     const applies = r.date ? r.date === today : onDay(r.days, i.now);
     if (applies && due(r.time, 120) && !i.seenReminders.includes(reminderSeenKey(r.id, today))) queue.push({ kind: 'reminder', reminder: r });

@@ -9,7 +9,7 @@
  * Severidades: info, atención y señal de alarma. Nunca "emergencia"; el rojo solo para "pidió ayuda".
  * Una tarjeta por patrón (clave estable) con contador; la escalada cambia la severidad, no duplica tarjetas.
  */
-import { addDays, lastDays } from '@/utils/dates';
+import { addDays, formatClock, lastDays, toISODate } from '@/utils/dates';
 
 import { displayStatus, dueForReview, effectiveTime, escalationOf, type Escalation } from '../schedule';
 import { estimateStock } from '../stock';
@@ -96,11 +96,6 @@ const RANK: Record<Severity, number> = { alarm: 0, attention: 1, info: 2 };
 const CONSULT_MOOD = 'Por mayor seguridad, consulta con un médico o un profesional de salud mental.';
 const CONSULT = 'Por mayor seguridad, consulta con un médico.';
 
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const clock = (t: string) => {
-  const [h, m] = t.split(':').map(Number);
-  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`;
-};
 const endOfDay = (d: ISODate) => `${d}T23:59:59`;
 const minutesOf = (t: string) => {
   const [h, m] = t.split(':').map(Number);
@@ -136,7 +131,7 @@ export function badStreak(checkins: CheckinAnswer[], field: 'mood' | 'sleep', to
 export function buildFeed(i: RecoInput): FeedItem[] {
   const th = i.thresholds ?? DEFAULT_THRESHOLDS;
   const now = i.now;
-  const today = iso(now);
+  const today = toISODate(now);
   const nowIso = now.toISOString();
   const name = i.elderName;
   const out: FeedItem[] = [];
@@ -172,9 +167,9 @@ export function buildFeed(i: RecoInput): FeedItem[] {
       key: `dose-${d.id}`,
       kind: 'alert',
       severity: 'attention',
-      title: `${name} no ha confirmado ${med.name} de las ${clock(effectiveTime(d))}`,
+      title: `${name} no ha confirmado ${med.name} de las ${formatClock(effectiveTime(d))}`,
       reason: `Pasaron ${esc.unconfirmedAfterMin} minutos desde la hora y no respondió el aviso ni el segundo aviso. Puede que la haya tomado y no lo marcó: llama para saber.`,
-      support: [`${med.name}: ${clock(effectiveTime(d))}`],
+      support: [`${med.name}: ${formatClock(effectiveTime(d))}`],
       at: nowIso,
       count: 1,
       expiresAt: endOfDay(today),
@@ -231,7 +226,7 @@ export function buildFeed(i: RecoInput): FeedItem[] {
       key: `appt-${ap.id}`,
       kind: 'alert',
       severity: 'info',
-      title: `${ap.title} mañana a las ${clock(ap.time)}${where ? ` en ${where}` : ''}`,
+      title: `${ap.title} mañana a las ${formatClock(ap.time)}${where ? ` en ${where}` : ''}`,
       reason: noQuestions ? '¿Preparamos las preguntas para llevar a la cita?' : 'Recuérdale llevar sus medicamentos y las preguntas preparadas.',
       support: where ? [where] : [],
       at: nowIso,
@@ -351,7 +346,7 @@ export function buildFeed(i: RecoInput): FeedItem[] {
       severity: 'info',
       title: `${name} no ha confirmado ${pendingMeals.length === 1 ? 'una comida' : `${pendingMeals.length} comidas`} de hoy`,
       reason: 'Puede que haya comido y no lo marcó. Pregúntale con calma.',
-      support: pendingMeals.map((m) => clock(m.time)),
+      support: pendingMeals.map((m) => formatClock(m.time)),
       at: nowIso,
       count: pendingMeals.length,
       expiresAt: endOfDay(today),
@@ -406,7 +401,7 @@ export function buildFeed(i: RecoInput): FeedItem[] {
       severity: 'info',
       positive: true,
       title: 'Hoy va según lo programado',
-      reason: next ? `Próxima toma: ${medsById.get(next.medicationId)!.name} a las ${clock(effectiveTime(next))}` : 'No hay nada pendiente por ahora. BUDDY sigue pendiente.',
+      reason: next ? `Próxima toma: ${medsById.get(next.medicationId)!.name} a las ${formatClock(effectiveTime(next))}` : 'No hay nada pendiente por ahora. BUDDY sigue pendiente.',
       support: [],
       at: nowIso,
       count: 1,
