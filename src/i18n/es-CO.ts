@@ -577,6 +577,8 @@ export const esCO = {
     no: 'No',
     mealQ: { breakfast: '¿Ya desayunaste?', lunch: '¿Ya almorzaste?', dinner: '¿Ya cenaste?', snack: '¿Ya comiste la merienda?' } as Record<string, string>,
     notYet: 'Todavía no',
+    // Respuestas de ánimo y sueño. care.automationResponse compara el texto normalizado con 'mal' y 'regular'.
+    answers: { great: 'Excelente', good: 'Bien', regular: 'Regular', bad: 'Mal' },
     activityQ: (title: string) => `¿Hiciste esto hoy? ${title}`,
     walkQ: '¿Hiciste tu caminata?',
     waterQ: 'Toma un vaso de agua',

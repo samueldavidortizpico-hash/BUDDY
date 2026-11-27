@@ -1,6 +1,6 @@
 import { elderNow, type ElderInput } from '../now';
 import type { DoseItem } from '../schedule';
-import type { Alert, Medication } from '../types';
+import type { Alert, Medication, Reminder } from '../types';
 
 const meta = { ownerUserId: 'u', elderId: 'e', createdBy: 'u', createdAt: '', updatedAt: '2026-10-11T10:00:00.000Z', deletedAt: null, syncStatus: 'pending' as const };
 const at = (h: number, m = 0) => new Date(2026, 9, 11, h, m);
@@ -78,5 +78,14 @@ describe('elderNow', () => {
     expect(elderNow(base({ now: late, water, glassesToday: 1, lastGlassAt: at(19, 10).toISOString() })).now.kind).toBe('water');
     // Meta cumplida: no se pide más.
     expect(elderNow(base({ now: late, water, glassesToday: 8, lastGlassAt: at(12, 0).toISOString() })).now.kind).toBe('done');
+  });
+
+  it('al adulto mayor no le aparecen automatizaciones apagadas ni las que son solo para el cuidador', () => {
+    const rem = (id: string, automation?: Reminder['automation']) => ({ ...meta, id, title: id, time: '09:30', days: [], date: null, automation }) as Reminder;
+    const kinds = (reminders: Reminder[]) => elderNow(base({ reminders })).now;
+    expect(kinds([rem('agua', { kind: 'water', enabled: true })])).toMatchObject({ kind: 'reminder' });
+    expect(kinds([rem('agua-off', { kind: 'water', enabled: false })]).kind).toBe('done');
+    expect(kinds([rem('avisar', { kind: 'medication_alert', enabled: true, medicationId: 'm' })]).kind).toBe('done');
+    expect(kinds([rem('simple')])).toMatchObject({ kind: 'reminder' });
   });
 });
