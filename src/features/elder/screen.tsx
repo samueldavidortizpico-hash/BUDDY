@@ -487,19 +487,13 @@ function ItemView({
           onSeen(reminderSeenKey(item.reminder.id, todayKey));
           onThanks();
         };
-        if (automation.kind === 'medication_alert') return (
-          <View style={s.itemBody}>
-            {title(item.reminder.title)}
-            <AppText variant="body" color={d.muted}>Revisa en Rutina si la toma quedó confirmada. BUDDY no sabe si la persona tomó el medicamento.</AppText>
-            <Button label={E.ok} size="elder" disabled={preview} onPress={() => !preview && onSeen(reminderSeenKey(item.reminder.id, todayKey))} />
-          </View>
-        );
-        const options = automation.kind === 'mood' ? ['Excelente', 'Bien', 'Regular', 'Mal'] : automation.kind === 'sleep' ? ['Bien', 'Regular', 'Mal'] : automation.kind === 'emotional' ? [E.yes, E.no] : automation.kind === 'water' ? [E.waterBtn, E.notYet] : [E.yes, E.notYet];
+        const A3 = E.answers;
+        const options = automation.kind === 'mood' ? [A3.great, A3.good, A3.regular, A3.bad] : automation.kind === 'sleep' ? [A3.good, A3.regular, A3.bad] : automation.kind === 'emotional' ? [E.yes, E.no] : automation.kind === 'water' ? [E.waterBtn, E.notYet] : [E.yes, E.notYet];
         return (
           <View style={s.itemBody}>
             {title(item.reminder.title)}
             <View style={s.autoAnswers}>
-              {options.map((value) => <Button key={value} label={value} size="elder" variant={value === 'Mal' ? 'white' : 'primary'} style={s.full} disabled={preview} onPress={() => answer(value)} />)}
+              {options.map((value) => <Button key={value} label={value} size="elder" variant={value === A3.bad ? 'white' : 'primary'} style={s.full} disabled={preview} onPress={() => answer(value)} />)}
             </View>
           </View>
         );

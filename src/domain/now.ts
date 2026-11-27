@@ -102,6 +102,8 @@ export function elderNow(i: ElderInput): { now: ElderItem; later: { time: ClockT
 
   const today = localDate(i.now);
   for (const r of i.reminders) {
+    // Automatización apagada o solo para el cuidador ("Avisar si no toma…"): no es una pregunta para el adulto mayor.
+    if (r.automation && (!r.automation.enabled || r.automation.kind === 'medication_alert')) continue;
     const applies = r.date ? r.date === today : onDay(r.days, i.now);
     if (applies && due(r.time, 120) && !i.seenReminders.includes(reminderSeenKey(r.id, today))) queue.push({ kind: 'reminder', reminder: r });
   }
