@@ -18,7 +18,7 @@ import type { AssistantMessage } from '@/domain/types';
 import { formatPhone, normalizeText } from '@/domain/validation';
 import { db, newId, type CollectionName } from '@/infrastructure/local/db';
 import { strings } from '@/i18n';
-import { formatClock, toISODate } from '@/utils/dates';
+import { formatClock, toClock, toISODate } from '@/utils/dates';
 
 import { activeElderId, actor, contactActions, routineActions } from './actions';
 import { medicationActions } from './care';
@@ -117,11 +117,6 @@ function describeRaw(a: AssistantAction): string {
       return '';
   }
 }
-
-const nowClock = () => {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-};
 
 /** ActionExecutor: verifica el permiso, guarda por el mismo camino que usa Rutina y marca lo nuevo para resaltarlo. */
 export function execute(a: AssistantAction): ExecResult {
@@ -246,7 +241,7 @@ function run(a: AssistantAction): ExecResult {
     }
     case 'send_message': {
       const from = useSession.getState().user?.name.split(' ')[0] ?? 'tu familiar';
-      const r = routineActions.addReminder(`Mensaje de ${from}: ${a.text}`, nowClock(), [], elderId, toISODate(new Date()));
+      const r = routineActions.addReminder(`Mensaje de ${from}: ${a.text}`, toClock(new Date()), [], elderId, toISODate(new Date()));
       return { ok: true, summary: doneText(a), undo: () => routineActions.removeReminder(r.id), refs: [{ coll: 'reminders', id: r.id }], segment: 'more' };
     }
     default:

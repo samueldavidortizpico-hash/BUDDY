@@ -10,6 +10,8 @@
  * Mensajes claros y sin alarmismo. Por privacidad, la pantalla de bloqueo NO muestra el nombre del medicamento salvo
  * que el cuidador lo active. Límite de iOS: 64 avisos pendientes; se programan como máximo 60 por prioridad.
  */
+import { formatClock, toISODate } from '@/utils/dates';
+
 import { doseDayLimit, withDoseSlots, type SlottedDose } from './dose-safety';
 import { escalationOf, type Escalation } from './schedule';
 import { intervalTimes, sortTimes } from './time';
@@ -56,18 +58,12 @@ const hm = (t: ClockTime) => {
   const [h, m] = t.split(':').map(Number);
   return { hour: h, minute: m };
 };
-const clock = (t: ClockTime) => {
-  const { hour, minute } = hm(t);
-  return `${hour % 12 === 0 ? 12 : hour % 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'a. m.' : 'p. m.'}`;
-};
 const MEAL_Q: Record<Meal['kind'], string> = { breakfast: '¿Ya desayunaste?', lunch: '¿Ya almorzaste?', dinner: '¿Ya cenaste?', snack: '¿Ya comiste la merienda?' };
 
 function repeating(key: string, title: string, body: string, time: ClockTime, days: Weekday[]): PlannedNotification[] {
   if (!days.length || days.length === 7) return [{ key, title, body, trigger: { type: 'daily', ...hm(time) } }];
   return days.map((d) => ({ key: `${key}-d${d}`, title, body, trigger: { type: 'weekly', weekday: d + 1, ...hm(time) } }));
 }
-
-const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 function at(dateIso: string, time: ClockTime, minusMinutes = 0): Date {
   const [y, mo, d] = dateIso.split('-').map(Number);
@@ -90,7 +86,7 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
   let last: Date | null = null;
   for (let k = 0; k < HORIZON_DAYS; k++) {
     const day = new Date(i.now.getFullYear(), i.now.getMonth(), i.now.getDate() + k);
-    const iso = isoDay(day);
+    const iso = toISODate(day);
     const slots: { when: Date; key: string; title: string; body: string }[] = [];
     for (const m of active) {
       if (iso < m.startDate || (m.endDate && iso > m.endDate)) continue;
@@ -134,7 +130,7 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
     const where = appointmentAddress(ap);
     const dayBefore = at(ap.date, i.apptNoticeTime ?? '18:00', 24 * 60);
     const twoHours = at(ap.date, ap.time, 120);
-    if (dayBefore > i.now) appts.push({ key: `appt-${ap.id}-before`, title: `Mañana tienes cita a las ${clock(ap.time)}`, body: `${ap.title}${where ? ` en ${where}` : ''}.`, trigger: { type: 'date', date: dayBefore.toISOString() } });
+    if (dayBefore > i.now) appts.push({ key: `appt-${ap.id}-before`, title: `Mañana tienes cita a las ${formatClock(ap.time)}`, body: `${ap.title}${where ? ` en ${where}` : ''}.`, trigger: { type: 'date', date: dayBefore.toISOString() } });
     if (twoHours > i.now) appts.push({ key: `appt-${ap.id}-2h`, title: `En 2 horas tienes cita: ${ap.title}`, body: where ? `Es en ${where}.` : 'Prepárate con calma.', trigger: { type: 'date', date: twoHours.toISOString() } });
   }
 

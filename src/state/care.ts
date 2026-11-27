@@ -13,7 +13,7 @@ import { db } from '@/infrastructure/local/db';
 import { createLocalHeartbeats } from '@/infrastructure/local/heartbeats';
 import { strings } from '@/i18n';
 import { cancelDoseNotifications } from '@/infrastructure/notifications';
-import { atClock, formatClock, toISODate } from '@/utils/dates';
+import { atClock, formatClock, toClock, toISODate } from '@/utils/dates';
 
 import { actor, activeElderId } from './actions';
 import { actingRole, allowed, currentAuthorId, currentUserId } from './session';
@@ -392,7 +392,7 @@ export const elderAnswers = {
     const elder = db.get('elders', elderId);
     const name = elder?.firstName ?? 'Tu familiar';
     const P = strings.permissionNews;
-    const at = formatClock(new Date().toTimeString().slice(0, 5));
+    const at = formatClock(toClock(new Date()));
     const detail = `${P.detail(name, P.names[permission], on, at)}${permission === 'notifications' && !on ? ` ${P.noReminders}` : ''}`;
     return alertActions.raise('permission_changed', detail, `perm-${permission}-${on ? 'on' : 'off'}-${Date.now()}`, elderId);
   },
@@ -400,7 +400,7 @@ export const elderAnswers = {
     const id = elderOrActive(elderId);
     beat(id, 'answer');
     const elder = db.get('elders', id);
-    return alertActions.raise('help_requested', `${elder?.firstName ?? 'Tu familiar'} tocó "Pedir ayuda" a las ${formatClock(new Date().toTimeString().slice(0, 5))}.`, `help-${Date.now()}`, id);
+    return alertActions.raise('help_requested', `${elder?.firstName ?? 'Tu familiar'} tocó "Pedir ayuda" a las ${formatClock(toClock(new Date()))}.`, `help-${Date.now()}`, id);
   },
 };
 

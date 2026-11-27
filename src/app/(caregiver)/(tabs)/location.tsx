@@ -16,13 +16,13 @@ import { useActiveElder, useRecords } from '@/state/data';
 import { locationActions } from '@/state/location';
 import { spacing } from '@/theme';
 import { makeStyles, useTheme } from '@/theme/provider';
-import { formatAgo, formatClock } from '@/utils/dates';
+import { formatAgo, formatClock, toClock } from '@/utils/dates';
 import { directionsUrl } from '@/utils/maps';
 
 const L = strings.location;
 const hm = (iso: string) => {
   const d = new Date(iso);
-  return formatClock(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+  return formatClock(toClock(d));
 };
 
 /**
