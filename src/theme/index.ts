@@ -92,6 +92,17 @@ export interface StatusStyle {
   muted: string;
 }
 
+/**
+ * Presentación de la primera apertura (V4.4): fondo de la pantalla, degradado de 3 paradas de la tarjeta de la
+ * ilustración (150°), color de la etiqueta (≥ 4,5:1 sobre `bg`) y color RGB de la sombra de la tarjeta.
+ */
+export interface IntroSlide {
+  bg: string;
+  card: Gradient;
+  eyebrow: string;
+  glow: string;
+}
+
 export interface Theme {
   name: ThemeName;
   dark: boolean;
@@ -104,6 +115,8 @@ export interface Theme {
   tiles: Record<Domain | 'petrol' | 'slate', Tile>;
   status: Record<StatusKind, StatusStyle>;
   gradients: { primary: Gradient; coral: Gradient; welcome: Gradient; screen: Gradient; plus: Gradient };
+  /** Las cuatro presentaciones, en orden: Compañía, Cuidado diario, Bienestar, Familia. */
+  intro: readonly [IntroSlide, IntroSlide, IntroSlide, IntroSlide];
   /** Elevación V4.3: `soft` = nivel 1 (tarjetas), `elevated` = nivel 2 (flotantes), `sheet` = nivel 3 (hojas y modales). */
   shadow: { soft: ViewStyle; elevated: ViewStyle; hero: ViewStyle; sheet: ViewStyle; glow: Record<Tone, ViewStyle> };
   borderWidth: number;
@@ -327,6 +340,22 @@ function softTheme(name: 'light' | 'dark'): Theme {
       screen: p(['#F6F9F8', '#F4F7F6'], ['#0D1926', '#0B1622']),
       plus: p(['#0D3946', '#155E68', '#1FA9A0'], ['#0B2233', '#123D4A', '#1B8C86']),
     },
+    // Claro: boceto docs/referencias/onboarding-login (Paso1–4). Oscuro: noche azul con tinte leve; tarjetas azul,
+    // índigo y vino (sin verde en la base).
+    intro: p(
+      [
+        { bg: '#EAF7F4', card: ['#4FD1BE', '#A6EDE2', '#D6CCFA'], eyebrow: '#0B7A73', glow: '79, 209, 190' },
+        { bg: '#ECF3FD', card: ['#6FAEF7', '#BBD9FC', '#FFD9C8'], eyebrow: '#1E5AA8', glow: '111, 174, 247' },
+        { bg: '#F3EFFD', card: ['#A98BF0', '#DCCDFA', '#FFCFC0'], eyebrow: '#6A44C2', glow: '169, 139, 240' },
+        { bg: '#FDF2EC', card: ['#FFA587', '#FFDCCB', '#BDEDE2'], eyebrow: '#B4462B', glow: '255, 165, 135' },
+      ] as const,
+      [
+        { bg: '#0C1828', card: ['#16365A', '#1F3F6E', '#33306A'], eyebrow: '#7CC2FF', glow: '0, 0, 0' },
+        { bg: '#0C172A', card: ['#173462', '#1E3C70', '#4A3045'], eyebrow: '#7CC2FF', glow: '0, 0, 0' },
+        { bg: '#11152A', card: ['#2E2660', '#3A2E6E', '#4E2B3A'], eyebrow: '#A99DFF', glow: '0, 0, 0' },
+        { bg: '#17151F', card: ['#4E2C36', '#3A2C42', '#1C3557'], eyebrow: '#FF9C8A', glow: '0, 0, 0' },
+      ] as const,
+    ),
     shadow: {
       soft: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(4, 12, 0.06)}` },
       elevated: dark ? {} : { boxShadow: `${sh(1, 2, 0.04)}, ${sh(8, 24, 0.1)}` },
@@ -356,6 +385,7 @@ function hcTheme(name: 'hcLight' | 'hcDark'): Theme {
   const green = dark ? '#6BFFB0' : '#006B3C';
   const red = dark ? '#FF8A80' : '#B00020';
   const flat = (x: string): Gradient => [x, x];
+  const intro: IntroSlide = { bg, card: flat(bg), eyebrow: fg, glow: '0, 0, 0' };
   const c: Palette = {
     bg,
     surface: bg,
@@ -430,6 +460,7 @@ function hcTheme(name: 'hcLight' | 'hcDark'): Theme {
     tiles: Object.fromEntries((['water', 'medication', 'mood', 'sleep', 'activity', 'food', 'contact', 'followUp', 'petrol', 'slate'] as const).map((k) => [k, { bg, fg }])) as Theme['tiles'],
     status: Object.fromEntries((['ok', 'attention', 'action', 'none'] as const).map((k) => [k, { bg, border: fg, accent: k === 'action' ? red : k === 'ok' ? green : fg, text: fg, muted: fg }])) as Theme['status'],
     gradients: { primary: flat(fg), coral: flat(fg), welcome: flat(bg), screen: flat(bg), plus: flat(bg) },
+    intro: [intro, intro, intro, intro],
     shadow: {
       soft: none,
       elevated: none,

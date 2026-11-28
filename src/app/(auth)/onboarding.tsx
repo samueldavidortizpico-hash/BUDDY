@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Extrapolation, interpolate, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
+import Animated, { Extrapolation, interpolate, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText } from '@/components/app-text';
@@ -13,12 +13,15 @@ import { makeStyles, useAppearanceStore, useTextScaleFactor, useTheme } from '@/
 
 const S = strings.onboarding;
 const TOP_BAR = 52;
-const FOOTER = 128;
+const FOOTER = 96;
+/** En tablet y plegable abierto el contenido no pasa de este ancho y queda centrado. */
+const MAX_CONTENT = 520;
 
 /**
- * Primera apertura (V4.2, referencias 02 a 05): cuatro presentaciones que se deslizan con el dedo. Cada una muestra SOLO
- * su ilustración en la mitad superior, el título y el texto abajo, y "Siguiente"; la cuarta lleva a Bienvenido.
- * "Omitir" también lleva a Bienvenido. Al terminar se recuerda en el teléfono y no vuelve a aparecer sola.
+ * Primera apertura (V4.4, boceto Paso1–4): cuatro presentaciones que se deslizan con el dedo. Arriba, puntos y
+ * "Paso n de 4" con "Omitir" (no aparece en la última); en cada página, la ilustración en su tarjeta con degradado,
+ * la etiqueta de color, el título y el texto; abajo, "Siguiente". La cuarta y "Omitir" llevan a Bienvenido.
+ * Al terminar se recuerda en el teléfono y no vuelve a aparecer sola.
  */
 export default function Onboarding() {
   const router = useRouter();
@@ -32,13 +35,14 @@ export default function Onboarding() {
   const x = useSharedValue(0);
   const [i, setI] = useState(0);
   const leaving = useRef(false);
-  const slide = S.slides[i];
   const n = S.slides.length;
+  const last = i === n - 1;
 
-  // La ilustración ocupa la mitad superior; con letra grande cede espacio al texto (nunca se recorta).
+  const content = Math.min(width, MAX_CONTENT);
+  const cardWidth = content - spacing.lg * 2;
+  // La tarjeta ocupa cerca de la mitad del alto libre; con letra grande cede espacio al texto (nunca se recorta).
   const free = height - insets.top - insets.bottom - TOP_BAR - FOOTER;
-  const art = Math.round(Math.max(150, Math.min(width * 1.05, free * (big ? 0.36 : 0.52))));
-  const illustrationEnd = (insets.top + TOP_BAR + art) / height;
+  const art = Math.round(Math.max(160, Math.min(cardWidth, free * (big ? 0.36 : 0.5))));
 
   const onScroll = useAnimatedScrollHandler((e) => {
     x.set(e.contentOffset.x);
@@ -50,29 +54,29 @@ export default function Onboarding() {
     router.replace('/');
   };
   const next = () => {
-    if (i === n - 1) return finish();
+    if (last) return finish();
     setI(i + 1);
     pager.current?.scrollTo({ x: (i + 1) * width, animated: true });
   };
 
   return (
     <View style={[s.root, { backgroundColor: t.c.bg }]}>
-      <SlideBackgrounds x={x} width={width} illustrationEnd={illustrationEnd} />
+      <SlideBackgrounds x={x} width={width} />
 
-      <View style={[s.top, { paddingTop: insets.top }]}>
-        <View style={s.label} accessible accessibilityLabel={`${slide.eyebrow}. ${S.progress(i + 1, n)}`}>
-          <AppText variant="secondaryStrong" color={t.c.text} numberOfLines={1} maxScale={1.4}>
-            {slide.eyebrow}
-          </AppText>
-          <AppText variant="secondaryStrong" color={t.c.text} maxScale={1.4}>
-            {S.counter(i + 1, n)}
+      <View style={[s.top, { paddingTop: insets.top, width: content }]}>
+        <View style={s.progress} accessible accessibilityLabel={S.progress(i + 1, n)}>
+          <Dots x={x} width={width} count={n} />
+          <AppText variant="secondaryStrong" color={t.c.muted} maxScale={1.4}>
+            {S.progress(i + 1, n)}
           </AppText>
         </View>
-        <Pressable onPress={finish} accessibilityRole="button" accessibilityLabel={S.skip} hitSlop={8} style={s.skip}>
-          <AppText variant="secondaryStrong" color={t.c.text} maxScale={1.4}>
-            {S.skip}
-          </AppText>
-        </Pressable>
+        {last ? null : (
+          <Pressable onPress={finish} accessibilityRole="button" accessibilityLabel={S.skip} hitSlop={8} style={s.skip}>
+            <AppText variant="bodyStrong" color={t.c.text} maxScale={1.4}>
+              {S.skip}
+            </AppText>
+          </Pressable>
+        )}
       </View>
 
       <Animated.ScrollView
@@ -88,36 +92,44 @@ export default function Onboarding() {
       >
         {S.slides.map((sl, k) => (
           <Animated.ScrollView key={k} style={{ width }} contentContainerStyle={s.page} showsVerticalScrollIndicator={false} bounces={false}>
-            <Illustration index={k} x={x} width={width} height={art} />
-            <Copy index={k} x={x} width={width} title={sl.title} body={sl.body} active={k === i} />
+            <View style={{ width: content }}>
+              <View style={s.cardWrap}>
+                <Illustration index={k} x={x} width={width} cardWidth={cardWidth} height={art} />
+              </View>
+              <Copy index={k} x={x} width={width} eyebrow={sl.eyebrow} title={sl.title} body={sl.body} active={k === i} />
+            </View>
           </Animated.ScrollView>
         ))}
       </Animated.ScrollView>
 
-      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        <Dots x={x} width={width} count={n} label={S.progress(i + 1, n)} />
+      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, spacing.md), width: content }]}>
         <Button label={strings.common.next} variant="mint" haptic shine style={s.cta} onPress={next} />
       </View>
     </View>
   );
 }
 
-/** Título y texto: entran escalonados al deslizar (el texto viaja más que el título; solo transform y opacidad). */
-function Copy({ index, x, width, title, body, active }: { index: number; x: SharedValue<number>; width: number; title: string; body: string; active: boolean }) {
+/** Etiqueta, título y texto: entran escalonados al deslizar (el texto viaja más que el título; solo transform y opacidad). */
+function Copy({ index, x, width, eyebrow, title, body, active }: { index: number; x: SharedValue<number>; width: number; eyebrow: string; title: string; body: string; active: boolean }) {
   const t = useTheme();
   const s = useStyles();
+  const reduce = useReducedMotion();
+  const [near, far] = reduce ? [0, 0] : [60, 120];
   const head = useAnimatedStyle(() => {
     const d = x.get() / Math.max(1, width) - index;
-    return { opacity: interpolate(Math.abs(d), [0, 0.6], [1, 0], Extrapolation.CLAMP), transform: [{ translateX: d * 60 }] };
+    return { opacity: interpolate(Math.abs(d), [0, 0.6], [1, 0], Extrapolation.CLAMP), transform: [{ translateX: d * near }] };
   });
   const text = useAnimatedStyle(() => {
     const d = x.get() / Math.max(1, width) - index;
-    return { opacity: interpolate(Math.abs(d), [0, 0.5], [1, 0], Extrapolation.CLAMP), transform: [{ translateX: d * 120 }] };
+    return { opacity: interpolate(Math.abs(d), [0, 0.5], [1, 0], Extrapolation.CLAMP), transform: [{ translateX: d * far }] };
   });
   return (
     <View style={s.copy} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'} accessibilityElementsHidden={!active}>
-      <Animated.View style={head}>
-        <AppText variant="display" color={t.dark || t.hc ? t.c.text : '#174A59'} accessibilityRole="header" style={s.title}>
+      <Animated.View style={[s.headGroup, head]}>
+        <AppText variant="secondaryStrong" color={t.intro[index].eyebrow} maxScale={1.6} style={s.eyebrow}>
+          {eyebrow}
+        </AppText>
+        <AppText variant="display" color={t.c.text} accessibilityRole="header" style={s.title}>
           {title}
         </AppText>
       </Animated.View>
@@ -130,10 +142,10 @@ function Copy({ index, x, width, title, body, active }: { index: number; x: Shar
   );
 }
 
-/** Puntos de paginación: el activo se alarga siguiendo al dedo (escala horizontal). */
-function Dots({ x, width, count, label }: { x: SharedValue<number>; width: number; count: number; label: string }) {
+/** Puntos de progreso: el activo se alarga siguiendo al dedo (escala horizontal). Decorativos: el texto los nombra. */
+function Dots({ x, width, count }: { x: SharedValue<number>; width: number; count: number }) {
   return (
-    <View style={styles.dots} accessible accessibilityLabel={label}>
+    <View style={styles.dots} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
       {Array.from({ length: count }, (_, k) => (
         <Dot key={k} index={k} x={x} width={width} />
       ))}
@@ -151,21 +163,24 @@ function Dot({ index, x, width }: { index: number; x: SharedValue<number>; width
 }
 
 const styles = StyleSheet.create({
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 18, paddingVertical: spacing.xs },
+  dots: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
 });
 
 const useStyles = makeStyles(() =>
   StyleSheet.create({
-    root: { flex: 1 },
-    flex: { flex: 1 },
+    root: { flex: 1, alignItems: 'center' },
+    flex: { flex: 1, alignSelf: 'stretch' },
     top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg },
-    label: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: TOP_BAR, flexShrink: 1 },
+    progress: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: TOP_BAR, flexShrink: 1 },
     skip: { minHeight: TOP_BAR, minWidth: 64, justifyContent: 'center', alignItems: 'flex-end' },
-    page: { flexGrow: 1 },
-    copy: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.sm },
+    page: { flexGrow: 1, alignItems: 'center', paddingTop: spacing.xs, paddingBottom: spacing.md },
+    cardWrap: { alignItems: 'center' },
+    copy: { paddingHorizontal: spacing.lg, paddingTop: spacing.section, gap: spacing.sm },
+    headGroup: { gap: spacing.sm },
+    eyebrow: { letterSpacing: 0.4 },
     title: { fontSize: 34, lineHeight: 40 },
-    footer: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingTop: spacing.xs },
-    cta: { borderRadius: radius.pill, minHeight: 60 },
+    footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs },
+    cta: { borderRadius: radius.pill, minHeight: 62 },
   }),
 );

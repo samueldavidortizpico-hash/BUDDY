@@ -50,6 +50,15 @@ describe.each(Object.values(themes).map((t) => [t.name, t] as const))('tema %s',
   });
 });
 
+// V4.4: primera apertura. Etiqueta, título y texto de cada presentación sobre el fondo de su paso, en los 4 temas.
+describe.each(Object.values(themes).map((t) => [t.name, t] as const))('presentaciones %s', (_name, t) => {
+  it.each(t.intro.map((sl, i) => [i + 1, sl] as const))('paso %i: etiqueta, título y texto ≥ 4,5:1', (_i, sl) => {
+    expect(contrast(sl.eyebrow, sl.bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(t.c.text, sl.bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(t.c.muted, sl.bg)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
 // V4: mosaicos de icono (glifo ≥ 3:1) y tarjetas de estado del Inicio (texto ≥ 4,5:1).
 describe.each(['light', 'dark'] as const)('V4 %s', (name) => {
   const t = themes[name];
